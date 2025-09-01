@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Edit, Trash2, MessageCircle, Plus } from 'lucide-react';
+import { Edit, Trash2, MessageCircle, Plus, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -31,6 +31,7 @@ interface TaskListProps {
   onCreateTask: () => void;
   onEditTask: (task: Task) => void;
   onTaskComments: (task: Task) => void;
+  onViewDetails?: (task: Task) => void;
   refreshTrigger: number;
 }
 
@@ -40,6 +41,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   onCreateTask,
   onEditTask,
   onTaskComments,
+  onViewDetails,
   refreshTrigger,
 }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -216,6 +218,15 @@ export const TaskList: React.FC<TaskListProps> = ({
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1">
+                        {onViewDetails && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onViewDetails(task)}
+                          >
+                            <Info className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"

@@ -68,6 +68,32 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
         return;
       }
 
+      // INSERT INTO StatusHistory (project_or_task_id, status, updated_by, timestamp): log every status change for auditing.
+      const logStatusChange = async (projectId: string, newStatus: string, oldStatus?: string) => {
+        // Only log if status actually changed
+        if (oldStatus && oldStatus === newStatus) return;
+        
+        try {
+          const { error } = await supabase
+            .from('status_history')
+            .insert({
+              entity_id: projectId,
+              entity_type: 'project',
+              status: newStatus,
+              updated_by: profile.id,
+              updated_at: new Date().toISOString(),
+            });
+
+          if (error) {
+            console.error('Error logging status change:', error);
+            // Don't fail the main operation if logging fails
+          }
+        } catch (error) {
+          console.error('Error logging status change:', error);
+          // Don't fail the main operation if logging fails
+        }
+      };
+
       if (editProject) {
         // Update existing project
         const { error } = await supabase
@@ -83,13 +109,16 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
 
         if (error) throw error;
 
+        // Log status change for auditing
+        await logStatusChange(editProject.id, data.status, editProject.status);
+
         toast({
           title: 'Success',
           description: 'Project updated successfully',
         });
       } else {
         // Create new project
-        const { error } = await supabase
+        const { data: newProject, error } = await supabase
           .from('projects')
           .insert({
             name: data.name,
@@ -98,9 +127,15 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
             status: data.status,
             admin_id: profile.id,
             deadline: data.deadline?.toISOString().split('T')[0] || null,
-          });
+          })
+          .select();
 
         if (error) throw error;
+
+        // Log initial status for new projects
+        if (newProject && newProject[0]) {
+          await logStatusChange(newProject[0].id, data.status);
+        }
 
         toast({
           title: 'Success',
