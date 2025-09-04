@@ -12,6 +12,7 @@ interface User {
   id: string;
   name: string;
   email?: string; // Added email as it's commonly available
+  role?: string;
 }
 
 interface TaskFormProps {
@@ -405,12 +406,18 @@ export const TaskForm: React.FC<TaskFormProps> = ({
 
         <div className="space-y-2">
           <Label htmlFor="type">Type</Label>
-          <Input
-            id="type"
+          <Select
             value={formData.type}
-            onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-            placeholder="e.g., Feature, Bug, Documentation"
-          />
+            onValueChange={(value) => setFormData({ ...formData, type: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="billable">Billable</SelectItem>
+              <SelectItem value="non-billable">Non-billable</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -443,9 +450,10 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             </SelectTrigger>
                          <SelectContent>
                <SelectItem value="unassigned">Unassigned</SelectItem>
-               {safeUsers
-                 .filter(user => user && user.id && user.id.trim() !== '' && user.name && user.name.trim() !== '')
-                 .map((user) => {
+                               {safeUsers
+                  .filter(user => user && user.id && user.id.trim() !== '' && user.name && user.name.trim() !== '')
+                  .filter(user => user.role !== 'Admin')
+                  .map((user) => {
                    // Triple-check that we have valid data before rendering
                    try {
                      if (!user || !user.id || !user.name || user.id.trim() === '' || user.name.trim() === '') {

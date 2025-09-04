@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { LogOut, CheckSquare, Clock, Calendar, TrendingUp } from 'lucide-react';
 import { TimeTracker } from '@/components/time-tracking/TimeTracker';
+import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm';
+import { UserTaskList } from '@/components/tasks/UserTaskList';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,6 +23,7 @@ const UserDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
   const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showManualForm, setShowManualForm] = useState(false);
   const [stats, setStats] = useState({
     totalTasks: 0,
     hoursThisWeek: 0,
@@ -123,6 +126,11 @@ const UserDashboard: React.FC = () => {
     await signOut();
   };
 
+  const handleWorkLogAdded = () => {
+    // Refresh the dashboard data when a work log is added
+    fetchUserData();
+  };
+
   const formatDuration = (startTime: string, endTime: string) => {
     const start = new Date(startTime);
     const end = new Date(endTime);
@@ -196,13 +204,38 @@ const UserDashboard: React.FC = () => {
           </Card>
         </div>
 
-        {/* Time Tracker and Recent Entries */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Time Tracker */}
-          <TimeTracker />
+        {/* Time Tracking Section */}
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">Time Tracking</h2>
+            <div className="flex gap-2">
+              <Button
+                variant={!showManualForm ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowManualForm(false)}
+              >
+                Live Tracker
+              </Button>
+              <Button
+                variant={showManualForm ? "default" : "outline"}
+                size="sm"
+                onClick={() => setShowManualForm(true)}
+              >
+                Manual Entry
+              </Button>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Time Tracker or Manual Form */}
+            {!showManualForm ? (
+              <TimeTracker />
+            ) : (
+              <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
+            )}
 
-          {/* Recent Time Entries */}
-          <Card>
+            {/* Recent Time Entries */}
+            <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
@@ -255,39 +288,11 @@ const UserDashboard: React.FC = () => {
               )}
             </CardContent>
           </Card>
+          </div>
         </div>
 
         {/* Task List */}
-        <Card>
-          <CardHeader>
-            <CardTitle>My Tasks</CardTitle>
-            <CardDescription>
-              Tasks currently assigned to you
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loading ? (
-              <div className="space-y-3">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="animate-pulse">
-                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                  </div>
-                ))}
-              </div>
-            ) : stats.totalTasks > 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Task list will be implemented here.</p>
-                <p className="text-sm mt-2">You have {stats.totalTasks} assigned tasks.</p>
-              </div>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>No tasks assigned yet.</p>
-                <p className="text-sm mt-2">Tasks assigned by project managers will appear here.</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+        <UserTaskList />
       </main>
     </div>
   );

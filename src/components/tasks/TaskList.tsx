@@ -3,9 +3,11 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Edit, Trash2, MessageCircle, Plus, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 
 interface Task {
@@ -47,6 +49,75 @@ export const TaskList: React.FC<TaskListProps> = ({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
+  const { profile } = useAuth();
+
+  const taskStatusOptions = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
+
+  const handleStatusChange = async (taskId: string, newStatus: string) => {
+    try {
+      // Find the current task to get the old status
+      const currentTask = tasks.find(t => t.id === taskId);
+      const oldStatus = currentTask?.status;
+
+      // Update task status
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId);
+
+      if (error) {
+        console.error('Error updating task status:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to update task status',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Log status change in history
+      if (profile?.id && oldStatus !== newStatus) {
+        const { error: historyError } = await supabase
+          .from('status_history')
+          .insert({
+            entity_id: taskId,
+            entity_type: 'task',
+            status: newStatus,
+            updated_by: profile.id,
+            updated_at: new Date().toISOString(),
+          });
+
+        if (historyError) {
+          console.error('Error logging status change:', historyError);
+          // Don't show error to user as the main operation succeeded
+        }
+      }
+
+      // Update local state
+      setTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === taskId
+            ? { ...task, status: newStatus }
+            : task
+        )
+      );
+
+      toast({
+        title: 'Success',
+        description: 'Task status updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update task status',
+        variant: 'destructive',
+      });
+    }
+  };
 
   const fetchTasks = async () => {
     try {
@@ -205,9 +276,21 @@ export const TaskList: React.FC<TaskListProps> = ({
                       {task.assigned_user?.name || 'Unassigned'}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={getStatusBadgeVariant(task.status)}>
-                        {task.status}
-                      </Badge>
+                      <Select
+                        value={task.status}
+                        onValueChange={(value) => handleStatusChange(task.id, value)}
+                      >
+                        <SelectTrigger className="w-32">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {taskStatusOptions.map((status) => (
+                            <SelectItem key={status} value={status}>
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </TableCell>
                     <TableCell>{task.estimate_hours || 'N/A'}</TableCell>
                     <TableCell>

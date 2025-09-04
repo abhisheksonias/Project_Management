@@ -13,12 +13,15 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Project {
   id: string;
   name: string;
+  hasAssignedTasks?: boolean;
 }
 
 interface Task {
   id: string;
   name: string;
   project_id: string;
+  status: string;
+  assigned_user_id: string | null;
 }
 
 interface TimeTrackerProps {
@@ -58,14 +61,18 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
     };
   }, [isTracking, startTime]);
 
-  // Fetch projects
+  // Fetch projects with assigned task information
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setLoadingProjects(true);
         const { data, error } = await supabase
           .from('projects')
-          .select('id, name')
+          .select(`
+            id, 
+            name,
+            tasks(id, assigned_user_id)
+          `)
           .order('name');
 
         if (error) {
@@ -78,7 +85,14 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           return;
         }
 
-        setProjects(data || []);
+        // Process projects to check for assigned tasks
+        const processedProjects = (data || []).map(project => ({
+          id: project.id,
+          name: project.name,
+          hasAssignedTasks: project.tasks?.some((task: any) => task.assigned_user_id === profile?.id) || false
+        }));
+
+        setProjects(processedProjects);
       } catch (error) {
         console.error('Error fetching projects:', error);
         toast({
@@ -91,8 +105,10 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
       }
     };
 
-    fetchProjects();
-  }, [toast]);
+    if (profile?.id) {
+      fetchProjects();
+    }
+  }, [toast, profile?.id]);
 
   // Fetch tasks when project changes
   useEffect(() => {
@@ -105,7 +121,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
       try {
         const { data, error } = await supabase
           .from('tasks')
-          .select('id, name, project_id')
+          .select('id, name, project_id, status, assigned_user_id')
           .eq('project_id', selectedProject)
           .order('name');
 
@@ -227,6 +243,45 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
     return tasks.find(t => t.id === selectedTask)?.name || '';
   };
 
+  // Sort projects: projects with assigned tasks first, then by name
+  const sortedProjects = [...projects].sort((a, b) => {
+    if (a.hasAssignedTasks && !b.hasAssignedTasks) return -1;
+    if (!a.hasAssignedTasks && b.hasAssignedTasks) return 1;
+    
+    // If both have same assignment status, sort by name
+    return a.name.localeCompare(b.name);
+  });
+
+  // Sort tasks: assigned tasks first, then by name
+  const sortedTasks = [...tasks].sort((a, b) => {
+    const aAssigned = a.assigned_user_id === profile?.id;
+    const bAssigned = b.assigned_user_id === profile?.id;
+    
+    if (aAssigned && !bAssigned) return -1;
+    if (!aAssigned && bAssigned) return 1;
+    
+    // If both have same assignment status, sort by name
+    return a.name.localeCompare(b.name);
+  });
+
+  const getProjectHighlightClass = (project: Project) => {
+    return project.hasAssignedTasks ? 'font-medium text-blue-600' : '';
+  };
+
+  const getTaskStatusColor = (task: Task) => {
+    if (task.assigned_user_id === profile?.id) {
+      return task.status.toLowerCase() === 'completed' ? 'text-green-600' : 'text-red-600';
+    }
+    return 'text-muted-foreground';
+  };
+
+  const getTaskStatusIcon = (task: Task) => {
+    if (task.assigned_user_id === profile?.id) {
+      return task.status.toLowerCase() === 'completed' ? '✓' : '●';
+    }
+    return '';
+  };
+
   return (
     <Card className={className}>
       <CardHeader>
@@ -247,9 +302,18 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
               <SelectValue placeholder={loadingProjects ? "Loading projects..." : "Select a project"} />
             </SelectTrigger>
             <SelectContent>
-              {projects.map((project) => (
+              {sortedProjects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>
-                  {project.name}
+                  <div className="flex items-center gap-2">
+                    <span className={getProjectHighlightClass(project)}>
+                      {project.name}
+                    </span>
+                    {project.hasAssignedTasks && (
+                      <Badge variant="outline" className="text-xs">
+                        Has Tasks
+                      </Badge>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -265,9 +329,21 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="no-task">No specific task</SelectItem>
-              {tasks.map((task) => (
+              {sortedTasks.map((task) => (
                 <SelectItem key={task.id} value={task.id}>
-                  {task.name}
+                  <div className="flex items-center gap-2">
+                    <span className={getTaskStatusColor(task)}>
+                      {getTaskStatusIcon(task)}
+                    </span>
+                    <span className={task.assigned_user_id === profile?.id ? 'font-medium' : ''}>
+                      {task.name}
+                    </span>
+                    {task.assigned_user_id === profile?.id && (
+                      <Badge variant="outline" className="text-xs ml-auto">
+                        Assigned
+                      </Badge>
+                    )}
+                  </div>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -294,8 +370,36 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
                 {formatTime(elapsedTime)}
               </div>
               <div className="text-sm text-muted-foreground mt-1">
-                Tracking time for {getSelectedProjectName()}
-                {getSelectedTaskName() && ` - ${getSelectedTaskName()}`}
+                Tracking time for{' '}
+                {(() => {
+                  const project = projects.find(p => p.id === selectedProject);
+                  return (
+                    <span className={project?.hasAssignedTasks ? 'font-medium text-blue-600' : ''}>
+                      {getSelectedProjectName()}
+                      {project?.hasAssignedTasks && ' (Has Tasks)'}
+                    </span>
+                  );
+                })()}
+                {getSelectedTaskName() && selectedTask !== 'no-task' && (
+                  <>
+                    {' - '}
+                    {(() => {
+                      const task = tasks.find(t => t.id === selectedTask);
+                      return task ? (
+                        <span className={task.assigned_user_id === profile?.id ? 'font-medium' : ''}>
+                          <span className={getTaskStatusColor(task)}>
+                            {getTaskStatusIcon(task)}
+                          </span>
+                          {' '}
+                          {getSelectedTaskName()}
+                          {task.assigned_user_id === profile?.id && ' (Assigned)'}
+                        </span>
+                      ) : (
+                        getSelectedTaskName()
+                      );
+                    })()}
+                  </>
+                )}
               </div>
             </div>
           </div>
