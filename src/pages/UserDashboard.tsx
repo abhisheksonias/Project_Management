@@ -2,8 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, CheckSquare, Clock, Calendar, TrendingUp } from 'lucide-react';
+import { 
+  LogOut, 
+  CheckSquare, 
+  Clock, 
+  Calendar, 
+  TrendingUp, 
+  Target,
+  BarChart3,
+  Activity,
+  Timer,
+  Zap,
+  Award,
+  Users,
+  FolderOpen
+} from 'lucide-react';
 import { TimeTracker } from '@/components/time-tracking/TimeTracker';
 import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
@@ -15,19 +31,47 @@ interface TimeEntry {
   start_time: string;
   end_time: string;
   note: string | null;
-  projects: { name: string };
-  tasks: { name: string } | null;
+  projects: { name: string; type: string };
+  tasks: { name: string; status: string } | null;
+}
+
+interface ProductivityStats {
+  totalTasks: number;
+  completedTasks: number;
+  hoursToday: number;
+  hoursThisWeek: number;
+  hoursThisMonth: number;
+  averageDailyHours: number;
+  efficiency: number;
+  projectProgress: Array<{
+    projectName: string;
+    totalHours: number;
+    taskCount: number;
+    completedTasks: number;
+    progress: number;
+  }>;
+  recentActivity: TimeEntry[];
+  weeklyTrend: Array<{
+    day: string;
+    hours: number;
+  }>;
 }
 
 const UserDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
-  const [recentEntries, setRecentEntries] = useState<TimeEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [showManualForm, setShowManualForm] = useState(false);
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<ProductivityStats>({
     totalTasks: 0,
+    completedTasks: 0,
+    hoursToday: 0,
     hoursThisWeek: 0,
-    upcomingDeadlines: 0,
+    hoursThisMonth: 0,
+    averageDailyHours: 0,
+    efficiency: 0,
+    projectProgress: [],
+    recentActivity: [],
+    weeklyTrend: []
   });
   const { toast } = useToast();
 
@@ -35,73 +79,142 @@ const UserDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      // Fetch user's recent time entries
-      const { data: timeEntries, error: timeError } = await supabase
+      const now = new Date();
+      const todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      
+      const weekStart = new Date(now);
+      weekStart.setDate(now.getDate() - now.getDay());
+      weekStart.setHours(0, 0, 0, 0);
+      
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+      // Fetch all time entries for comprehensive analysis
+      const { data: allTimeEntries, error: timeError } = await supabase
         .from('work_logs')
         .select(`
           id,
           start_time,
           end_time,
           note,
-          projects(name),
-          tasks(name)
+          projects(name, type),
+          tasks(name, status)
         `)
         .eq('user_id', profile?.id)
-        .order('start_time', { ascending: false })
-        .limit(5);
+        .order('start_time', { ascending: false });
 
-      if (timeError) {
-        console.error('Error fetching time entries:', timeError);
-        throw timeError;
-      }
-
-      setRecentEntries(timeEntries || []);
-
-      // Calculate hours this week
-      const now = new Date();
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-
-      const { data: weekEntries, error: weekError } = await supabase
-        .from('work_logs')
-        .select('start_time, end_time')
-        .eq('user_id', profile?.id)
-        .gte('start_time', weekStart.toISOString());
-
-      if (weekError) {
-        console.error('Error fetching week entries:', weekError);
-        throw weekError;
-      }
-
-      const hoursThisWeek = weekEntries?.reduce((total, entry) => {
-        const start = new Date(entry.start_time);
-        const end = new Date(entry.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        return total + hours;
-      }, 0) || 0;
+      if (timeError) throw timeError;
 
       // Fetch user's tasks
       const { data: tasks, error: tasksError } = await supabase
         .from('tasks')
-        .select('*')
+        .select('id, status, project_id, projects(name)')
         .eq('assigned_user_id', profile?.id);
 
-      if (tasksError) {
-        console.error('Error fetching tasks:', tasksError);
-        throw tasksError;
+      if (tasksError) throw tasksError;
+
+      // Calculate time metrics
+      const calculateHours = (entries: any[], startDate: Date) => {
+        return entries
+          .filter(entry => new Date(entry.start_time) >= startDate)
+          .reduce((total, entry) => {
+            const start = new Date(entry.start_time);
+            const end = new Date(entry.end_time);
+            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return total + hours;
+          }, 0);
+      };
+
+      const hoursToday = calculateHours(allTimeEntries || [], todayStart);
+      const hoursThisWeek = calculateHours(allTimeEntries || [], weekStart);
+      const hoursThisMonth = calculateHours(allTimeEntries || [], monthStart);
+
+      // Calculate weekly trend
+      const weeklyTrend = [];
+      for (let i = 6; i >= 0; i--) {
+        const date = new Date(now);
+        date.setDate(date.getDate() - i);
+        const dayStart = new Date(date);
+        dayStart.setHours(0, 0, 0, 0);
+        const dayEnd = new Date(date);
+        dayEnd.setHours(23, 59, 59, 999);
+        
+        const dayHours = (allTimeEntries || [])
+          .filter(entry => {
+            const entryDate = new Date(entry.start_time);
+            return entryDate >= dayStart && entryDate <= dayEnd;
+          })
+          .reduce((total, entry) => {
+            const start = new Date(entry.start_time);
+            const end = new Date(entry.end_time);
+            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            return total + hours;
+          }, 0);
+
+        weeklyTrend.push({
+          day: date.toLocaleDateString('en-US', { weekday: 'short' }),
+          hours: Math.round(dayHours * 100) / 100
+        });
       }
 
+      // Calculate project progress
+      const projectMap = new Map();
+      (allTimeEntries || []).forEach(entry => {
+        const projectName = entry.projects?.name || 'Unknown Project';
+        if (!projectMap.has(projectName)) {
+          projectMap.set(projectName, {
+            projectName,
+            totalHours: 0,
+            taskCount: 0,
+            completedTasks: 0
+          });
+        }
+        
+        const start = new Date(entry.start_time);
+        const end = new Date(entry.end_time);
+        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        projectMap.get(projectName).totalHours += hours;
+      });
+
+      // Add task counts to projects
+      (tasks || []).forEach(task => {
+        const projectName = task.projects?.name || 'Unknown Project';
+        if (projectMap.has(projectName)) {
+          projectMap.get(projectName).taskCount += 1;
+          if (task.status.toLowerCase() === 'completed') {
+            projectMap.get(projectName).completedTasks += 1;
+          }
+        }
+      });
+
+      const projectProgress = Array.from(projectMap.values()).map(project => ({
+        ...project,
+        totalHours: Math.round(project.totalHours * 100) / 100,
+        progress: project.taskCount > 0 ? Math.round((project.completedTasks / project.taskCount) * 100) : 0
+      }));
+
+      // Calculate efficiency (completed tasks / total tasks)
       const totalTasks = tasks?.length || 0;
-      const upcomingDeadlines = tasks?.filter(task => {
-        // This would need deadline field in tasks table
-        return false; // Placeholder
-      }).length || 0;
+      const completedTasks = tasks?.filter(task => task.status.toLowerCase() === 'completed').length || 0;
+      const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+      // Calculate average daily hours (last 30 days)
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+      const recentHours = calculateHours(allTimeEntries || [], thirtyDaysAgo);
+      const averageDailyHours = Math.round((recentHours / 30) * 100) / 100;
 
       setStats({
         totalTasks,
+        completedTasks,
+        hoursToday: Math.round(hoursToday * 100) / 100,
         hoursThisWeek: Math.round(hoursThisWeek * 100) / 100,
-        upcomingDeadlines,
+        hoursThisMonth: Math.round(hoursThisMonth * 100) / 100,
+        averageDailyHours,
+        efficiency,
+        projectProgress: projectProgress.sort((a, b) => b.totalHours - a.totalHours),
+        recentActivity: (allTimeEntries || []).slice(0, 5),
+        weeklyTrend
       });
 
     } catch (error) {
@@ -149,150 +262,331 @@ const UserDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">My Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {profile?.name}</p>
+      {/* Compact Header */}
+      <header className="border-b bg-card sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <div>
+              <h1 className="text-xl font-bold">Productivity Dashboard</h1>
+              <p className="text-sm text-muted-foreground">Welcome back, {profile?.name}</p>
+            </div>
             {profile?.specialization && (
-              <p className="text-sm text-muted-foreground">{profile.specialization}</p>
+              <Badge variant="outline" className="text-xs">
+                {profile.specialization}
+              </Badge>
             )}
           </div>
-          <Button variant="outline" onClick={handleSignOut}>
+          <Button variant="outline" size="sm" onClick={handleSignOut}>
             <LogOut className="mr-2 h-4 w-4" />
             Sign Out
           </Button>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Quick Stats Cards */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">My Tasks</CardTitle>
-              <CheckSquare className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalTasks}</div>
-              <p className="text-xs text-muted-foreground">Tasks assigned to you</p>
-            </CardContent>
+      {/* Main Content - Compact Layout */}
+      <main className="container mx-auto px-4 py-6">
+        {/* Key Metrics Row */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Timer className="h-4 w-4 text-blue-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.hoursToday}h</div>
+                <div className="text-xs text-muted-foreground">Today</div>
+              </div>
+            </div>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Hours This Week</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.hoursThisWeek}</div>
-              <p className="text-xs text-muted-foreground">Hours logged</p>
-            </CardContent>
+          
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-green-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.hoursThisWeek}h</div>
+                <div className="text-xs text-muted-foreground">This Week</div>
+              </div>
+            </div>
           </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Upcoming Deadlines</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.upcomingDeadlines}</div>
-              <p className="text-xs text-muted-foreground">Tasks due soon</p>
-            </CardContent>
+          
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-purple-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.hoursThisMonth}h</div>
+                <div className="text-xs text-muted-foreground">This Month</div>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-orange-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.efficiency}%</div>
+                <div className="text-xs text-muted-foreground">Efficiency</div>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <CheckSquare className="h-4 w-4 text-emerald-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.completedTasks}/{stats.totalTasks}</div>
+                <div className="text-xs text-muted-foreground">Tasks Done</div>
+              </div>
+            </div>
+          </Card>
+          
+          <Card className="p-4">
+            <div className="flex items-center gap-2">
+              <Activity className="h-4 w-4 text-red-600" />
+              <div>
+                <div className="text-lg font-bold">{stats.averageDailyHours}h</div>
+                <div className="text-xs text-muted-foreground">Daily Avg</div>
+              </div>
+            </div>
           </Card>
         </div>
 
-        {/* Time Tracking Section */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">Time Tracking</h2>
-            <div className="flex gap-2">
-              <Button
-                variant={!showManualForm ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowManualForm(false)}
-              >
-                Live Tracker
-              </Button>
-              <Button
-                variant={showManualForm ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowManualForm(true)}
-              >
-                Manual Entry
-              </Button>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Time Tracker or Manual Form */}
-            {!showManualForm ? (
-              <TimeTracker />
-            ) : (
-              <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
-            )}
+        {/* Main Dashboard Tabs */}
+        <Tabs defaultValue="tracking" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="tracking">Time Tracking</TabsTrigger>
+            <TabsTrigger value="tasks">My Tasks</TabsTrigger>
+            <TabsTrigger value="projects">Projects</TabsTrigger>
+            <TabsTrigger value="overview">Overview</TabsTrigger>
+          </TabsList>
 
-            {/* Recent Time Entries */}
-            <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                Recent Time Entries
-              </CardTitle>
-              <CardDescription>
-                Your recent work sessions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="space-y-3">
-                  {[1, 2, 3].map((i) => (
-                    <div key={i} className="animate-pulse">
-                      <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+          {/* Time Tracking Tab */}
+          <TabsContent value="tracking" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold">Time Tracking</h2>
+              <div className="flex gap-2">
+                <Button
+                  variant={!showManualForm ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowManualForm(false)}
+                >
+                  <Timer className="mr-2 h-4 w-4" />
+                  Live Tracker
+                </Button>
+                <Button
+                  variant={showManualForm ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setShowManualForm(true)}
+                >
+                  <Clock className="mr-2 h-4 w-4" />
+                  Manual Entry
+                </Button>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {!showManualForm ? (
+                <TimeTracker />
+              ) : (
+                <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
+              )}
+
+              {/* Quick Stats for Time Tracking */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Zap className="h-5 w-5" />
+                    Productivity Insights
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                    <div>
+                      <div className="text-sm font-medium">Today's Goal</div>
+                      <div className="text-xs text-muted-foreground">Target: 8 hours</div>
                     </div>
-                  ))}
-                </div>
-              ) : recentEntries.length > 0 ? (
-                <div className="space-y-3">
-                  {recentEntries.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex-1">
-                        <div className="font-medium">{entry.projects.name}</div>
-                        {entry.tasks && (
-                          <div className="text-sm text-muted-foreground">{entry.tasks.name}</div>
-                        )}
-                        {entry.note && (
-                          <div className="text-sm text-muted-foreground mt-1">{entry.note}</div>
-                        )}
-                        <div className="text-xs text-muted-foreground mt-1">
-                          {formatDate(entry.start_time)}
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-blue-600">{stats.hoursToday}h</div>
+                      <Progress value={(stats.hoursToday / 8) * 100} className="w-16 h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                    <div>
+                      <div className="text-sm font-medium">Weekly Progress</div>
+                      <div className="text-xs text-muted-foreground">Target: 40 hours</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-green-600">{stats.hoursThisWeek}h</div>
+                      <Progress value={(stats.hoursThisWeek / 40) * 100} className="w-16 h-2" />
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
+                    <div>
+                      <div className="text-sm font-medium">Task Efficiency</div>
+                      <div className="text-xs text-muted-foreground">Completion rate</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-bold text-purple-600">{stats.efficiency}%</div>
+                      <Progress value={stats.efficiency} className="w-16 h-2" />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+
+          {/* Tasks Tab */}
+          <TabsContent value="tasks" className="space-y-6">
+            <UserTaskList />
+          </TabsContent>
+
+          {/* Projects Tab */}
+          <TabsContent value="projects" className="space-y-6">
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <FolderOpen className="h-5 w-5" />
+                  Project Analysis
+                </CardTitle>
+                <CardDescription>Time spent and progress across all projects</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {stats.projectProgress.map((project, index) => (
+                    <div key={index} className="p-4 border rounded-lg">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h3 className="font-medium">{project.projectName}</h3>
+                          <p className="text-sm text-muted-foreground">
+                            {project.completedTasks} of {project.taskCount} tasks completed
+                          </p>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-lg font-bold">{project.totalHours}h</div>
+                          <Badge variant={project.progress >= 80 ? "default" : project.progress >= 50 ? "secondary" : "outline"}>
+                            {project.progress}% Complete
+                          </Badge>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="font-bold">{formatDuration(entry.start_time, entry.end_time)}</div>
-                        <Badge variant="secondary" className="text-xs">
-                          {entry.tasks ? 'Task' : 'Project'}
-                        </Badge>
-                      </div>
+                      <Progress value={project.progress} className="h-2" />
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No time entries yet.</p>
-                  <p className="text-sm mt-2">Start tracking your work time to see entries here.</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-          </div>
-        </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Task List */}
-        <UserTaskList />
+          {/* Overview Tab */}
+          <TabsContent value="overview" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Weekly Activity Chart */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5" />
+                    Weekly Activity
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {stats.weeklyTrend.map((day, index) => (
+                      <div key={index} className="flex items-center justify-between">
+                        <span className="text-sm font-medium w-12">{day.day}</span>
+                        <div className="flex-1 mx-3">
+                          <Progress 
+                            value={Math.min((day.hours / 8) * 100, 100)} 
+                            className="h-2"
+                          />
+                        </div>
+                        <span className="text-sm text-muted-foreground w-12 text-right">
+                          {day.hours}h
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Project Progress */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <FolderOpen className="h-5 w-5" />
+                    Project Progress
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {stats.projectProgress.slice(0, 5).map((project, index) => (
+                      <div key={index} className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium">{project.projectName}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">
+                              {project.completedTasks}/{project.taskCount}
+                            </span>
+                            <Badge variant="outline" className="text-xs">
+                              {project.totalHours}h
+                            </Badge>
+                          </div>
+                        </div>
+                        <Progress value={project.progress} className="h-2" />
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Recent Activity */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loading ? (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="animate-pulse">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                      </div>
+                    ))}
+                  </div>
+                ) : stats.recentActivity.length > 0 ? (
+                  <div className="space-y-3">
+                    {stats.recentActivity.map((entry) => (
+                      <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex-1">
+                          <div className="font-medium text-sm">{entry.projects.name}</div>
+                          {entry.tasks && (
+                            <div className="text-xs text-muted-foreground">{entry.tasks.name}</div>
+                          )}
+                          <div className="text-xs text-muted-foreground mt-1">
+                            {formatDate(entry.start_time)}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-sm">{formatDuration(entry.start_time, entry.end_time)}</div>
+                          <Badge variant="secondary" className="text-xs">
+                            {entry.tasks ? 'Task' : 'Project'}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>No recent activity.</p>
+                    <p className="text-sm mt-2">Start tracking your work time to see activity here.</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );

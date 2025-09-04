@@ -311,9 +311,9 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
                       <Badge variant="secondary" className="text-xs">
                         {task.projects.name}
                       </Badge>
-                      <div className="text-xs text-muted-foreground">
+                      {/* <div className="text-xs text-muted-foreground">
                         {task.projects.type}
-                      </div>
+                      </div> */}
                     </div>
                   </TableCell>
                   <TableCell>
