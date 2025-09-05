@@ -17,9 +17,11 @@ import {
   Zap,
   Award,
   Users,
-  FolderOpen
+  FolderOpen,
+  Edit
 } from 'lucide-react';
 import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm';
+import { WorkLogEditDialog } from '@/components/time-tracking/WorkLogEditDialog';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
 import { UserProjectList } from '@/components/projects/UserProjectList';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,6 +61,8 @@ interface ProductivityStats {
 const UserDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [editingWorkLog, setEditingWorkLog] = useState<TimeEntry | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
   const [stats, setStats] = useState<ProductivityStats>({
     totalTasks: 0,
     completedTasks: 0,
@@ -242,6 +246,21 @@ const UserDashboard: React.FC = () => {
 
   const handleWorkLogAdded = () => {
     // Refresh the dashboard data when a work log is added
+    fetchUserData();
+  };
+
+  const handleEditWorkLog = (workLog: TimeEntry) => {
+    setEditingWorkLog(workLog);
+    setShowEditDialog(true);
+  };
+
+  const handleEditDialogClose = () => {
+    setShowEditDialog(false);
+    setEditingWorkLog(null);
+  };
+
+  const handleWorkLogUpdated = () => {
+    // Refresh the dashboard data when a work log is updated
     fetchUserData();
   };
 
@@ -555,15 +574,30 @@ const UserDashboard: React.FC = () => {
                           {entry.tasks && (
                             <div className="text-xs text-muted-foreground">{entry.tasks.name}</div>
                           )}
+                          {entry.note && (
+                            <div className="text-xs text-muted-foreground mt-1 italic">
+                              "{entry.note}"
+                            </div>
+                          )}
                           <div className="text-xs text-muted-foreground mt-1">
                             {formatDate(entry.created_at)}
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="font-bold text-sm">{formatDuration(entry.hours)}</div>
-                          <Badge variant="secondary" className="text-xs">
-                            {entry.tasks ? 'Task' : 'Project'}
-                          </Badge>
+                        <div className="flex items-center gap-3">
+                          <div className="text-right">
+                            <div className="font-bold text-sm">{formatDuration(entry.hours)}</div>
+                            <Badge variant="secondary" className="text-xs">
+                              {entry.tasks ? 'Task' : 'Project'}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => handleEditWorkLog(entry)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -579,6 +613,14 @@ const UserDashboard: React.FC = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* Work Log Edit Dialog */}
+      <WorkLogEditDialog
+        workLog={editingWorkLog}
+        isOpen={showEditDialog}
+        onClose={handleEditDialogClose}
+        onSuccess={handleWorkLogUpdated}
+      />
     </div>
   );
 };
