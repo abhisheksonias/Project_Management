@@ -20,6 +20,8 @@ interface UserData {
   role: string;
   specialization: string | null;
   totalHours: number;
+  billableHours: number;
+  nonBillableHours: number;
   avgHoursPerDay: number;
   projectCount: number;
   taskCount: number;
@@ -43,6 +45,8 @@ interface ProjectBreakdown {
   projectId: string;
   projectName: string;
   hours: number;
+  billableHours: number;
+  nonBillableHours: number;
   tasks: number;
   completedTasks: number;
   efficiency: number;
@@ -108,7 +112,7 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
           *,
           users(name, email, role, specialization),
           projects(name),
-          tasks(name, status, estimate_hours)
+          tasks(name, status, estimate_hours, type)
         `)
         .gte('created_at', startDate.toISOString())
         .lte('created_at', now.toISOString());
@@ -140,6 +144,8 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
           role: user.role || 'User',
           specialization: user.specialization,
           totalHours: 0,
+          billableHours: 0,
+          nonBillableHours: 0,
           avgHoursPerDay: 0,
           projectCount: 0,
           taskCount: 0,
@@ -161,7 +167,7 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
       // Process work logs by user
       const userWorkLogs = new Map<string, any[]>();
       const userDailyMap = new Map<string, Map<string, { hours: number; projects: Set<string>; tasks: Set<string> }>>();
-      const userProjectMap = new Map<string, Map<string, { hours: number; tasks: Set<string>; completedTasks: number; estimatedHours: number }>>();
+      const userProjectMap = new Map<string, Map<string, { hours: number; billableHours: number; nonBillableHours: number; tasks: Set<string>; completedTasks: number; estimatedHours: number }>>();
       const userHourlyMap = new Map<string, Map<number, number>>();
 
       workLogs?.forEach(log => {
@@ -179,10 +185,18 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
         }
         userWorkLogs.get(log.user_id)!.push(log);
 
-        // Update user total hours
+        // Update user total hours and billable/non-billable hours
         const user = userMap.get(log.user_id);
         if (user) {
           user.totalHours += hours;
+          
+          // Check if task is billable or non-billable
+          const taskType = log.tasks?.type;
+          if (taskType === 'billable') {
+            user.billableHours += hours;
+          } else if (taskType === 'non-billable') {
+            user.nonBillableHours += hours;
+          }
         }
 
         // Update daily breakdown
@@ -207,10 +221,19 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
           const userProjects = userProjectMap.get(log.user_id)!;
           
           if (!userProjects.has(log.project_id)) {
-            userProjects.set(log.project_id, { hours: 0, tasks: new Set(), completedTasks: 0, estimatedHours: 0 });
+            userProjects.set(log.project_id, { hours: 0, billableHours: 0, nonBillableHours: 0, tasks: new Set(), completedTasks: 0, estimatedHours: 0 });
           }
           const projectData = userProjects.get(log.project_id)!;
           projectData.hours += hours;
+          
+          // Track billable vs non-billable hours for project
+          const taskType = log.tasks?.type;
+          if (taskType === 'billable') {
+            projectData.billableHours += hours;
+          } else if (taskType === 'non-billable') {
+            projectData.nonBillableHours += hours;
+          }
+          
           if (log.task_id) projectData.tasks.add(log.task_id);
           if (log.tasks?.status === 'Completed') projectData.completedTasks++;
           if (log.tasks?.estimate_hours) projectData.estimatedHours += log.tasks.estimate_hours;
@@ -310,6 +333,8 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
             projectId,
             projectName: project?.projects?.name || 'Unknown Project',
             hours: Math.round(projectData.hours * 100) / 100,
+            billableHours: Math.round(projectData.billableHours * 100) / 100,
+            nonBillableHours: Math.round(projectData.nonBillableHours * 100) / 100,
             tasks: projectData.tasks.size,
             completedTasks: projectData.completedTasks,
             efficiency: Math.round(efficiency * 100) / 100,
@@ -538,7 +563,9 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Hours</TableHead>
+                  <TableHead>Total Hours</TableHead>
+                  <TableHead>Billable Hours</TableHead>
+                  <TableHead>Non-Billable Hours</TableHead>
                   <TableHead>Projects</TableHead>
                   <TableHead>Tasks</TableHead>
                   <TableHead>Efficiency</TableHead>
@@ -568,6 +595,22 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
                         <div className="font-medium">{Math.round(user.totalHours * 100) / 100}h</div>
                         <div className="text-xs text-muted-foreground">
                           {Math.round(user.avgHoursPerDay * 100) / 100}/day
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-right">
+                        <div className="font-medium text-green-600">{Math.round(user.billableHours * 100) / 100}h</div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.totalHours > 0 ? Math.round((user.billableHours / user.totalHours) * 100) : 0}%
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-right">
+                        <div className="font-medium text-orange-600">{Math.round(user.nonBillableHours * 100) / 100}h</div>
+                        <div className="text-xs text-muted-foreground">
+                          {user.totalHours > 0 ? Math.round((user.nonBillableHours / user.totalHours) * 100) : 0}%
                         </div>
                       </div>
                     </TableCell>
@@ -660,8 +703,10 @@ export const UserTimeAnalytics: React.FC<UserTimeAnalyticsProps> = ({ timeRange 
                       </div>
                       <div className="text-right">
                         <div className="font-bold">{project.hours}h</div>
-                        <div className="text-xs text-muted-foreground">
-                          {project.efficiency}% efficiency
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div className="text-green-600">Billable: {project.billableHours}h</div>
+                          <div className="text-orange-600">Non-billable: {project.nonBillableHours}h</div>
+                          <div>{project.efficiency}% efficiency</div>
                         </div>
                       </div>
                     </div>

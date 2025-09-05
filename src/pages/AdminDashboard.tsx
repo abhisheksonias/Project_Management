@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Target, FileText, RefreshCw } from 'lucide-react';
+import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Target, FileText, RefreshCw, DollarSign } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProjectForm } from '@/components/projects/ProjectForm';
@@ -28,6 +28,8 @@ interface DashboardData {
   pendingTasks: number;
   overdueTasks: number;
   totalHours: number;
+  billableHours: number;
+  nonBillableHours: number;
   activeUsers: number;
   projectsInProgress: number;
   completionRate: number;
@@ -70,6 +72,8 @@ const AdminDashboard: React.FC = () => {
     pendingTasks: 0,
     overdueTasks: 0,
     totalHours: 0,
+    billableHours: 0,
+    nonBillableHours: 0,
     activeUsers: 0,
     projectsInProgress: 0,
     completionRate: 0,
@@ -130,7 +134,10 @@ const AdminDashboard: React.FC = () => {
       // Fetch work logs for total hours calculation
       const { data: workLogs, error: workLogsError } = await supabase
         .from('work_logs')
-        .select('*');
+        .select(`
+          *,
+          tasks(type)
+        `);
 
       if (workLogsError) throw workLogsError;
 
@@ -172,16 +179,29 @@ const AdminDashboard: React.FC = () => {
         overdue: overdueTasks,
       };
 
-      // Calculate total hours from work logs
-      const totalHours = workLogs?.reduce((total, log) => {
+      // Calculate total hours, billable hours, and non-billable hours from work logs
+      let totalHours = 0;
+      let billableHours = 0;
+      let nonBillableHours = 0;
+      
+      workLogs?.forEach(log => {
         // Skip if hours is null or undefined
-        if (!log.hours) return total;
+        if (!log.hours) return;
         
         // Parse hours from HH:MM format
         const [hoursStr, minutesStr] = log.hours.split(':');
         const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
-        return total + hours;
-      }, 0) || 0;
+        
+        totalHours += hours;
+        
+        // Check if task is billable or non-billable
+        const taskType = log.tasks?.type;
+        if (taskType === 'billable') {
+          billableHours += hours;
+        } else if (taskType === 'non-billable') {
+          nonBillableHours += hours;
+        }
+      });
 
       // Calculate active users (users who have logged time)
       const activeUsers = new Set(workLogs?.map(log => log.user_id)).size;
@@ -209,6 +229,8 @@ const AdminDashboard: React.FC = () => {
         pendingTasks,
         overdueTasks,
         totalHours: Math.round(totalHours * 100) / 100,
+        billableHours: Math.round(billableHours * 100) / 100,
+        nonBillableHours: Math.round(nonBillableHours * 100) / 100,
         activeUsers,
         projectsInProgress: projectStatusBreakdown.inProgress,
         completionRate: Math.round(completionRate * 100) / 100,
@@ -520,6 +542,32 @@ const AdminDashboard: React.FC = () => {
                   <div className="text-2xl font-bold">{isLoading ? '...' : dashboardData.totalHours}h</div>
                   <p className="text-xs text-muted-foreground">
                     Last 30 days
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Billable Hours</CardTitle>
+                  <DollarSign className="h-4 w-4 text-green-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-600">{isLoading ? '...' : dashboardData.billableHours}h</div>
+                  <p className="text-xs text-muted-foreground">
+                    {dashboardData.totalHours > 0 ? Math.round((dashboardData.billableHours / dashboardData.totalHours) * 100) : 0}% of total
+                  </p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Non-Billable Hours</CardTitle>
+                  <Clock className="h-4 w-4 text-orange-600" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-600">{isLoading ? '...' : dashboardData.nonBillableHours}h</div>
+                  <p className="text-xs text-muted-foreground">
+                    {dashboardData.totalHours > 0 ? Math.round((dashboardData.nonBillableHours / dashboardData.totalHours) * 100) : 0}% of total
                   </p>
                 </CardContent>
               </Card>
