@@ -101,8 +101,8 @@ export const ProjectTimeAnalytics: React.FC<ProjectTimeAnalyticsProps> = ({ time
           projects(name, type, status, deadline),
           tasks(name, status, estimate_hours, assigned_user_id)
         `)
-        .gte('start_time', startDate.toISOString())
-        .lte('end_time', now.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', now.toISOString());
 
       if (workLogsError) {
         console.error('Error fetching work logs:', workLogsError);
@@ -146,11 +146,11 @@ export const ProjectTimeAnalytics: React.FC<ProjectTimeAnalyticsProps> = ({ time
       const taskMap = new Map<string, { hours: number; estimatedHours: number; status: string; assignedUser: string }>();
 
       workLogs?.forEach(log => {
-        if (!log.project_id) return;
+        if (!log.project_id || !log.hours) return;
 
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
 
         // Update project total hours
         const project = projectMap.get(log.project_id);
@@ -284,6 +284,22 @@ export const ProjectTimeAnalytics: React.FC<ProjectTimeAnalyticsProps> = ({ time
 
   useEffect(() => {
     fetchProjectAnalytics();
+
+    // Set up real-time subscription for work logs
+    const workLogsSubscription = supabase
+      .channel('work-logs-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'work_logs' }, 
+        () => {
+          fetchProjectAnalytics();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(workLogsSubscription);
+    };
   }, [timeRange, sortBy]);
 
   const getEfficiencyColor = (efficiency: number) => {

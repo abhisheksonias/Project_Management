@@ -63,31 +63,35 @@ export const TimeTrackingSummary: React.FC<TimeTrackingSummaryProps> = ({ timeRa
           startDate.setDate(now.getDate() - 7);
       }
 
-      // Fetch work logs for time range
+      // Fetch work logs for time range (excluding admin users)
       const { data: workLogs, error: workLogsError } = await supabase
         .from('work_logs')
         .select(`
           *,
-          users(name),
+          users!inner(name, role),
           projects(name),
           tasks(name, status)
         `)
-        .gte('start_time', startDate.toISOString())
-        .lte('end_time', now.toISOString());
+        .neq('users.role', 'Admin');
 
       if (workLogsError) {
         console.error('Error fetching work logs:', workLogsError);
         throw workLogsError;
       }
 
-      // Process daily data
+      // Process daily data - since we don't have date info, we'll show total hours
       const dailyMap = new Map<string, { hours: number; users: Set<string>; projects: Set<string> }>();
       
       workLogs?.forEach(log => {
-        const date = new Date(log.start_time).toISOString().split('T')[0];
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        // Skip if hours is null or undefined
+        if (!log.hours) return;
+        
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
+        
+        // Use a generic date since we don't have actual dates
+        const date = 'Total';
         
         if (!dailyMap.has(date)) {
           dailyMap.set(date, { hours: 0, users: new Set(), projects: new Set() });
@@ -104,7 +108,7 @@ export const TimeTrackingSummary: React.FC<TimeTrackingSummaryProps> = ({ timeRa
         hours: Math.round(data.hours * 100) / 100,
         users: data.users.size,
         projects: data.projects.size,
-      })).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }));
 
       setDailyData(dailyArray);
 
@@ -121,11 +125,11 @@ export const TimeTrackingSummary: React.FC<TimeTrackingSummaryProps> = ({ timeRa
       const projectMap = new Map<string, { hours: number; users: Set<string>; tasks: Set<string>; completedTasks: number }>();
       
       workLogs?.forEach(log => {
-        if (!log.project_id) return;
+        if (!log.project_id || !log.hours) return;
         
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
         
         if (!projectMap.has(log.project_id)) {
           projectMap.set(log.project_id, { hours: 0, users: new Set(), tasks: new Set(), completedTasks: 0 });
@@ -167,6 +171,22 @@ export const TimeTrackingSummary: React.FC<TimeTrackingSummaryProps> = ({ timeRa
 
   useEffect(() => {
     fetchTimeTrackingData();
+
+    // Set up real-time subscription for work logs
+    const workLogsSubscription = supabase
+      .channel('work-logs-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'work_logs' }, 
+        () => {
+          fetchTimeTrackingData();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(workLogsSubscription);
+    };
   }, [timeRange]);
 
   const formatDate = (dateString: string) => {

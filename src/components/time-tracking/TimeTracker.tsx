@@ -182,15 +182,22 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
         return;
       }
 
+      // Calculate hours in HH:MM format
+      const hours = Math.floor(duration / (1000 * 60 * 60));
+      const minutes = Math.floor((duration % (1000 * 60 * 60)) / (1000 * 60));
+      const hoursFormatted = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+
       const { error } = await supabase
         .from('work_logs')
         .insert([{
           user_id: profile?.id,
           project_id: selectedProject,
           task_id: selectedTask || null,
-          start_time: startTime.toISOString(),
-          end_time: endTime.toISOString(),
+          hours: hoursFormatted,
           note: note.trim() || null,
+          added_by: profile?.name || 'User',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }]);
 
       if (error) {
@@ -228,11 +235,11 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
   };
 
   const formatTime = (seconds: number) => {
-    const hours = Math.floor(seconds / 3600);
+    const hoursCount = Math.floor(seconds / 3600);
     const minutes = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    return `${hoursCount.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
   const getSelectedProjectName = () => {

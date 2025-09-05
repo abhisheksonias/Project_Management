@@ -16,7 +16,7 @@ interface User {
 }
 
 interface TaskFormProps {
-  projectId: string;
+  projectId?: string;
   editTask?: any;
   onSuccess: () => void;
   onCancel: () => void;
@@ -35,17 +35,22 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     assigned_user_id: 'unassigned',
     estimate_hours: '',
     status: 'To Do',
+    priority: 'Medium',
+    project_id: '',
   });
   const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   
   // Ensure users is always an array
   const safeUsers = Array.isArray(users) ? users : [];
   const [loading, setLoading] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingProjects, setLoadingProjects] = useState(true);
   const { toast } = useToast();
   const { profile } = useAuth();
 
   const statusOptions = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
+  const priorityOptions = ['Low', 'Medium', 'High'];
 
   const logStatusChange = async (taskId: string, newStatus: string, oldStatus?: string) => {
     if (oldStatus && oldStatus === newStatus) return;
@@ -283,17 +288,27 @@ export const TaskForm: React.FC<TaskFormProps> = ({
       return;
     }
 
+    if (!projectId && !formData.project_id) {
+      toast({
+        title: 'Error',
+        description: 'Please select a project',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       const taskData = {
-        project_id: projectId,
+        project_id: formData.project_id || projectId,
         name: formData.name.trim(),
         type: formData.type.trim(),
         description: formData.description.trim(),
         assigned_user_id: formData.assigned_user_id === 'unassigned' ? null : formData.assigned_user_id,
         estimate_hours: formData.estimate_hours ? parseFloat(formData.estimate_hours) : null,
         status: formData.status,
+        priority: formData.priority,
         updated_at: new Date().toISOString(),
       };
 
@@ -363,10 +378,35 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     }
   };
 
+  // Fetch projects when component mounts (only if projectId is not provided)
+  const fetchProjects = async () => {
+    try {
+      setLoadingProjects(true);
+      const { data, error } = await supabase
+        .from('projects')
+        .select('id, name')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching projects:', error);
+        return;
+      }
+
+      setProjects(data || []);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+    } finally {
+      setLoadingProjects(false);
+    }
+  };
+
   // Fetch users when component mounts
   useEffect(() => {
     fetchUsers();
-  }, []);
+    if (!projectId) {
+      fetchProjects();
+    }
+  }, [projectId]);
   
   // Safety check: Ensure users is always an array
   useEffect(() => {
@@ -386,9 +426,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         assigned_user_id: editTask.assigned_user_id || 'unassigned',
         estimate_hours: editTask.estimate_hours?.toString() || '',
         status: editTask.status || 'To Do',
+        priority: editTask.priority || 'Medium',
+        project_id: editTask.project_id || '',
       });
+    } else if (projectId) {
+      // Set project_id when creating a new task with a specific project
+      setFormData(prev => ({ ...prev, project_id: projectId }));
     }
-  }, [editTask]);
+  }, [editTask, projectId]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -404,6 +449,27 @@ export const TaskForm: React.FC<TaskFormProps> = ({
           />
         </div>
 
+        {!projectId && (
+          <div className="space-y-2">
+            <Label htmlFor="project">Project *</Label>
+            <Select
+              value={formData.project_id}
+              onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={loadingProjects ? "Loading projects..." : "Select project"} />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         <div className="space-y-2">
           <Label htmlFor="type">Type</Label>
           <Select
@@ -416,6 +482,25 @@ export const TaskForm: React.FC<TaskFormProps> = ({
             <SelectContent>
               <SelectItem value="billable">Billable</SelectItem>
               <SelectItem value="non-billable">Non-billable</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="priority">Priority</Label>
+          <Select
+            value={formData.priority}
+            onValueChange={(value) => setFormData({ ...formData, priority: value })}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select priority" />
+            </SelectTrigger>
+            <SelectContent>
+              {priorityOptions.map((priority) => (
+                <SelectItem key={priority} value={priority}>
+                  {priority}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>

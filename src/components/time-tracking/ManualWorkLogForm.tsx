@@ -197,13 +197,10 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       return;
     }
 
-    // Calculate start and end times
-    const workDateObj = new Date(workDate);
-    const start = new Date(workDateObj);
-    start.setHours(9, 0, 0, 0); // Default start time to 9:00 AM
-    
-    const end = new Date(start);
-    end.setMinutes(end.getMinutes() + totalMinutes);
+    // Convert duration to HH:MM format
+    const hoursCount = Math.floor(totalMinutes / 60);
+    const minutesCount = totalMinutes % 60;
+    const hoursFormatted = `${hoursCount.toString().padStart(2, '0')}:${minutesCount.toString().padStart(2, '0')}`;
 
     setLoading(true);
     try {
@@ -213,9 +210,11 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           user_id: profile?.id,
           project_id: selectedProject,
           task_id: selectedTask && selectedTask !== 'no-task' ? selectedTask : null,
-          start_time: start.toISOString(),
-          end_time: end.toISOString(),
+          hours: hoursFormatted,
           note: note.trim() || null,
+          added_by: profile?.name || 'User',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         }]);
 
       if (error) {

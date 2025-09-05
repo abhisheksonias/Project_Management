@@ -102,6 +102,7 @@ export type Database = {
           estimate_hours: number | null
           id: string
           name: string | null
+          priority: string | null
           project_id: string | null
           status: string | null
           type: string | null
@@ -115,6 +116,7 @@ export type Database = {
           estimate_hours?: number | null
           id?: string
           name?: string | null
+          priority?: string | null
           project_id?: string | null
           status?: string | null
           type?: string | null
@@ -128,6 +130,7 @@ export type Database = {
           estimate_hours?: number | null
           id?: string
           name?: string | null
+          priority?: string | null
           project_id?: string | null
           status?: string | null
           type?: string | null
@@ -182,30 +185,36 @@ export type Database = {
       }
       work_logs: {
         Row: {
-          end_time: string
+          added_by: string | null
+          created_at: string
+          hours: string
           id: string
           note: string | null
           project_id: string | null
-          start_time: string
           task_id: string | null
+          updated_at: string
           user_id: string | null
         }
         Insert: {
-          end_time: string
+          added_by?: string | null
+          created_at?: string
+          hours: string
           id?: string
           note?: string | null
           project_id?: string | null
-          start_time: string
           task_id?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
-          end_time?: string
+          added_by?: string | null
+          created_at?: string
+          hours?: string
           id?: string
           note?: string | null
           project_id?: string | null
-          start_time?: string
           task_id?: string | null
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [

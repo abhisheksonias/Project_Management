@@ -119,8 +119,8 @@ export const WorkPatternAnalytics: React.FC<WorkPatternAnalyticsProps> = ({ time
           projects(name),
           tasks(name, status, estimate_hours)
         `)
-        .gte('start_time', startDate.toISOString())
-        .lte('end_time', now.toISOString());
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', now.toISOString());
 
       if (workLogsError) {
         console.error('Error fetching work logs:', workLogsError);
@@ -141,12 +141,17 @@ export const WorkPatternAnalytics: React.FC<WorkPatternAnalyticsProps> = ({ time
       const projectProductivity = new Map<string, { hours: number; completedTasks: number; name: string }>();
 
       workLogs?.forEach(log => {
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-        const date = start.toISOString().split('T')[0];
-        const hour = start.getHours();
-        const weekStart = new Date(start);
+        if (!log.hours) return;
+        
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
+        
+        // Use created_at for date/time analysis
+        const createdDate = new Date(log.created_at);
+        const date = createdDate.toISOString().split('T')[0];
+        const hour = createdDate.getHours();
+        const weekStart = new Date(createdDate);
         weekStart.setDate(weekStart.getDate() - weekStart.getDay());
         const weekKey = weekStart.toISOString().split('T')[0];
 
@@ -324,6 +329,22 @@ export const WorkPatternAnalytics: React.FC<WorkPatternAnalyticsProps> = ({ time
 
   useEffect(() => {
     fetchWorkPatternData();
+
+    // Set up real-time subscription for work logs
+    const workLogsSubscription = supabase
+      .channel('work-logs-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'work_logs' }, 
+        () => {
+          fetchWorkPatternData();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(workLogsSubscription);
+    };
   }, [timeRange]);
 
   const formatDate = (dateString: string) => {

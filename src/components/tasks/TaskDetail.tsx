@@ -15,6 +15,7 @@ interface Task {
   type: string;
   description: string;
   status: string;
+  priority: string;
   estimate_hours: number;
   created_at: string;
   updated_at: string;
@@ -123,6 +124,19 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
     }
   };
 
+  const getPriorityBadgeVariant = (priority: string) => {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return 'destructive';
+      case 'medium':
+        return 'secondary';
+      case 'low':
+        return 'outline';
+      default:
+        return 'outline';
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -135,6 +149,9 @@ export const TaskDetail: React.FC<TaskDetailProps> = ({
           <h1 className="text-2xl font-bold">{task.name}</h1>
           <div className="flex items-center gap-2 mt-1">
             <Badge variant={getTypeBadgeVariant(task.type)}>{task.type}</Badge>
+            <Badge variant={getPriorityBadgeVariant(task.priority)}>
+              {task.priority || 'Not Set'}
+            </Badge>
             <Badge variant={getStatusBadgeVariant(task.status)}>{task.status}</Badge>
           </div>
         </div>

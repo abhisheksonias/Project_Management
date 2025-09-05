@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Activity, Calendar, Target } from 'lucide-react';
+import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Target, FileText, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProjectForm } from '@/components/projects/ProjectForm';
@@ -17,6 +17,7 @@ import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskComments } from '@/components/tasks/TaskComments';
 import { TaskDetail } from '@/components/tasks/TaskDetail';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
+import { AdminWorkLogManager } from '@/components/admin/AdminWorkLogManager';
 
 // Dashboard analytics interface
 interface DashboardData {
@@ -47,6 +48,8 @@ interface DashboardData {
     todo: number;
     inProgress: number;
     completed: number;
+    blocked: number;
+    review: number;
     overdue: number;
   };
 }
@@ -81,6 +84,8 @@ const AdminDashboard: React.FC = () => {
       todo: 0,
       inProgress: 0,
       completed: 0,
+      blocked: 0,
+      review: 0,
       overdue: 0,
     },
   });
@@ -125,8 +130,7 @@ const AdminDashboard: React.FC = () => {
       // Fetch work logs for total hours calculation
       const { data: workLogs, error: workLogsError } = await supabase
         .from('work_logs')
-        .select('*')
-        .gte('start_time', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()); // Last 30 days
+        .select('*');
 
       if (workLogsError) throw workLogsError;
 
@@ -137,8 +141,10 @@ const AdminDashboard: React.FC = () => {
       
       // Task status breakdown
       const completedTasks = tasks?.filter(task => task.status === 'Completed').length || 0;
-      const pendingTasks = tasks?.filter(task => task.status === 'Todo').length || 0;
+      const pendingTasks = tasks?.filter(task => task.status === 'To Do').length || 0;
       const inProgressTasks = tasks?.filter(task => task.status === 'In Progress').length || 0;
+      const blockedTasks = tasks?.filter(task => task.status === 'Blocked').length || 0;
+      const reviewTasks = tasks?.filter(task => task.status === 'Review').length || 0;
       
       // Calculate overdue tasks (tasks with deadline passed and not completed)
       const now = new Date();
@@ -161,21 +167,24 @@ const AdminDashboard: React.FC = () => {
         todo: pendingTasks,
         inProgress: inProgressTasks,
         completed: completedTasks,
+        blocked: blockedTasks,
+        review: reviewTasks,
         overdue: overdueTasks,
       };
 
       // Calculate total hours from work logs
       const totalHours = workLogs?.reduce((total, log) => {
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        // Skip if hours is null or undefined
+        if (!log.hours) return total;
+        
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
         return total + hours;
       }, 0) || 0;
 
-      // Calculate active users (users who logged time in last 7 days)
-      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const recentWorkLogs = workLogs?.filter(log => new Date(log.start_time) >= sevenDaysAgo) || [];
-      const activeUsers = new Set(recentWorkLogs.map(log => log.user_id)).size;
+      // Calculate active users (users who have logged time)
+      const activeUsers = new Set(workLogs?.map(log => log.user_id)).size;
 
       // Calculate completion rate
       const completionRate = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
@@ -421,7 +430,7 @@ const AdminDashboard: React.FC = () => {
             )}
             {activeTab === 'dashboard' && (
               <Button variant="outline" onClick={() => setRefreshTrigger(prev => prev + 1)}>
-                <Activity className="mr-2 h-4 w-4" />
+                <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
             )}
@@ -436,7 +445,7 @@ const AdminDashboard: React.FC = () => {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4" />
               Dashboard
@@ -445,13 +454,17 @@ const AdminDashboard: React.FC = () => {
               <FolderOpen className="h-4 w-4" />
               Projects
             </TabsTrigger>
+            <TabsTrigger value="tasks" className="flex items-center gap-2">
+              <Target className="h-4 w-4" />
+              Tasks
+            </TabsTrigger>
+            <TabsTrigger value="worklogs" className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Work Logs
+            </TabsTrigger>
             <TabsTrigger value="analytics" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
               Analytics
-            </TabsTrigger>
-            <TabsTrigger value="overview" className="flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Overview
             </TabsTrigger>
           </TabsList>
 
@@ -555,8 +568,16 @@ const AdminDashboard: React.FC = () => {
                       <Badge variant="default">{dashboardData.taskStatusBreakdown.inProgress}</Badge>
                     </div>
                     <div className="flex justify-between items-center">
+                      <span className="text-sm">Review</span>
+                      <Badge variant="outline" className="bg-blue-50 text-blue-700">{dashboardData.taskStatusBreakdown.review}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
                       <span className="text-sm">Completed</span>
                       <Badge variant="outline" className="bg-green-50 text-green-700">{dashboardData.taskStatusBreakdown.completed}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm">Blocked</span>
+                      <Badge variant="destructive">{dashboardData.taskStatusBreakdown.blocked}</Badge>
                     </div>
                     {dashboardData.taskStatusBreakdown.overdue > 0 && (
                       <div className="flex justify-between items-center">
@@ -693,93 +714,55 @@ const AdminDashboard: React.FC = () => {
             )}
           </TabsContent>
 
+          <TabsContent value="tasks" className="space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-2xl font-bold">All Tasks</h2>
+                <p className="text-muted-foreground">Manage and track all tasks across projects</p>
+              </div>
+              <Button onClick={() => setShowTaskForm(true)} className="flex items-center gap-2">
+                <Plus className="h-4 w-4" />
+                Create Task
+              </Button>
+            </div>
+            
+            {showTaskForm ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <TaskForm
+                    onSuccess={handleTaskSuccess}
+                    onCancel={() => {
+                      setShowTaskForm(false);
+                      setEditingTask(null);
+                    }}
+                    editTask={editingTask}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <TaskList
+                projectId={null} // Show all tasks
+                projectName="All Tasks"
+                onCreateTask={() => setShowTaskForm(true)}
+                onEditTask={handleEditTask}
+                onTaskComments={handleTaskComments}
+                onViewDetails={handleViewTaskDetail}
+                refreshTrigger={refreshTrigger}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="worklogs" className="space-y-6">
+            <AdminWorkLogManager />
+          </TabsContent>
+
           <TabsContent value="analytics" className="space-y-6">
             <AnalyticsDashboard />
           </TabsContent>
 
-          <TabsContent value="overview" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>System Overview</CardTitle>
-                <CardDescription>
-                  Quick overview of system status and recent activity
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{isLoading ? '...' : dashboardData.totalProjects}</div>
-                    <div className="text-sm text-muted-foreground">Active Projects</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{isLoading ? '...' : dashboardData.completedTasks}</div>
-                    <div className="text-sm text-muted-foreground">Completed Tasks</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{isLoading ? '...' : dashboardData.activeUsers}</div>
-                    <div className="text-sm text-muted-foreground">Active Users</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{isLoading ? '...' : dashboardData.totalHours}h</div>
-                    <div className="text-sm text-muted-foreground">Total Hours</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Real-time Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <AlertCircle className="h-5 w-5" />
-                    Tasks Requiring Attention
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Pending Tasks</span>
-                      <Badge variant="secondary">{dashboardData.pendingTasks}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">In Progress</span>
-                      <Badge variant="default">{dashboardData.taskStatusBreakdown.inProgress}</Badge>
-                    </div>
-                    {dashboardData.overdueTasks > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Overdue Tasks</span>
-                        <Badge variant="destructive">{dashboardData.overdueTasks}</Badge>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5" />
-                    Project Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span>Overall Progress</span>
-                        <span>{dashboardData.completionRate}%</span>
-                      </div>
-                      <Progress value={dashboardData.completionRate} className="w-full" />
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      {dashboardData.completedTasks} of {dashboardData.totalTasks} tasks completed
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
         </Tabs>
 
         {/* Modals */}

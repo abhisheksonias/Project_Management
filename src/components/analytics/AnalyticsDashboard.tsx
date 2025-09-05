@@ -64,22 +64,24 @@ export const AnalyticsDashboard: React.FC = () => {
         .from('projects')
         .select('*', { count: 'exact', head: true });
 
-      // Fetch total users
+      // Fetch total users (excluding admins)
       const { count: usersCount } = await supabase
         .from('users')
-        .select('*', { count: 'exact', head: true });
+        .select('*', { count: 'exact', head: true })
+        .neq('role', 'Admin');
 
-      // Fetch work logs for time range
+      // Fetch work logs for time range (excluding admin users)
       const { data: workLogs, error: workLogsError } = await supabase
         .from('work_logs')
         .select(`
           *,
-          users(name),
+          users!inner(name, role),
           projects(name),
           tasks(name)
         `)
-        .gte('start_time', startDate.toISOString())
-        .lte('end_time', now.toISOString());
+        .neq('users.role', 'Admin')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', now.toISOString());
 
       if (workLogsError) {
         console.error('Error fetching work logs:', workLogsError);
@@ -88,9 +90,10 @@ export const AnalyticsDashboard: React.FC = () => {
 
       // Calculate total hours
       const totalHours = workLogs?.reduce((total, log) => {
-        const start = new Date(log.start_time);
-        const end = new Date(log.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        if (!log.hours) return total;
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = log.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
         return total + hours;
       }, 0) || 0;
 
@@ -134,6 +137,22 @@ export const AnalyticsDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
+
+    // Set up real-time subscription for work logs
+    const workLogsSubscription = supabase
+      .channel('work-logs-changes')
+      .on('postgres_changes', 
+        { event: '*', schema: 'public', table: 'work_logs' }, 
+        () => {
+          fetchAnalyticsData();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription
+    return () => {
+      supabase.removeChannel(workLogsSubscription);
+    };
   }, [timeRange]);
 
   const handleRefresh = () => {
