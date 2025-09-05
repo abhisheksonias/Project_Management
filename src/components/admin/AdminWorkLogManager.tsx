@@ -39,6 +39,7 @@ interface WorkLog {
   tasks: {
     id: string;
     name: string;
+    type: string;
   } | null;
 }
 
@@ -111,7 +112,7 @@ export const AdminWorkLogManager: React.FC<AdminWorkLogManagerProps> = ({ classN
           *,
           users(id, name, email),
           projects(id, name),
-          tasks(id, name)
+          tasks(id, name, type)
         `)
         .order('created_at', { ascending: false });
 
@@ -572,6 +573,7 @@ export const AdminWorkLogManager: React.FC<AdminWorkLogManagerProps> = ({ classN
                 <TableHead>User</TableHead>
                 <TableHead>Project</TableHead>
                 <TableHead>Task</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Hours</TableHead>
                 <TableHead>Note</TableHead>
                 <TableHead>Added By</TableHead>
@@ -600,6 +602,18 @@ export const AdminWorkLogManager: React.FC<AdminWorkLogManagerProps> = ({ classN
                       <Badge variant="outline">{workLog.tasks.name}</Badge>
                     ) : (
                       <span className="text-muted-foreground">No task</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {workLog.tasks?.type ? (
+                      <Badge 
+                        variant={workLog.tasks.type === 'billable' ? 'default' : 'secondary'}
+                        className={workLog.tasks.type === 'billable' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-orange-100 text-orange-800 hover:bg-orange-200'}
+                      >
+                        {workLog.tasks.type === 'billable' ? 'Billable' : 'Non-Billable'}
+                      </Badge>
+                    ) : (
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell>
