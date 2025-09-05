@@ -14,23 +14,22 @@ import {
   Target,
   BarChart3,
   Activity,
-  Timer,
   Zap,
   Award,
   Users,
   FolderOpen
 } from 'lucide-react';
-import { TimeTracker } from '@/components/time-tracking/TimeTracker';
 import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
+import { UserProjectList } from '@/components/projects/UserProjectList';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface TimeEntry {
   id: string;
-  start_time: string;
-  end_time: string;
+  hours: string;
   note: string | null;
+  created_at: string;
   projects: { name: string; type: string };
   tasks: { name: string; status: string } | null;
 }
@@ -60,7 +59,6 @@ interface ProductivityStats {
 const UserDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [showManualForm, setShowManualForm] = useState(false);
   const [stats, setStats] = useState<ProductivityStats>({
     totalTasks: 0,
     completedTasks: 0,
@@ -94,14 +92,14 @@ const UserDashboard: React.FC = () => {
         .from('work_logs')
         .select(`
           id,
-          start_time,
-          end_time,
+          hours,
           note,
+          created_at,
           projects(name, type),
           tasks(name, status)
         `)
         .eq('user_id', profile?.id)
-        .order('start_time', { ascending: false });
+        .order('created_at', { ascending: false });
 
       if (timeError) throw timeError;
 
@@ -116,11 +114,12 @@ const UserDashboard: React.FC = () => {
       // Calculate time metrics
       const calculateHours = (entries: any[], startDate: Date) => {
         return entries
-          .filter(entry => new Date(entry.start_time) >= startDate)
+          .filter(entry => new Date(entry.created_at) >= startDate)
           .reduce((total, entry) => {
-            const start = new Date(entry.start_time);
-            const end = new Date(entry.end_time);
-            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            if (!entry.hours) return total;
+            // Parse hours from HH:MM format
+            const [hoursStr, minutesStr] = entry.hours.split(':');
+            const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
             return total + hours;
           }, 0);
       };
@@ -141,13 +140,14 @@ const UserDashboard: React.FC = () => {
         
         const dayHours = (allTimeEntries || [])
           .filter(entry => {
-            const entryDate = new Date(entry.start_time);
+            const entryDate = new Date(entry.created_at);
             return entryDate >= dayStart && entryDate <= dayEnd;
           })
           .reduce((total, entry) => {
-            const start = new Date(entry.start_time);
-            const end = new Date(entry.end_time);
-            const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+            if (!entry.hours) return total;
+            // Parse hours from HH:MM format
+            const [hoursStr, minutesStr] = entry.hours.split(':');
+            const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
             return total + hours;
           }, 0);
 
@@ -170,9 +170,10 @@ const UserDashboard: React.FC = () => {
           });
         }
         
-        const start = new Date(entry.start_time);
-        const end = new Date(entry.end_time);
-        const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+        if (!entry.hours) return;
+        // Parse hours from HH:MM format
+        const [hoursStr, minutesStr] = entry.hours.split(':');
+        const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
         projectMap.get(projectName).totalHours += hours;
       });
 
@@ -244,11 +245,15 @@ const UserDashboard: React.FC = () => {
     fetchUserData();
   };
 
-  const formatDuration = (startTime: string, endTime: string) => {
-    const start = new Date(startTime);
-    const end = new Date(endTime);
-    const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
-    return `${Math.round(hours * 100) / 100}h`;
+  const formatDuration = (hours: string) => {
+    if (!hours) return '0h';
+    const [hoursStr, minutesStr] = hours.split(':');
+    const hoursCount = parseInt(hoursStr);
+    const minutes = parseInt(minutesStr);
+    if (minutes === 0) {
+      return `${hoursCount}h`;
+    }
+    return `${hoursCount}h ${minutes}m`;
   };
 
   const formatDate = (dateString: string) => {
@@ -289,7 +294,7 @@ const UserDashboard: React.FC = () => {
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
           <Card className="p-4">
             <div className="flex items-center gap-2">
-              <Timer className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-blue-600" />
               <div>
                 <div className="text-lg font-bold">{stats.hoursToday}h</div>
                 <div className="text-xs text-muted-foreground">Today</div>
@@ -361,32 +366,14 @@ const UserDashboard: React.FC = () => {
           <TabsContent value="tracking" className="space-y-6">
             <div className="flex justify-between items-center">
               <h2 className="text-lg font-semibold">Time Tracking</h2>
-              <div className="flex gap-2">
-                <Button
-                  variant={!showManualForm ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowManualForm(false)}
-                >
-                  <Timer className="mr-2 h-4 w-4" />
-                  Live Tracker
-                </Button>
-                <Button
-                  variant={showManualForm ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setShowManualForm(true)}
-                >
-                  <Clock className="mr-2 h-4 w-4" />
-                  Manual Entry
-                </Button>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                Manual Entry
               </div>
             </div>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {!showManualForm ? (
-                <TimeTracker />
-              ) : (
-                <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
-              )}
+              <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
 
               {/* Quick Stats for Time Tracking */}
               <Card>
@@ -441,6 +428,10 @@ const UserDashboard: React.FC = () => {
 
           {/* Projects Tab */}
           <TabsContent value="projects" className="space-y-6">
+            {/* Project List */}
+            <UserProjectList />
+            
+            {/* Project Analysis */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-lg flex items-center gap-2">
@@ -565,11 +556,11 @@ const UserDashboard: React.FC = () => {
                             <div className="text-xs text-muted-foreground">{entry.tasks.name}</div>
                           )}
                           <div className="text-xs text-muted-foreground mt-1">
-                            {formatDate(entry.start_time)}
+                            {formatDate(entry.created_at)}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="font-bold text-sm">{formatDuration(entry.start_time, entry.end_time)}</div>
+                          <div className="font-bold text-sm">{formatDuration(entry.hours)}</div>
                           <Badge variant="secondary" className="text-xs">
                             {entry.tasks ? 'Task' : 'Project'}
                           </Badge>

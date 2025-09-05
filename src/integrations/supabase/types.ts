@@ -95,6 +95,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          added_by: string | null
           assigned_user_id: string | null
           comment: Json | null
           created_at: string | null
@@ -109,6 +110,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          added_by?: string | null
           assigned_user_id?: string | null
           comment?: Json | null
           created_at?: string | null
@@ -123,6 +125,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          added_by?: string | null
           assigned_user_id?: string | null
           comment?: Json | null
           created_at?: string | null

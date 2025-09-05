@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckSquare, Clock, AlertCircle, Info } from 'lucide-react';
+import { CheckSquare, Clock, AlertCircle, Info, MessageSquare, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { TaskComments } from './TaskComments';
+import { TaskForm } from './TaskForm';
 
 interface Task {
   id: string;
@@ -37,6 +39,8 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
   const { profile } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showComments, setShowComments] = useState<Task | null>(null);
+  const [showTaskForm, setShowTaskForm] = useState(false);
   const { toast } = useToast();
 
   const taskStatusOptions = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
@@ -123,6 +127,33 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
     }
   };
 
+  const handleCommentsClick = (task: Task) => {
+    setShowComments(task);
+  };
+
+  const handleCommentsClose = () => {
+    setShowComments(null);
+  };
+
+  const handleCommentAdded = () => {
+    // Refresh tasks to get updated comments
+    fetchTasks();
+  };
+
+  const handleCreateTask = () => {
+    setShowTaskForm(true);
+  };
+
+  const handleTaskFormClose = () => {
+    setShowTaskForm(false);
+  };
+
+  const handleTaskCreated = () => {
+    // Refresh tasks to show the new task
+    fetchTasks();
+    setShowTaskForm(false);
+  };
+
   const getStatusBadgeVariant = (status: string) => {
     switch (status?.toLowerCase()) {
       case 'completed':
@@ -172,12 +203,12 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
   if (loading) {
     return (
       <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckSquare className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckSquare className="h-4 w-4" />
             My Tasks
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Tasks assigned to you
           </CardDescription>
         </CardHeader>
@@ -198,20 +229,20 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
   if (tasks.length === 0) {
     return (
       <Card className={className}>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <CheckSquare className="h-5 w-5" />
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <CheckSquare className="h-4 w-4" />
             My Tasks
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-sm">
             Tasks assigned to you
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-8 text-muted-foreground">
-            <CheckSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium">No tasks assigned</p>
-            <p className="text-sm mt-2">Tasks assigned by project managers will appear here.</p>
+          <div className="text-center py-6 text-muted-foreground">
+            <CheckSquare className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="text-base font-medium">No tasks assigned</p>
+            <p className="text-xs mt-1">Tasks assigned by project managers will appear here.</p>
           </div>
         </CardContent>
       </Card>
@@ -229,44 +260,57 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
   };
 
   return (
-    <Card className={className}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <CheckSquare className="h-5 w-5" />
-          My Tasks
-        </CardTitle>
-        <CardDescription>
-          {taskCounts.total} task{taskCounts.total !== 1 ? 's' : ''} assigned to you
-        </CardDescription>
+    <div className={className}>
+      <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <CheckSquare className="h-4 w-4" />
+              My Tasks
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {taskCounts.total} task{taskCounts.total !== 1 ? 's' : ''} assigned to you
+            </CardDescription>
+          </div>
+          <Button
+            onClick={handleCreateTask}
+            size="sm"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 h-7"
+          >
+            <Plus className="h-3 w-3" />
+            Create Task
+          </Button>
+        </div>
         
         {/* Task Status Summary */}
-        <div className="flex flex-wrap gap-2 mt-4">
+        <div className="flex flex-wrap gap-1.5 mt-3">
           {taskCounts.todo > 0 && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <Info className="h-3 w-3" />
               {taskCounts.todo} To Do
             </Badge>
           )}
           {taskCounts.inProgress > 0 && (
-            <Badge variant="secondary" className="flex items-center gap-1">
+            <Badge variant="secondary" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <Clock className="h-3 w-3" />
               {taskCounts.inProgress} In Progress
             </Badge>
           )}
           {taskCounts.review > 0 && (
-            <Badge variant="outline" className="flex items-center gap-1">
+            <Badge variant="outline" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <Info className="h-3 w-3" />
               {taskCounts.review} Review
             </Badge>
           )}
           {taskCounts.blocked > 0 && (
-            <Badge variant="destructive" className="flex items-center gap-1">
+            <Badge variant="destructive" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <AlertCircle className="h-3 w-3" />
               {taskCounts.blocked} Blocked
             </Badge>
           )}
           {taskCounts.completed > 0 && (
-            <Badge variant="default" className="flex items-center gap-1">
+            <Badge variant="default" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <CheckSquare className="h-3 w-3" />
               {taskCounts.completed} Completed
             </Badge>
@@ -277,62 +321,59 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Task</TableHead>
-                <TableHead>Project</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Est. Hours</TableHead>
-                <TableHead>Created</TableHead>
+              <TableRow className="h-8">
+                <TableHead className="text-xs py-2">Task</TableHead>
+                <TableHead className="text-xs py-2">Project</TableHead>
+                <TableHead className="text-xs py-2">Type</TableHead>
+                <TableHead className="text-xs py-2">Status</TableHead>
+                <TableHead className="text-xs py-2">Est. Hours</TableHead>
+                <TableHead className="text-xs py-2">Created</TableHead>
+                <TableHead className="text-xs py-2">Comments</TableHead>
+                <TableHead className="text-xs py-2">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {sortedTasks.map((task) => (
                 <TableRow 
                   key={task.id} 
-                  className={`${
+                  className={`h-10 ${
                     task.status.toLowerCase() === 'completed' 
                       ? 'opacity-60 bg-muted/30' 
                       : 'hover:bg-muted/50'
                   }`}
                 >
-                  <TableCell>
-                    <div className="space-y-1">
-                      <div className="font-medium">{task.name}</div>
+                  <TableCell className="py-2">
+                    <div className="space-y-0.5">
+                      <div className="font-medium text-sm">{task.name}</div>
                       {task.description && (
-                        <div className="text-sm text-muted-foreground max-w-xs truncate" title={task.description}>
+                        <div className="text-xs text-muted-foreground max-w-xs truncate" title={task.description}>
                           {task.description}
                         </div>
                       )}
                     </div>
                   </TableCell>
-                  <TableCell>
-                    <div className="space-y-1">
-                      <Badge variant="secondary" className="text-xs">
-                        {task.projects.name}
-                      </Badge>
-                      {/* <div className="text-xs text-muted-foreground">
-                        {task.projects.type}
-                      </div> */}
-                    </div>
+                  <TableCell className="py-2">
+                    <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
+                      {task.projects.name}
+                    </Badge>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
+                  <TableCell className="py-2">
+                    <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                       {task.type}
                     </Badge>
                   </TableCell>
-                  <TableCell>
+                  <TableCell className="py-2">
                     <Select
                       value={task.status}
                       onValueChange={(value) => handleStatusChange(task.id, value)}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-28 h-7 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {taskStatusOptions.map((status) => (
                           <SelectItem key={status} value={status}>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               {getStatusIcon(status)}
                               {status}
                             </div>
@@ -341,13 +382,34 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    {task.estimate_hours ? `${task.estimate_hours}h` : 'N/A'}
+                  <TableCell className="py-2">
+                    <span className="text-xs">
+                      {task.estimate_hours ? `${task.estimate_hours}h` : 'N/A'}
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <div className="text-sm">
-                      {format(new Date(task.created_at), 'MMM dd, yyyy')}
+                  <TableCell className="py-2">
+                    <div className="text-xs">
+                      {format(new Date(task.created_at), 'MMM dd')}
                     </div>
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquare className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-xs">
+                        {Array.isArray(task.comment) ? task.comment.length : 0}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="py-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCommentsClick(task)}
+                      className="flex items-center gap-1.5 text-xs px-2 py-1 h-7"
+                    >
+                      <MessageSquare className="h-3 w-3" />
+                      {Array.isArray(task.comment) && task.comment.length > 0 ? 'View' : 'Add'}
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -356,5 +418,36 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
         </div>
       </CardContent>
     </Card>
+
+    {/* Comments Modal */}
+    {showComments && (
+      <TaskComments
+        task={showComments}
+        onClose={handleCommentsClose}
+        onCommentAdded={handleCommentAdded}
+      />
+    )}
+
+    {/* Task Form Modal */}
+    {showTaskForm && (
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-background border rounded-lg p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-semibold">Create New Task</h2>
+              <Button variant="outline" size="sm" onClick={handleTaskFormClose}>
+                Close
+              </Button>
+            </div>
+            <TaskForm
+              onSuccess={handleTaskCreated}
+              onCancel={handleTaskFormClose}
+              autoAssignToCurrentUser={true}
+            />
+          </div>
+        </div>
+      </div>
+    )}
+  </div>
   );
 };

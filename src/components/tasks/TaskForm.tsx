@@ -20,6 +20,7 @@ interface TaskFormProps {
   editTask?: any;
   onSuccess: () => void;
   onCancel: () => void;
+  autoAssignToCurrentUser?: boolean;
 }
 
 export const TaskForm: React.FC<TaskFormProps> = ({
@@ -27,6 +28,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
   editTask,
   onSuccess,
   onCancel,
+  autoAssignToCurrentUser = false,
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -37,6 +39,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
     status: 'To Do',
     priority: 'Medium',
     project_id: '',
+    added_by: '',
   });
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<any[]>([]);
@@ -309,6 +312,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         estimate_hours: formData.estimate_hours ? parseFloat(formData.estimate_hours) : null,
         status: formData.status,
         priority: formData.priority,
+        added_by: formData.added_by,
         updated_at: new Date().toISOString(),
       };
 
@@ -428,12 +432,24 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         status: editTask.status || 'To Do',
         priority: editTask.priority || 'Medium',
         project_id: editTask.project_id || '',
+        added_by: editTask.added_by || '',
       });
-    } else if (projectId) {
-      // Set project_id when creating a new task with a specific project
-      setFormData(prev => ({ ...prev, project_id: projectId }));
+    } else {
+      // For new tasks, set default values
+      const defaultData = {
+        name: '',
+        type: '',
+        description: '',
+        assigned_user_id: autoAssignToCurrentUser ? (profile?.id || 'unassigned') : 'unassigned',
+        estimate_hours: '',
+        status: 'To Do',
+        priority: 'Medium',
+        project_id: projectId || '',
+        added_by: profile?.name || '',
+      };
+      setFormData(defaultData);
     }
-  }, [editTask, projectId]);
+  }, [editTask, projectId, autoAssignToCurrentUser, profile]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -517,58 +533,60 @@ export const TaskForm: React.FC<TaskFormProps> = ({
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="assigned_user">Assigned To</Label>
-          <Select
-            value={formData.assigned_user_id}
-            onValueChange={(value) => setFormData({ ...formData, assigned_user_id: value })}
-          >
-            <SelectTrigger>
-                             <SelectValue placeholder={
-                 loadingUsers 
-                   ? "Loading users..." 
-                   : safeUsers.length > 0 
-                     ? "Select user" 
-                     : "No users available"
-               } />
-            </SelectTrigger>
-                         <SelectContent>
-               <SelectItem value="unassigned">Unassigned</SelectItem>
-                               {safeUsers
-                  .filter(user => user && user.id && user.id.trim() !== '' && user.name && user.name.trim() !== '')
-                  .filter(user => user.role !== 'Admin')
-                  .map((user) => {
-                   // Triple-check that we have valid data before rendering
-                   try {
-                     if (!user || !user.id || !user.name || user.id.trim() === '' || user.name.trim() === '') {
-                       console.warn('Skipping invalid user:', user);
+      <div className={`grid grid-cols-1 gap-4 ${!autoAssignToCurrentUser ? 'md:grid-cols-3' : 'md:grid-cols-2'}`}>
+        {!autoAssignToCurrentUser && (
+          <div className="space-y-2">
+            <Label htmlFor="assigned_user">Assigned To</Label>
+            <Select
+              value={formData.assigned_user_id}
+              onValueChange={(value) => setFormData({ ...formData, assigned_user_id: value })}
+            >
+              <SelectTrigger>
+                               <SelectValue placeholder={
+                   loadingUsers 
+                     ? "Loading users..." 
+                     : safeUsers.length > 0 
+                       ? "Select user" 
+                       : "No users available"
+                 } />
+              </SelectTrigger>
+                           <SelectContent>
+                 <SelectItem value="unassigned">Unassigned</SelectItem>
+                                 {safeUsers
+                    .filter(user => user && user.id && user.id.trim() !== '' && user.name && user.name.trim() !== '')
+                    .filter(user => user.role !== 'Admin')
+                    .map((user) => {
+                     // Triple-check that we have valid data before rendering
+                     try {
+                       if (!user || !user.id || !user.name || user.id.trim() === '' || user.name.trim() === '') {
+                         console.warn('Skipping invalid user:', user);
+                         return null;
+                       }
+                       
+                       // Ensure the values are strings and not empty
+                       const userId = String(user.id).trim();
+                       const userName = String(user.name).trim();
+                       
+                       if (userId === '' || userName === '') {
+                         console.warn('User has empty string after conversion:', { userId, userName, originalUser: user });
+                         return null;
+                       }
+                       
+                       return (
+                         <SelectItem key={userId} value={userId}>
+                           {userName}
+                         </SelectItem>
+                       );
+                     } catch (error) {
+                       console.error('Error rendering user item:', error, user);
                        return null;
                      }
-                     
-                     // Ensure the values are strings and not empty
-                     const userId = String(user.id).trim();
-                     const userName = String(user.name).trim();
-                     
-                     if (userId === '' || userName === '') {
-                       console.warn('User has empty string after conversion:', { userId, userName, originalUser: user });
-                       return null;
-                     }
-                     
-                     return (
-                       <SelectItem key={userId} value={userId}>
-                         {userName}
-                       </SelectItem>
-                     );
-                   } catch (error) {
-                     console.error('Error rendering user item:', error, user);
-                     return null;
-                   }
-                 })
-                 .filter(Boolean)} {/* Remove any null items */}
-             </SelectContent>
-          </Select>
-        </div>
+                   })
+                   .filter(Boolean)} {/* Remove any null items */}
+               </SelectContent>
+            </Select>
+          </div>
+        )}
 
         <div className="space-y-2">
           <Label htmlFor="status">Status</Label>
