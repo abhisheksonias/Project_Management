@@ -13,11 +13,13 @@ import { ProjectList } from '@/components/projects/ProjectList';
 import { ProjectComments } from '@/components/projects/ProjectComments';
 import { ProjectDetail } from '@/components/projects/ProjectDetail';
 import { TaskList } from '@/components/tasks/TaskList';
+import { CompactTaskList } from '@/components/tasks/CompactTaskList';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskComments } from '@/components/tasks/TaskComments';
 import { TaskDetail } from '@/components/tasks/TaskDetail';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
-import { AdminWorkLogManager } from '@/components/admin/AdminWorkLogManager';
+import { EnhancedAnalyticsDashboard } from '@/components/analytics/EnhancedAnalyticsDashboard';
+import { EnhancedWorkLogManager } from '@/components/admin/EnhancedWorkLogManager';
 
 // Dashboard analytics interface
 interface DashboardData {
@@ -763,21 +765,100 @@ const AdminDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
-            <div className="flex justify-between items-center">
+            {/* Task Tab Header with Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Target className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{dashboardData.totalTasks}</div>
+                    <div className="text-sm text-muted-foreground">Total Tasks</div>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{dashboardData.completedTasks}</div>
+                    <div className="text-sm text-muted-foreground">Completed</div>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <Clock className="h-5 w-5 text-orange-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{dashboardData.taskStatusBreakdown.inProgress}</div>
+                    <div className="text-sm text-muted-foreground">In Progress</div>
+                  </div>
+                </div>
+              </Card>
+              
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold">{dashboardData.taskStatusBreakdown.blocked}</div>
+                    <div className="text-sm text-muted-foreground">Blocked</div>
+                  </div>
+                </div>
+              </Card>
+            </div>
+
+            {/* Task Management Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
-                <h2 className="text-2xl font-bold">All Tasks</h2>
+                <h2 className="text-2xl font-bold">Task Management</h2>
                 <p className="text-muted-foreground">Manage and track all tasks across projects</p>
               </div>
-              <Button onClick={() => setShowTaskForm(true)} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create Task
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setRefreshTrigger(prev => prev + 1)}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Refresh
+                </Button>
+                {/* <Button 
+                  onClick={() => {
+                    setEditingTask(null);
+                    setShowTaskForm(true);
+                  }} 
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="h-4 w-4" />
+                  Create Task
+                </Button> */}
+              </div>
             </div>
             
             {showTaskForm ? (
               <Card>
                 <CardHeader>
-                  <CardTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>{editingTask ? 'Edit Task' : 'Create New Task'}</CardTitle>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => {
+                        setShowTaskForm(false);
+                        setEditingTask(null);
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <TaskForm
@@ -790,11 +871,21 @@ const AdminDashboard: React.FC = () => {
                   />
                 </CardContent>
               </Card>
+            ) : showTaskDetail ? (
+              <TaskDetail
+                task={showTaskDetail}
+                onBack={handleBackFromTaskDetail}
+                onEdit={handleEditTask}
+                onViewComments={handleTaskComments}
+              />
             ) : (
-              <TaskList
+              <CompactTaskList
                 projectId={null} // Show all tasks
                 projectName="All Tasks"
-                onCreateTask={() => setShowTaskForm(true)}
+                onCreateTask={() => {
+                  setEditingTask(null);
+                  setShowTaskForm(true);
+                }}
                 onEditTask={handleEditTask}
                 onTaskComments={handleTaskComments}
                 onViewDetails={handleViewTaskDetail}
@@ -804,11 +895,11 @@ const AdminDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="worklogs" className="space-y-6">
-            <AdminWorkLogManager />
+            <EnhancedWorkLogManager />
           </TabsContent>
 
           <TabsContent value="analytics" className="space-y-6">
-            <AnalyticsDashboard />
+            <EnhancedAnalyticsDashboard />
           </TabsContent>
 
         </Tabs>
