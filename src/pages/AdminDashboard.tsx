@@ -57,7 +57,7 @@ interface DashboardData {
     overdue: number;
   };
 }
- 
+
 const AdminDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
