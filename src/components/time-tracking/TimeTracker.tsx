@@ -159,6 +159,15 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
       return;
     }
 
+    if (!selectedTask) {
+      toast({
+        title: 'Error',
+        description: 'Please select a task to start tracking',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsTracking(true);
     setStartTime(new Date());
     setElapsedTime(0);
@@ -192,7 +201,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
         .insert([{
           user_id: profile?.id,
           project_id: selectedProject,
-          task_id: selectedTask || null,
+          task_id: selectedTask,
           hours: hoursFormatted,
           note: note.trim() || null,
           added_by: profile?.name || 'User',
@@ -329,13 +338,12 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
 
         {/* Task Selection */}
         <div className="space-y-2">
-          <Label htmlFor="task">Task (Optional)</Label>
+          <Label htmlFor="task">Task *</Label>
           <Select value={selectedTask} onValueChange={setSelectedTask}>
             <SelectTrigger>
-              <SelectValue placeholder="Select a task (optional)" />
+              <SelectValue placeholder="Select a task" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="no-task">No specific task</SelectItem>
               {sortedTasks.map((task) => (
                 <SelectItem key={task.id} value={task.id}>
                   <div className="flex items-center gap-2">
@@ -387,7 +395,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
                     </span>
                   );
                 })()}
-                {getSelectedTaskName() && selectedTask !== 'no-task' && (
+                {getSelectedTaskName() && (
                   <>
                     {' - '}
                     {(() => {
@@ -417,7 +425,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           {!isTracking ? (
             <Button 
               onClick={handleStartTracking} 
-              disabled={!selectedProject || loadingProjects}
+              disabled={!selectedProject || !selectedTask || loadingProjects}
               className="flex-1"
             >
               <Play className="mr-2 h-4 w-4" />

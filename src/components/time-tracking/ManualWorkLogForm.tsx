@@ -38,7 +38,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
-  const [selectedTask, setSelectedTask] = useState<string>('no-task');
+  const [selectedTask, setSelectedTask] = useState<string>('');
   const [note, setNote] = useState('');
   const [workDate, setWorkDate] = useState('');
   const [duration, setDuration] = useState('');
@@ -155,6 +155,15 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       return;
     }
 
+    if (!selectedTask) {
+      toast({
+        title: 'Error',
+        description: 'Please select a task',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!workDate) {
       toast({
         title: 'Error',
@@ -209,7 +218,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
         .insert([{
           user_id: profile?.id,
           project_id: selectedProject,
-          task_id: selectedTask && selectedTask !== 'no-task' ? selectedTask : null,
+          task_id: selectedTask,
           hours: hoursFormatted,
           note: note.trim() || null,
           added_by: profile?.name || 'User',
@@ -234,7 +243,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
 
       // Reset form
       setNote('');
-      setSelectedTask('no-task');
+      setSelectedTask('');
       setDuration('01:00'); // Reset to default duration
       // Keep project and work date for convenience
 
@@ -344,13 +353,12 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
 
           {/* Task Selection */}
           <div className="space-y-2">
-            <Label htmlFor="task">Task (Optional)</Label>
+            <Label htmlFor="task">Task *</Label>
             <Select value={selectedTask} onValueChange={setSelectedTask}>
               <SelectTrigger>
-                <SelectValue placeholder="Select a task (optional)" />
+                <SelectValue placeholder="Select a task" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="no-task">No specific task</SelectItem>
                 {sortedTasks.map((task) => (
                   <SelectItem key={task.id} value={task.id}>
                     <div className="flex items-center gap-2">
@@ -439,7 +447,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
                     </Badge>
                   );
                 })()}
-                {getSelectedTaskName() && selectedTask !== 'no-task' && (
+                {getSelectedTaskName() && (
                   <>
                     <span className="text-muted-foreground">→</span>
                     <div className="flex items-center gap-1">
@@ -476,7 +484,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           {/* Submit Button */}
           <Button 
             type="submit" 
-            disabled={!selectedProject || !workDate || !duration || loading}
+            disabled={!selectedProject || !selectedTask || !workDate || !duration || loading}
             className="w-full"
           >
             {loading ? 'Adding...' : 'Add Work Log'}

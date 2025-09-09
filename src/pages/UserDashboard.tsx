@@ -24,6 +24,7 @@ import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm'
 import { WorkLogEditDialog } from '@/components/time-tracking/WorkLogEditDialog';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
 import { UserProjectList } from '@/components/projects/UserProjectList';
+import { UserPerformanceAnalytics } from '@/components/analytics/UserPerformanceAnalytics';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -487,129 +488,7 @@ const UserDashboard: React.FC = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Weekly Activity Chart */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Weekly Activity
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {stats.weeklyTrend.map((day, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <span className="text-sm font-medium w-12">{day.day}</span>
-                        <div className="flex-1 mx-3">
-                          <Progress 
-                            value={Math.min((day.hours / 8) * 100, 100)} 
-                            className="h-2"
-                          />
-                        </div>
-                        <span className="text-sm text-muted-foreground w-12 text-right">
-                          {day.hours}h
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Project Progress */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FolderOpen className="h-5 w-5" />
-                    Project Progress
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {stats.projectProgress.slice(0, 5).map((project, index) => (
-                      <div key={index} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium">{project.projectName}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">
-                              {project.completedTasks}/{project.taskCount}
-                            </span>
-                            <Badge variant="outline" className="text-xs">
-                              {project.totalHours}h
-                            </Badge>
-                          </div>
-                        </div>
-                        <Progress value={project.progress} className="h-2" />
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Recent Activity */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Recent Activity
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <div className="space-y-3">
-                    {[1, 2, 3].map((i) => (
-                      <div key={i} className="animate-pulse">
-                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                        <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                      </div>
-                    ))}
-                  </div>
-                ) : stats.recentActivity.length > 0 ? (
-                  <div className="space-y-3">
-                    {stats.recentActivity.map((entry) => (
-                      <div key={entry.id} className="flex items-center justify-between p-3 border rounded-lg">
-                        <div className="flex-1">
-                          <div className="font-medium text-sm">{entry.projects.name}</div>
-                          {entry.tasks && (
-                            <div className="text-xs text-muted-foreground">{entry.tasks.name}</div>
-                          )}
-                          {entry.note && (
-                            <div className="text-xs text-muted-foreground mt-1 italic">
-                              "{entry.note}"
-                            </div>
-                          )}
-                          <div className="text-xs text-muted-foreground mt-1">
-                            {formatDate(entry.created_at)}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="text-right">
-                            <div className="font-bold text-sm">{formatDuration(entry.hours)}</div>
-                            <Badge variant="secondary" className="text-xs">
-                              {entry.tasks ? 'Task' : 'Project'}
-                            </Badge>
-                          </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEditWorkLog(entry)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <p>No recent activity.</p>
-                    <p className="text-sm mt-2">Start tracking your work time to see activity here.</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <UserPerformanceAnalytics />
           </TabsContent>
         </Tabs>
       </main>
