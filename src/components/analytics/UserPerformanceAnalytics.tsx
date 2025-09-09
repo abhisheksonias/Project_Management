@@ -166,6 +166,11 @@ export const UserPerformanceAnalytics: React.FC = () => {
       let endDate = new Date();
       
       switch (timeRange) {
+        case 'day':
+          // Today only - from start of today to end of today
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+          break;
         case 'week':
           startDate = startOfWeek(now);
           endDate = endOfWeek(now);

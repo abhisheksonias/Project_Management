@@ -357,25 +357,55 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
       // Get date range based on selection
       const now = new Date();
       let startDate = new Date();
+      let endDate = new Date();
       
       switch (timeRange) {
         case 'day':
-          startDate.setDate(now.getDate() - 1);
+          // Today only - from start of today to end of today
+          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
           break;
         case 'week':
-          startDate.setDate(now.getDate() - 7);
+          // This week - from start of current week to end of current week
+          const startOfWeek = new Date(now);
+          startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
+          startOfWeek.setHours(0, 0, 0, 0);
+          
+          const endOfWeek = new Date(startOfWeek);
+          endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
+          endOfWeek.setHours(23, 59, 59, 999);
+          
+          startDate = startOfWeek;
+          endDate = endOfWeek;
           break;
         case 'month':
-          startDate.setMonth(now.getMonth() - 1);
+          // This month - from start of current month to end of current month
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
           break;
         case 'quarter':
-          startDate.setMonth(now.getMonth() - 3);
+          // This quarter - from start of current quarter to end of current quarter
+          const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+          startDate = new Date(now.getFullYear(), quarterStartMonth, 1, 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
           break;
         case 'year':
-          startDate.setFullYear(now.getFullYear() - 1);
+          // This year - from start of current year to end of current year
+          startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+          endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
           break;
         default:
-          startDate.setDate(now.getDate() - 7);
+          // Default to this week
+          const defaultStartOfWeek = new Date(now);
+          defaultStartOfWeek.setDate(now.getDate() - now.getDay());
+          defaultStartOfWeek.setHours(0, 0, 0, 0);
+          
+          const defaultEndOfWeek = new Date(defaultStartOfWeek);
+          defaultEndOfWeek.setDate(defaultStartOfWeek.getDate() + 6);
+          defaultEndOfWeek.setHours(23, 59, 59, 999);
+          
+          startDate = defaultStartOfWeek;
+          endDate = defaultEndOfWeek;
       }
 
       // Fetch all data in parallel
@@ -392,7 +422,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
           `)
           .neq('users.role', 'Admin')
           .gte('created_at', startDate.toISOString())
-          .lte('created_at', now.toISOString()),
+          .lte('created_at', endDate.toISOString()),
         supabase.from('tasks').select('*')
       ]);
 
