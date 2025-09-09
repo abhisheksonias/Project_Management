@@ -35,7 +35,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { format } from 'date-fns';
+import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 interface WorkLog {
   id: string;
@@ -111,11 +111,17 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [sortBy, setSortBy] = useState<'project' | 'user' | 'date'>('date');
   const [showFilters, setShowFilters] = useState(false);
+  const [groupByDate, setGroupByDate] = useState(true);
   const [filters, setFilters] = useState({
     project: 'all-projects',
     user: 'all-users',
-    dateRange: 'all-time',
+    dateRange: 'last10days',
     search: '',
+  });
+  const [dateFilter, setDateFilter] = useState({
+    dateRange: 'last10days',
+    startDate: '',
+    endDate: '',
   });
 
   // Check if user is admin
@@ -136,8 +142,23 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     try {
       setLoading(true);
 
-      // Fetch work logs with related data, sorted by latest first
-      const { data: workLogsData, error: workLogsError } = await supabase
+      // Calculate date range for filtering
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      if (dateFilter.dateRange === 'last10days') {
+        startDate = startOfDay(subDays(new Date(), 10));
+        endDate = endOfDay(new Date());
+      } else if (dateFilter.dateRange === 'last30days') {
+        startDate = startOfDay(subDays(new Date(), 30));
+        endDate = endOfDay(new Date());
+      } else if (dateFilter.dateRange === 'custom' && dateFilter.startDate && dateFilter.endDate) {
+        startDate = startOfDay(new Date(dateFilter.startDate));
+        endDate = endOfDay(new Date(dateFilter.endDate));
+      }
+
+      // Build query
+      let query = supabase
         .from('work_logs')
         .select(`
           *,
@@ -146,6 +167,13 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
           tasks(id, name, type)
         `)
         .order('created_at', { ascending: false });
+
+      // Apply date filtering
+      if (startDate && endDate) {
+        query = query.gte('created_at', startDate.toISOString()).lte('created_at', endDate.toISOString());
+      }
+
+      const { data: workLogsData, error: workLogsError } = await query;
 
       if (workLogsError) throw workLogsError;
 
@@ -192,7 +220,7 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [dateFilter]);
 
   const handleCreateWorkLog = () => {
     setEditingWorkLog(null);
@@ -412,9 +440,70 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     setFilters({
       project: 'all-projects',
       user: 'all-users',
-      dateRange: 'all-time',
+      dateRange: 'last10days',
       search: '',
     });
+  };
+
+  const handleDateRangeChange = (value: string) => {
+    setDateFilter(prev => ({
+      ...prev,
+      dateRange: value,
+      startDate: value === 'custom' ? prev.startDate : '',
+      endDate: value === 'custom' ? prev.endDate : '',
+    }));
+  };
+
+  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
+    setDateFilter(prev => ({
+      ...prev,
+      [field]: value,
+    }));
+  };
+
+  const getDateRangeLabel = () => {
+    switch (dateFilter.dateRange) {
+      case 'last10days':
+        return 'Last 10 Days';
+      case 'last30days':
+        return 'Last 30 Days';
+      case 'custom':
+        if (dateFilter.startDate && dateFilter.endDate) {
+          return `${format(new Date(dateFilter.startDate), 'MMM dd')} - ${format(new Date(dateFilter.endDate), 'MMM dd, yyyy')}`;
+        }
+        return 'Custom Range';
+      default:
+        return 'Last 10 Days';
+    }
+  };
+
+  const getGroupedWorkLogs = () => {
+    const filtered = getFilteredAndSortedWorkLogs();
+    
+    if (!groupByDate) {
+      return { 'All Work Logs': filtered };
+    }
+
+    const grouped: { [key: string]: WorkLog[] } = {};
+    
+    filtered.forEach(workLog => {
+      const dateKey = format(new Date(workLog.created_at), 'yyyy-MM-dd');
+      const displayDate = format(new Date(workLog.created_at), 'EEEE, MMMM dd, yyyy');
+      
+      if (!grouped[dateKey]) {
+        grouped[dateKey] = [];
+      }
+      grouped[dateKey].push(workLog);
+    });
+
+    // Convert to display format with proper date labels
+    const displayGrouped: { [key: string]: WorkLog[] } = {};
+    Object.keys(grouped).sort().reverse().forEach(dateKey => {
+      const displayDate = format(new Date(dateKey), 'EEEE, MMMM dd, yyyy');
+      displayGrouped[displayDate] = grouped[dateKey];
+    });
+
+    return displayGrouped;
   };
 
   const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
@@ -730,10 +819,64 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
             </div>
           </div>
 
+          {/* Date Filter Section */}
+          <div className="border-t pt-4 mt-4">
+            <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted rounded-lg">
+              <div className="flex-1">
+                <Label htmlFor="dateRange" className="text-sm font-medium">Date Range</Label>
+                <Select value={dateFilter.dateRange} onValueChange={handleDateRangeChange}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select date range" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="last10days">Last 10 Days</SelectItem>
+                    <SelectItem value="last30days">Last 30 Days</SelectItem>
+                    <SelectItem value="custom">Custom Range</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              {dateFilter.dateRange === 'custom' && (
+                <>
+                  <div className="flex-1">
+                    <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
+                    <Input
+                      id="startDate"
+                      type="date"
+                      value={dateFilter.startDate}
+                      onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
+                    <Input
+                      id="endDate"
+                      type="date"
+                      value={dateFilter.endDate}
+                      onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* Filter Summary */}
+            <div className="flex items-center justify-between mt-3">
+              <div className="text-sm text-muted-foreground">
+                Showing work logs for: <span className="font-medium">{getDateRangeLabel()}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {workLogs.length} work log{workLogs.length !== 1 ? 's' : ''} found
+              </div>
+            </div>
+          </div>
+
           {/* Filters Section */}
           {showFilters && (
             <div className="border-t pt-4 mt-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div className="space-y-2">
                   <Label htmlFor="search" className="text-xs">Search</Label>
                   <div className="relative">
@@ -821,24 +964,38 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
         <CardContent>
           {/* View Mode Toggle */}
           <div className="flex justify-between items-center mb-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">View Mode:</span>
-              <div className="flex border rounded-lg">
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">View Mode:</span>
+                <div className="flex border rounded-lg">
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="rounded-r-none"
+                  >
+                    <Grid3X3 className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('list')}
+                    className="rounded-l-none"
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Group by Date:</span>
                 <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  variant={groupByDate ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="rounded-r-none"
+                  onClick={() => setGroupByDate(!groupByDate)}
+                  className="flex items-center gap-2"
                 >
-                  <Grid3X3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="rounded-l-none"
-                >
-                  <List className="h-4 w-4" />
+                  <CalendarIcon className="h-4 w-4" />
+                  {groupByDate ? 'Grouped' : 'Ungrouped'}
                 </Button>
               </div>
             </div>
@@ -867,10 +1024,28 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
                 </Button>
               )}
             </div>
-          ) : viewMode === 'grid' ? (
-            // Grid View
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredWorkLogs.map((workLog) => (
+          ) : (
+            <div className="space-y-6">
+              {Object.entries(getGroupedWorkLogs()).map(([dateGroup, workLogs]) => (
+                <div key={dateGroup} className="space-y-4">
+                  {/* Date Group Header */}
+                  <div className="flex items-center gap-3">
+                    <div className="h-px bg-border flex-1"></div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-muted rounded-full">
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-medium text-muted-foreground">{dateGroup}</span>
+                      <Badge variant="secondary" className="text-xs">
+                        {workLogs.length} log{workLogs.length !== 1 ? 's' : ''}
+                      </Badge>
+                    </div>
+                    <div className="h-px bg-border flex-1"></div>
+                  </div>
+
+                  {/* Work Logs for this date */}
+                  {viewMode === 'grid' ? (
+                    // Grid View
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {workLogs.map((workLog) => (
                 <Card key={workLog.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="space-y-3">
@@ -983,25 +1158,25 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
                   </CardContent>
                 </Card>
               ))}
-            </div>
-          ) : (
-            // List View (Table)
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">User</th>
-                    <th className="text-left p-3 font-medium">Project</th>
-                    <th className="text-left p-3 font-medium">Task</th>
-                    <th className="text-left p-3 font-medium">Type</th>
-                    <th className="text-left p-3 font-medium">Hours</th>
-                    <th className="text-left p-3 font-medium">Note</th>
-                    <th className="text-left p-3 font-medium">Created</th>
-                    <th className="text-left p-3 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredWorkLogs.map((workLog) => (
+                    </div>
+                  ) : (
+                    // List View (Table)
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left p-3 font-medium">User</th>
+                            <th className="text-left p-3 font-medium">Project</th>
+                            <th className="text-left p-3 font-medium">Task</th>
+                            <th className="text-left p-3 font-medium">Type</th>
+                            <th className="text-left p-3 font-medium">Hours</th>
+                            <th className="text-left p-3 font-medium">Note</th>
+                            <th className="text-left p-3 font-medium">Created</th>
+                            <th className="text-left p-3 font-medium">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {workLogs.map((workLog) => (
                     <tr key={workLog.id} className="border-b hover:bg-muted/50">
                       <td className="p-3">
                         <div className="space-y-1">
@@ -1095,9 +1270,13 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
                         </div>
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </CardContent>
