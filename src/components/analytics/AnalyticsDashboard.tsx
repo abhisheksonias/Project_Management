@@ -18,7 +18,7 @@ interface AnalyticsData {
   averageHoursPerUser: number;
   completionRate: number;
 }
-
+ 
 export const AnalyticsDashboard: React.FC = () => {
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     totalProjects: 0,
