@@ -56,7 +56,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           .select(`
             id, 
             name,
-            tasks(id, assigned_user_id)
+            tasks(id, assigned_user_id, status)
           `)
           .order('name');
 
@@ -70,11 +70,13 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           return;
         }
 
-        // Process projects to check for assigned tasks
+        // Process projects to check for assigned non-completed tasks
         const processedProjects = (data || []).map(project => ({
           id: project.id,
           name: project.name,
-          hasAssignedTasks: project.tasks?.some((task: any) => task.assigned_user_id === profile?.id) || false
+          hasAssignedTasks: project.tasks?.some((task: any) => 
+            task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
+          ) || false
         }));
 
         setProjects(processedProjects);
@@ -109,6 +111,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           .from('tasks')
           .select('id, name, project_id, status, assigned_user_id')
           .eq('project_id', selectedProject)
+          .neq('status', 'Completed') // Exclude completed tasks
           .order('name');
 
         if (error) {
@@ -122,7 +125,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
         }
 
         setTasks(data || []);
-        setSelectedTask('no-task'); // Reset task selection when project changes
+        setSelectedTask(''); // Reset task selection when project changes
       } catch (error) {
         console.error('Error fetching tasks:', error);
         toast({
@@ -295,14 +298,14 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
 
   const getTaskStatusColor = (task: Task) => {
     if (task.assigned_user_id === profile?.id) {
-      return task.status.toLowerCase() === 'completed' ? 'text-green-600' : 'text-red-600';
+      return 'text-blue-600'; // Highlight assigned tasks in blue
     }
     return 'text-muted-foreground';
   };
 
   const getTaskStatusIcon = (task: Task) => {
     if (task.assigned_user_id === profile?.id) {
-      return task.status.toLowerCase() === 'completed' ? '✓' : '●';
+      return '●'; // Show dot for assigned tasks
     }
     return '';
   };
@@ -498,9 +501,9 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
             <div className="font-medium">Tips:</div>
             <ul className="mt-1 space-y-1">
               <li>• Select a project and optionally a specific task</li>
-              <li>• <span className="font-medium text-blue-600">Projects with assigned tasks appear first</span> and are highlighted</li>
-              <li>• <span className="font-medium">Assigned tasks appear first</span> with status indicators</li>
-              <li>• <span className="text-green-600">✓ Green</span> = completed, <span className="text-red-600">● Red</span> = not completed</li>
+              <li>• <span className="font-medium text-blue-600">Projects with assigned non-completed tasks appear first</span> and are highlighted</li>
+              <li>• <span className="font-medium">Assigned tasks appear first</span> with blue indicators</li>
+              <li>• <span className="text-blue-600">● Blue</span> = assigned to you, completed tasks are hidden</li>
               <li>• Choose the date you worked and enter duration in HH:MM format</li>
               <li>• Add notes to describe what you accomplished</li>
               <li>• Work logs must be at least 1 minute long</li>

@@ -71,7 +71,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           .select(`
             id, 
             name,
-            tasks(id, assigned_user_id)
+            tasks(id, assigned_user_id, status)
           `)
           .order('name');
 
@@ -85,11 +85,13 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           return;
         }
 
-        // Process projects to check for assigned tasks
+        // Process projects to check for assigned non-completed tasks
         const processedProjects = (data || []).map(project => ({
           id: project.id,
           name: project.name,
-          hasAssignedTasks: project.tasks?.some((task: any) => task.assigned_user_id === profile?.id) || false
+          hasAssignedTasks: project.tasks?.some((task: any) => 
+            task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
+          ) || false
         }));
 
         setProjects(processedProjects);
@@ -123,6 +125,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           .from('tasks')
           .select('id, name, project_id, status, assigned_user_id')
           .eq('project_id', selectedProject)
+          .neq('status', 'Completed') // Exclude completed tasks
           .order('name');
 
         if (error) {
@@ -286,14 +289,14 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
 
   const getTaskStatusColor = (task: Task) => {
     if (task.assigned_user_id === profile?.id) {
-      return task.status.toLowerCase() === 'completed' ? 'text-green-600' : 'text-red-600';
+      return 'text-blue-600'; // Highlight assigned tasks in blue
     }
     return 'text-muted-foreground';
   };
 
   const getTaskStatusIcon = (task: Task) => {
     if (task.assigned_user_id === profile?.id) {
-      return task.status.toLowerCase() === 'completed' ? '✓' : '●';
+      return '●'; // Show dot for assigned tasks
     }
     return '';
   };
@@ -467,7 +470,9 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
             <div className="font-medium">Tips:</div>
             <ul className="mt-1 space-y-1">
               <li>• Select a project to start tracking</li>
-              <li>• Optional: Select a specific task</li>
+              <li>• <span className="font-medium text-blue-600">Projects with assigned non-completed tasks appear first</span> and are highlighted</li>
+              <li>• <span className="font-medium">Assigned tasks appear first</span> with blue indicators</li>
+              <li>• <span className="text-blue-600">● Blue</span> = assigned to you, completed tasks are hidden</li>
               <li>• Add notes to describe your work</li>
               <li>• Sessions must be at least 1 minute long</li>
             </ul>
