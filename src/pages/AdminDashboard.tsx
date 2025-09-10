@@ -321,6 +321,7 @@ const AdminDashboard: React.FC = () => {
   const handleCreateProject = () => {
     setEditingProject(null);
     setShowProjectForm(true);
+    setActiveTab('projects'); // Switch to projects tab to show the form
   };
 
   const handleEditProject = (project: any) => {
