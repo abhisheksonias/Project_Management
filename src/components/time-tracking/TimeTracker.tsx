@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Project {
   id: string;
   name: string;
+  type: string;
   hasAssignedTasks?: boolean;
 }
 
@@ -71,6 +72,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
           .select(`
             id, 
             name,
+            type,
             tasks(id, assigned_user_id, status)
           `)
           .order('name');
@@ -89,6 +91,7 @@ export const TimeTracker: React.FC<TimeTrackerProps> = ({ className }) => {
         const processedProjects = (data || []).map(project => ({
           id: project.id,
           name: project.name,
+          type: project.type || 'non-billable',
           hasAssignedTasks: project.tasks?.some((task: any) => 
             task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
           ) || false

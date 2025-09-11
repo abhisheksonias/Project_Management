@@ -15,7 +15,7 @@ interface WorkLog {
   note: string | null;
   created_at: string;
   projects: { name: string; type: string };
-  tasks: { name: string; status: string } | null;
+  tasks: { name: string; status: string; type: string } | null;
 }
 
 interface WorkLogTableProps {
@@ -68,7 +68,7 @@ export const WorkLogTable: React.FC<WorkLogTableProps> = ({
           note,
           created_at,
           projects(name, type),
-          tasks(name, status)
+          tasks(name, status, type)
         `)
         .eq('user_id', profile.id)
         .gte('created_at', dateFilter.startDate.toISOString())
@@ -227,7 +227,7 @@ export const WorkLogTable: React.FC<WorkLogTableProps> = ({
                       </div>
                     </div>
                     <div className="col-span-1">
-                      {getTypeBadge(workLog.projects?.type || 'non-billable')}
+                      {getTypeBadge(workLog.tasks?.type || workLog.projects?.type || 'non-billable')}
                     </div>
                     <div className="col-span-1">
                       {workLog.tasks?.status ? getStatusBadge(workLog.tasks.status) : '-'}
@@ -244,15 +244,7 @@ export const WorkLogTable: React.FC<WorkLogTableProps> = ({
                     </div>
                   </div>
                   <div className="flex items-center gap-1 ml-4">
-                    {onView && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => onView(workLog)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                    )}
+                    
                     {onEdit && (
                       <Button
                         variant="ghost"

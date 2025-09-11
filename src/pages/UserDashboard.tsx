@@ -25,8 +25,8 @@ import { WorkLogEditDialog } from '@/components/time-tracking/WorkLogEditDialog'
 import { WorkLogTable } from '@/components/time-tracking/WorkLogTable';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
 import { UserProjectList } from '@/components/projects/UserProjectList';
-import { UserPerformanceAnalytics } from '@/components/analytics/UserPerformanceAnalytics';
 import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
+import { WorkLogCalendar } from '@/components/analytics/WorkLogCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -36,7 +36,7 @@ interface TimeEntry {
   note: string | null;
   created_at: string;
   projects: { name: string; type: string };
-  tasks: { name: string; status: string } | null;
+  tasks: { name: string; status: string; type: string } | null;
 }
 
 interface ProductivityStats {
@@ -131,7 +131,7 @@ const UserDashboard: React.FC = () => {
           note,
           created_at,
           projects(name, type),
-          tasks(name, status)
+          tasks(name, status, type)
         `)
         .eq('user_id', profile?.id)
         .gte('created_at', startDate.toISOString())
@@ -161,7 +161,13 @@ const UserDashboard: React.FC = () => {
 
       const calculateBillableHours = (entries: any[]) => {
         return entries.reduce((total, entry) => {
-          if (!entry.hours || entry.projects?.type?.toLowerCase() !== 'billable') return total;
+          if (!entry.hours) return total;
+          // Check task type first, then fallback to project type
+          const taskType = entry.tasks?.type?.toLowerCase();
+          const projectType = entry.projects?.type?.toLowerCase();
+          const isBillable = taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable');
+          
+          if (!isBillable) return total;
           // Parse hours from HH:MM format
           const [hoursStr, minutesStr] = entry.hours.split(':');
           const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
@@ -171,7 +177,13 @@ const UserDashboard: React.FC = () => {
 
       const calculateNonBillableHours = (entries: any[]) => {
         return entries.reduce((total, entry) => {
-          if (!entry.hours || entry.projects?.type?.toLowerCase() === 'billable') return total;
+          if (!entry.hours) return total;
+          // Check task type first, then fallback to project type
+          const taskType = entry.tasks?.type?.toLowerCase();
+          const projectType = entry.projects?.type?.toLowerCase();
+          const isBillable = taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable');
+          
+          if (isBillable) return total;
           // Parse hours from HH:MM format
           const [hoursStr, minutesStr] = entry.hours.split(':');
           const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
@@ -487,7 +499,7 @@ const UserDashboard: React.FC = () => {
 
           {/* Overview Tab */}
           <TabsContent value="overview" className="space-y-6">
-            <UserPerformanceAnalytics />
+            <WorkLogCalendar />
           </TabsContent>
         </Tabs>
       </main>

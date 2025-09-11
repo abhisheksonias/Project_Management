@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface Project {
   id: string;
   name: string;
+  type: string;
   hasAssignedTasks?: boolean;
 }
 
@@ -57,6 +58,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           .select(`
             id, 
             name,
+            type,
             tasks(id, assigned_user_id, status)
           `)
           .order('name');
@@ -75,6 +77,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
         const processedProjects = (data || []).map(project => ({
           id: project.id,
           name: project.name,
+          type: project.type || 'non-billable',
           hasAssignedTasks: project.tasks?.some((task: any) => 
             task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
           ) || false
@@ -387,11 +390,19 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
                       <span className={getProjectHighlightClass(project)}>
                         {project.name}
                       </span>
-                      {project.hasAssignedTasks && (
-                        <Badge variant="outline" className="text-xs">
-                          Has Tasks
+                      <div className="flex items-center gap-1">
+                        <Badge 
+                          variant={project.type?.toLowerCase() === 'billable' ? 'default' : 'secondary'}
+                          className="text-xs"
+                        >
+                          {project.type || 'Non-billable'}
                         </Badge>
-                      )}
+                        {project.hasAssignedTasks && (
+                          <Badge variant="outline" className="text-xs">
+                            Has Tasks
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </SelectItem>
                 ))}
@@ -505,15 +516,23 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
                 {(() => {
                   const project = projects.find(p => p.id === selectedProject);
                   return (
-                    <Badge 
-                      variant={project?.hasAssignedTasks ? "default" : "secondary"}
-                      className={project?.hasAssignedTasks ? 'font-medium' : ''}
-                    >
-                      {getSelectedProjectName()}
-                      {project?.hasAssignedTasks && (
-                        <span className="ml-1 text-xs">(Has Tasks)</span>
-                      )}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge 
+                        variant={project?.hasAssignedTasks ? "default" : "secondary"}
+                        className={project?.hasAssignedTasks ? 'font-medium' : ''}
+                      >
+                        {getSelectedProjectName()}
+                        {project?.hasAssignedTasks && (
+                          <span className="ml-1 text-xs">(Has Tasks)</span>
+                        )}
+                      </Badge>
+                      <Badge 
+                        variant={project?.type?.toLowerCase() === 'billable' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {project?.type || 'Non-billable'}
+                      </Badge>
+                    </div>
                   );
                 })()}
                 {getSelectedTaskName() && (
