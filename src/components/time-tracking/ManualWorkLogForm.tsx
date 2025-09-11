@@ -39,6 +39,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [selectedTask, setSelectedTask] = useState<string>('');
+  const [selectedTaskStatus, setSelectedTaskStatus] = useState<string>('');
   const [note, setNote] = useState('');
   const [workDate, setWorkDate] = useState('');
   const [duration, setDuration] = useState('');
@@ -111,7 +112,6 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           .from('tasks')
           .select('id, name, project_id, status, assigned_user_id')
           .eq('project_id', selectedProject)
-          .neq('status', 'Completed') // Exclude completed tasks
           .order('name');
 
         if (error) {
@@ -126,6 +126,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
 
         setTasks(data || []);
         setSelectedTask(''); // Reset task selection when project changes
+        setSelectedTaskStatus(''); // Reset task status when project changes
       } catch (error) {
         console.error('Error fetching tasks:', error);
         toast({
@@ -146,6 +147,19 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
     setDuration('01:00'); // Default to 1 hour
   }, []);
 
+  // Set task status when task is selected
+  useEffect(() => {
+    if (selectedTask) {
+      const task = tasks.find(t => t.id === selectedTask);
+      if (task) {
+        console.log('Selected task:', task.name, 'Current Status from DB:', task.status);
+        setSelectedTaskStatus(task.status);
+      }
+    } else {
+      setSelectedTaskStatus('');
+    }
+  }, [selectedTask, tasks]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -162,6 +176,15 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       toast({
         title: 'Error',
         description: 'Please select a task',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!selectedTaskStatus) {
+      toast({
+        title: 'Error',
+        description: 'Please select a task status',
         variant: 'destructive',
       });
       return;
@@ -216,6 +239,27 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
 
     setLoading(true);
     try {
+      // First, update the task status if it has changed
+      if (selectedTask && selectedTaskStatus) {
+        const currentTask = tasks.find(t => t.id === selectedTask);
+        if (currentTask && currentTask.status !== selectedTaskStatus) {
+          const { error: taskUpdateError } = await supabase
+            .from('tasks')
+            .update({ status: selectedTaskStatus })
+            .eq('id', selectedTask);
+
+          if (taskUpdateError) {
+            console.error('Error updating task status:', taskUpdateError);
+            toast({
+              title: 'Warning',
+              description: 'Work log saved but task status update failed',
+              variant: 'destructive',
+            });
+          }
+        }
+      }
+
+      // Then save the work log
       const { error } = await supabase
         .from('work_logs')
         .insert([{
@@ -247,6 +291,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       // Reset form
       setNote('');
       setSelectedTask('');
+      setSelectedTaskStatus('');
       setDuration('01:00'); // Reset to default duration
       // Keep project and work date for convenience
 
@@ -383,6 +428,27 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
             </Select>
           </div>
 
+          {/* Task Status Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="taskStatus">Status of Task *</Label>
+            <Select 
+              value={selectedTaskStatus} 
+              onValueChange={setSelectedTaskStatus}
+              disabled={!selectedTask}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={selectedTask ? "Select task status" : "Select a task first"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="To Do">To Do</SelectItem>
+                <SelectItem value="In Progress">In Progress</SelectItem>
+                <SelectItem value="Completed">Completed</SelectItem>
+                <SelectItem value="Blocked">Blocked</SelectItem>
+                <SelectItem value="Review">Review</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
           {/* Work Date and Duration */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -487,29 +553,12 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           {/* Submit Button */}
           <Button 
             type="submit" 
-            disabled={!selectedProject || !selectedTask || !workDate || !duration || loading}
+            disabled={!selectedProject || !selectedTask || !selectedTaskStatus || !workDate || !duration || loading}
             className="w-full"
           >
             {loading ? 'Adding...' : 'Add Work Log'}
           </Button>
         </form>
-
-        {/* Tips */}
-        <div className="flex items-start gap-2 p-3 bg-blue-50 rounded-lg mt-4">
-          <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-          <div className="text-sm text-blue-800">
-            <div className="font-medium">Tips:</div>
-            <ul className="mt-1 space-y-1">
-              <li>• Select a project and optionally a specific task</li>
-              <li>• <span className="font-medium text-blue-600">Projects with assigned non-completed tasks appear first</span> and are highlighted</li>
-              <li>• <span className="font-medium">Assigned tasks appear first</span> with blue indicators</li>
-              <li>• <span className="text-blue-600">● Blue</span> = assigned to you, completed tasks are hidden</li>
-              <li>• Choose the date you worked and enter duration in HH:MM format</li>
-              <li>• Add notes to describe what you accomplished</li>
-              <li>• Work logs must be at least 1 minute long</li>
-            </ul>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );

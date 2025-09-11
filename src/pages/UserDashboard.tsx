@@ -22,9 +22,11 @@ import {
 } from 'lucide-react';
 import { ManualWorkLogForm } from '@/components/time-tracking/ManualWorkLogForm';
 import { WorkLogEditDialog } from '@/components/time-tracking/WorkLogEditDialog';
+import { WorkLogTable } from '@/components/time-tracking/WorkLogTable';
 import { UserTaskList } from '@/components/tasks/UserTaskList';
 import { UserProjectList } from '@/components/projects/UserProjectList';
 import { UserPerformanceAnalytics } from '@/components/analytics/UserPerformanceAnalytics';
+import { DateFilter, DateFilterValue } from '@/components/ui/date-filter';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -45,6 +47,8 @@ interface ProductivityStats {
   hoursThisMonth: number;
   averageDailyHours: number;
   efficiency: number;
+  billableHours: number;
+  nonBillableHours: number;
   projectProgress: Array<{
     projectName: string;
     totalHours: number;
@@ -64,6 +68,29 @@ const UserDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [editingWorkLog, setEditingWorkLog] = useState<TimeEntry | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  // Initialize date filter with proper Indian timezone handling
+  const getIndianDate = () => {
+    const now = new Date();
+    // Convert to Indian timezone (UTC+5:30)
+    const indianTime = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Kolkata"}));
+    return indianTime;
+  };
+
+  const initializeDateFilter = () => {
+    const indianNow = getIndianDate();
+    const startDate = new Date(indianNow);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(indianNow);
+    endDate.setHours(23, 59, 59, 999);
+    
+    return {
+      type: 'today' as const,
+      startDate,
+      endDate
+    };
+  };
+
+  const [dateFilter, setDateFilter] = useState<DateFilterValue>(initializeDateFilter());
   const [stats, setStats] = useState<ProductivityStats>({
     totalTasks: 0,
     completedTasks: 0,
@@ -72,6 +99,8 @@ const UserDashboard: React.FC = () => {
     hoursThisMonth: 0,
     averageDailyHours: 0,
     efficiency: 0,
+    billableHours: 0,
+    nonBillableHours: 0,
     projectProgress: [],
     recentActivity: [],
     weeklyTrend: []
@@ -82,15 +111,16 @@ const UserDashboard: React.FC = () => {
     try {
       setLoading(true);
 
-      const now = new Date();
-      const todayStart = new Date(now);
-      todayStart.setHours(0, 0, 0, 0);
+      // Use the date filter to determine the date range
+      const startDate = dateFilter.startDate;
+      const endDate = dateFilter.endDate;
       
-      const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - now.getDay());
-      weekStart.setHours(0, 0, 0, 0);
-      
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+      console.log('Fetching data for date range:', {
+        type: dateFilter.type,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString(),
+        indianTime: new Date().toLocaleString("en-US", {timeZone: "Asia/Kolkata"})
+      });
 
       // Fetch all time entries for comprehensive analysis
       const { data: allTimeEntries, error: timeError } = await supabase
@@ -104,6 +134,8 @@ const UserDashboard: React.FC = () => {
           tasks(name, status)
         `)
         .eq('user_id', profile?.id)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
         .order('created_at', { ascending: false });
 
       if (timeError) throw timeError;
@@ -116,28 +148,49 @@ const UserDashboard: React.FC = () => {
 
       if (tasksError) throw tasksError;
 
-      // Calculate time metrics
-      const calculateHours = (entries: any[], startDate: Date) => {
-        return entries
-          .filter(entry => new Date(entry.created_at) >= startDate)
-          .reduce((total, entry) => {
-            if (!entry.hours) return total;
-            // Parse hours from HH:MM format
-            const [hoursStr, minutesStr] = entry.hours.split(':');
-            const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
-            return total + hours;
-          }, 0);
+      // Calculate time metrics - since data is already filtered by date range
+      const calculateHours = (entries: any[]) => {
+        return entries.reduce((total, entry) => {
+          if (!entry.hours) return total;
+          // Parse hours from HH:MM format
+          const [hoursStr, minutesStr] = entry.hours.split(':');
+          const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
+          return total + hours;
+        }, 0);
       };
 
-      const hoursToday = calculateHours(allTimeEntries || [], todayStart);
-      const hoursThisWeek = calculateHours(allTimeEntries || [], weekStart);
-      const hoursThisMonth = calculateHours(allTimeEntries || [], monthStart);
+      const calculateBillableHours = (entries: any[]) => {
+        return entries.reduce((total, entry) => {
+          if (!entry.hours || entry.projects?.type?.toLowerCase() !== 'billable') return total;
+          // Parse hours from HH:MM format
+          const [hoursStr, minutesStr] = entry.hours.split(':');
+          const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
+          return total + hours;
+        }, 0);
+      };
 
-      // Calculate weekly trend
+      const calculateNonBillableHours = (entries: any[]) => {
+        return entries.reduce((total, entry) => {
+          if (!entry.hours || entry.projects?.type?.toLowerCase() === 'billable') return total;
+          // Parse hours from HH:MM format
+          const [hoursStr, minutesStr] = entry.hours.split(':');
+          const hours = parseInt(hoursStr) + (parseInt(minutesStr) / 60);
+          return total + hours;
+        }, 0);
+      };
+
+      const totalHours = calculateHours(allTimeEntries || []);
+      const billableHours = calculateBillableHours(allTimeEntries || []);
+      const nonBillableHours = calculateNonBillableHours(allTimeEntries || []);
+
+      // Calculate weekly trend - for the selected date range
       const weeklyTrend = [];
-      for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
-        date.setDate(date.getDate() - i);
+      const daysInRange = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const maxDays = Math.min(daysInRange, 7); // Show max 7 days
+      
+      for (let i = 0; i < maxDays; i++) {
+        const date = new Date(startDate);
+        date.setDate(startDate.getDate() + i);
         const dayStart = new Date(date);
         dayStart.setHours(0, 0, 0, 0);
         const dayEnd = new Date(date);
@@ -204,20 +257,20 @@ const UserDashboard: React.FC = () => {
       const completedTasks = tasks?.filter(task => task.status.toLowerCase() === 'completed').length || 0;
       const efficiency = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-      // Calculate average daily hours (last 30 days)
-      const thirtyDaysAgo = new Date(now);
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      const recentHours = calculateHours(allTimeEntries || [], thirtyDaysAgo);
-      const averageDailyHours = Math.round((recentHours / 30) * 100) / 100;
+      // Calculate average daily hours for the selected period
+      const daysInPeriod = Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)));
+      const averageDailyHours = Math.round((totalHours / daysInPeriod) * 100) / 100;
 
       setStats({
         totalTasks,
         completedTasks,
-        hoursToday: Math.round(hoursToday * 100) / 100,
-        hoursThisWeek: Math.round(hoursThisWeek * 100) / 100,
-        hoursThisMonth: Math.round(hoursThisMonth * 100) / 100,
+        hoursToday: Math.round(totalHours * 100) / 100,
+        hoursThisWeek: Math.round(totalHours * 100) / 100,
+        hoursThisMonth: Math.round(totalHours * 100) / 100,
         averageDailyHours,
         efficiency,
+        billableHours: Math.round(billableHours * 100) / 100,
+        nonBillableHours: Math.round(nonBillableHours * 100) / 100,
         projectProgress: projectProgress.sort((a, b) => b.totalHours - a.totalHours),
         recentActivity: (allTimeEntries || []).slice(0, 5),
         weeklyTrend
@@ -239,7 +292,13 @@ const UserDashboard: React.FC = () => {
     if (profile?.id) {
       fetchUserData();
     }
-  }, [profile?.id]);
+  }, [profile?.id, dateFilter]);
+
+  // Ensure date filter is properly initialized on mount
+  useEffect(() => {
+    const currentFilter = initializeDateFilter();
+    setDateFilter(currentFilter);
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -287,157 +346,97 @@ const UserDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Compact Header */}
+      {/* Header Section - Matching Wireframe */}
       <header className="border-b bg-card sticky top-0 z-10">
-        <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-xl font-bold">Productivity Dashboard</h1>
-              <p className="text-sm text-muted-foreground">Welcome back, {profile?.name}</p>
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-4">
+              <div>
+                <h1 className="text-2xl font-bold">Hello {profile?.name}</h1>
+              </div>
             </div>
-            {profile?.specialization && (
-              <Badge variant="outline" className="text-xs">
-                {profile.specialization}
-              </Badge>
-            )}
+            <div className="flex items-center gap-4">
+              <DateFilter
+                value={dateFilter}
+                onChange={setDateFilter}
+                onRefresh={fetchUserData}
+              />
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
+                Sign out
+              </Button>
+            </div>
           </div>
-          <Button variant="outline" size="sm" onClick={handleSignOut}>
-            <LogOut className="mr-2 h-4 w-4" />
-            Sign Out
-          </Button>
+          
+          {/* Summary Metrics Row */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.floor(stats.hoursToday)}:{String(Math.round((stats.hoursToday % 1) * 60)).padStart(2, '0')}
+                </div>
+                <div className="text-sm text-muted-foreground">Total Hours</div>
+                <div className="flex justify-center gap-4 mt-2 text-xs">
+                  <span className="text-green-600">
+                    Billable: {Math.floor(stats.billableHours)}:{String(Math.round((stats.billableHours % 1) * 60)).padStart(2, '0')}
+                  </span>
+                  <span className="text-red-600">
+                    Non Billable: {Math.floor(stats.nonBillableHours)}:{String(Math.round((stats.nonBillableHours % 1) * 60)).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">
+                  {stats.completedTasks}/{stats.totalTasks}
+                </div>
+                <div className="text-sm text-muted-foreground">Task Completed</div>
+              </div>
+            </Card>
+            
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-purple-600">
+                  {stats.projectProgress.length}
+                </div>
+                <div className="text-sm text-muted-foreground">Project contributed</div>
+              </div>
+            </Card>
+          </div>
         </div>
       </header>
 
-      {/* Main Content - Compact Layout */}
+      {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
-        {/* Key Metrics Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-6">
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-blue-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.hoursToday}h</div>
-                <div className="text-xs text-muted-foreground">Today</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Clock className="h-4 w-4 text-green-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.hoursThisWeek}h</div>
-                <div className="text-xs text-muted-foreground">This Week</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-purple-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.hoursThisMonth}h</div>
-                <div className="text-xs text-muted-foreground">This Month</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-orange-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.efficiency}%</div>
-                <div className="text-xs text-muted-foreground">Efficiency</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4 text-emerald-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.completedTasks}/{stats.totalTasks}</div>
-                <div className="text-xs text-muted-foreground">Tasks Done</div>
-              </div>
-            </div>
-          </Card>
-          
-          <Card className="p-4">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-red-600" />
-              <div>
-                <div className="text-lg font-bold">{stats.averageDailyHours}h</div>
-                <div className="text-xs text-muted-foreground">Daily Avg</div>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Main Dashboard Tabs */}
-        <Tabs defaultValue="tracking" className="space-y-6">
+        {/* Main Dashboard Tabs - Matching Wireframe */}
+        <Tabs defaultValue="worklog" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="tracking">Time Tracking</TabsTrigger>
+            <TabsTrigger value="worklog">Work Log</TabsTrigger>
             <TabsTrigger value="tasks">My Tasks</TabsTrigger>
             <TabsTrigger value="projects">Projects</TabsTrigger>
             <TabsTrigger value="overview">Overview</TabsTrigger>
           </TabsList>
 
-          {/* Time Tracking Tab */}
-          <TabsContent value="tracking" className="space-y-6">
-            <div className="flex justify-between items-center">
-              <h2 className="text-lg font-semibold">Time Tracking</h2>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                Manual Entry
+          {/* Work Log Tab - Matching Wireframe */}
+          <TabsContent value="worklog" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+              {/* Left Panel: Work Log Form - 2/5 width */}
+              <div className="lg:col-span-2">
+                <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <ManualWorkLogForm onSuccess={handleWorkLogAdded} />
 
-              {/* Quick Stats for Time Tracking */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
-                    Productivity Insights
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
-                    <div>
-                      <div className="text-sm font-medium">Today's Goal</div>
-                      <div className="text-xs text-muted-foreground">Target: 8 hours</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-blue-600">{stats.hoursToday}h</div>
-                      <Progress value={(stats.hoursToday / 8) * 100} className="w-16 h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
-                    <div>
-                      <div className="text-sm font-medium">Weekly Progress</div>
-                      <div className="text-xs text-muted-foreground">Target: 40 hours</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">{stats.hoursThisWeek}h</div>
-                      <Progress value={(stats.hoursThisWeek / 40) * 100} className="w-16 h-2" />
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between p-3 bg-purple-50 rounded-lg">
-                    <div>
-                      <div className="text-sm font-medium">Task Efficiency</div>
-                      <div className="text-xs text-muted-foreground">Completion rate</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-purple-600">{stats.efficiency}%</div>
-                      <Progress value={stats.efficiency} className="w-16 h-2" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Right Panel: Recent Work Log Table - 3/5 width */}
+              <div className="lg:col-span-3">
+                <WorkLogTable
+                  onEdit={handleEditWorkLog}
+                  onDelete={() => fetchUserData()}
+                  onView={(workLog) => {
+                    // Handle view action if needed
+                    console.log('View work log:', workLog);
+                  }}
+                />
+              </div>
             </div>
           </TabsContent>
 
