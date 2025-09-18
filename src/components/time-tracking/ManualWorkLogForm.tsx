@@ -263,6 +263,9 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       }
 
       // Then save the work log
+      // Convert workDate to proper ISO string format
+      const workDateTime = new Date(workDate + 'T00:00:00.000Z');
+      
       const { error } = await supabase
         .from('work_logs')
         .insert([{
@@ -272,8 +275,8 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           hours: hoursFormatted,
           note: note.trim() || null,
           added_by: profile?.name || 'User',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+          created_at: workDateTime.toISOString(),
+          updated_at: workDateTime.toISOString(),
         }]);
 
       if (error) {
