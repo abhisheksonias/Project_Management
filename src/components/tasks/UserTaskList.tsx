@@ -71,7 +71,11 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
         return;
       }
 
-      setTasks(data || []);
+      // Filter out completed tasks
+      const filteredTasks = (data || []).filter(task => 
+        task.status.toLowerCase() !== 'completed'
+      );
+      setTasks(filteredTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
       toast({

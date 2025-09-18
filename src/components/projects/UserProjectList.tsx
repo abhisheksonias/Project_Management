@@ -85,15 +85,20 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
       });
 
       // Process projects to include admin name and assigned task information
-      const processedProjects = (projectsData || []).map(project => {
-        const assignedTasksCount = projectTaskCounts.get(project.id) || 0;
-        return {
-          ...project,
-          admin_name: project.users?.name || 'Unknown Admin',
-          hasAssignedTasks: assignedTasksCount > 0,
-          assignedTasksCount
-        };
-      });
+      const processedProjects = (projectsData || [])
+        .filter(project => {
+          const status = project.status?.toLowerCase();
+          return status !== 'completed' && status !== 'cancelled'; // Filter out completed and cancelled projects
+        })
+        .map(project => {
+          const assignedTasksCount = projectTaskCounts.get(project.id) || 0;
+          return {
+            ...project,
+            admin_name: project.users?.name || 'Unknown Admin',
+            hasAssignedTasks: assignedTasksCount > 0,
+            assignedTasksCount
+          };
+        });
 
       // Sort projects: assigned tasks first, then by creation date
       const sortedProjects = processedProjects.sort((a, b) => {
