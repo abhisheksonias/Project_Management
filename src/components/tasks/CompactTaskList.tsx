@@ -387,13 +387,8 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
-              <Target className="h-5 w-5" />
               {projectName}
             </CardTitle>
-            <p className="text-muted-foreground">
-              {sortedTasks.length} task(s) found
-              {hasActiveFilters && ` (${tasks.length} total)`}
-            </p>
           </div>
           <div className="flex gap-2">
             {!projectId && (
@@ -412,8 +407,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
               </Button>
             )}
             <Button onClick={onCreateTask} className="flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              New Task
+              Add Task
             </Button>
           </div>
         </div>

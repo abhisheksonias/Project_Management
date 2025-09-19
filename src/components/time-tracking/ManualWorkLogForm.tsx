@@ -263,8 +263,10 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       }
 
       // Then save the work log
-      // Convert workDate to proper ISO string format
-      const workDateTime = new Date(workDate + 'T00:00:00.000Z');
+      // Use current date and time (same approach as admin)
+      const now = new Date();
+      const createdAt = new Date(workDate);
+      createdAt.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), now.getMilliseconds());
       
       const { error } = await supabase
         .from('work_logs')
@@ -275,8 +277,8 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           hours: hoursFormatted,
           note: note.trim() || null,
           added_by: profile?.name || 'User',
-          created_at: workDateTime.toISOString(),
-          updated_at: workDateTime.toISOString(),
+          created_at: createdAt.toISOString(),
+          updated_at: createdAt.toISOString(),
         }]);
 
       if (error) {
@@ -299,7 +301,10 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
       setSelectedTask('');
       setSelectedTaskStatus('');
       setDuration('01:00'); // Reset to default duration
-      // Keep project and work date for convenience
+      // Reset date to current date
+      const today = new Date();
+      setWorkDate(today.toISOString().slice(0, 10));
+      // Keep project for convenience
 
       // Call success callback if provided
       if (onSuccess) {
@@ -370,11 +375,9 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
     <Card className={className}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Plus className="h-5 w-5" />
           Add Work Log
         </CardTitle>
         <CardDescription>
-          Manually add a work log entry with specific start and end times
         </CardDescription>
       </CardHeader>
       <CardContent>

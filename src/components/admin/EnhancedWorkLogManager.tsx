@@ -35,6 +35,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useFilter } from '@/contexts/FilterContext';
 import { format, subDays, startOfDay, endOfDay } from 'date-fns';
 
 interface WorkLog {
@@ -91,6 +92,7 @@ interface EnhancedWorkLogManagerProps {
 export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ className }) => {
   const { profile } = useAuth();
   const { toast } = useToast();
+  const { filterValue, getDateRange } = useFilter();
   const [workLogs, setWorkLogs] = useState<WorkLog[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -118,11 +120,6 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     dateRange: 'last10days',
     search: '',
   });
-  const [dateFilter, setDateFilter] = useState({
-    dateRange: 'last10days',
-    startDate: '',
-    endDate: '',
-  });
 
   // Check if user is admin
   if (profile?.role !== 'Admin') {
@@ -142,19 +139,14 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     try {
       setLoading(true);
 
-      // Calculate date range for filtering
+      // Get date range from unified filter
+      const dateRange = getDateRange();
       let startDate: Date | null = null;
       let endDate: Date | null = null;
 
-      if (dateFilter.dateRange === 'last10days') {
-        startDate = startOfDay(subDays(new Date(), 10));
-        endDate = endOfDay(new Date());
-      } else if (dateFilter.dateRange === 'last30days') {
-        startDate = startOfDay(subDays(new Date(), 30));
-        endDate = endOfDay(new Date());
-      } else if (dateFilter.dateRange === 'custom' && dateFilter.startDate && dateFilter.endDate) {
-        startDate = startOfDay(new Date(dateFilter.startDate));
-        endDate = endOfDay(new Date(dateFilter.endDate));
+      if (dateRange) {
+        startDate = dateRange.startDate;
+        endDate = dateRange.endDate;
       }
 
       // Build query
@@ -220,7 +212,7 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
 
   useEffect(() => {
     fetchData();
-  }, [dateFilter]);
+  }, [filterValue]);
 
   const handleCreateWorkLog = () => {
     setEditingWorkLog(null);
@@ -445,37 +437,6 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     });
   };
 
-  const handleDateRangeChange = (value: string) => {
-    setDateFilter(prev => ({
-      ...prev,
-      dateRange: value,
-      startDate: value === 'custom' ? prev.startDate : '',
-      endDate: value === 'custom' ? prev.endDate : '',
-    }));
-  };
-
-  const handleCustomDateChange = (field: 'startDate' | 'endDate', value: string) => {
-    setDateFilter(prev => ({
-      ...prev,
-      [field]: value,
-    }));
-  };
-
-  const getDateRangeLabel = () => {
-    switch (dateFilter.dateRange) {
-      case 'last10days':
-        return 'Last 10 Days';
-      case 'last30days':
-        return 'Last 30 Days';
-      case 'custom':
-        if (dateFilter.startDate && dateFilter.endDate) {
-          return `${format(new Date(dateFilter.startDate), 'MMM dd')} - ${format(new Date(dateFilter.endDate), 'MMM dd, yyyy')}`;
-        }
-        return 'Custom Range';
-      default:
-        return 'Last 10 Days';
-    }
-  };
 
   const getGroupedWorkLogs = () => {
     const filtered = getFilteredAndSortedWorkLogs();
@@ -542,67 +503,14 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
 
   return (
     <div className={className}>
-      {/* Header with Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Clock className="h-5 w-5 text-blue-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.totalEntries}</div>
-              <div className="text-sm text-muted-foreground">Total Entries</div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.totalHours}h</div>
-              <div className="text-sm text-muted-foreground">Total Hours</div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Target className="h-5 w-5 text-purple-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.billableHours}h</div>
-              <div className="text-sm text-muted-foreground">Billable Hours</div>
-            </div>
-          </div>
-        </Card>
-        
-        <Card className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-orange-100 rounded-lg">
-              <Users className="h-5 w-5 text-orange-600" />
-            </div>
-            <div>
-              <div className="text-2xl font-bold">{stats.uniqueUsers}</div>
-              <div className="text-sm text-muted-foreground">Active Users</div>
-            </div>
-          </div>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Clock className="h-5 w-5" />
-                Work Log Management
+                Work Log Management <span className="text-sm text-muted-foreground"> Entries {stats.totalEntries} _______ Unique Users {stats.uniqueUsers}</span>
               </CardTitle>
               <CardDescription>
-                Manage and track work logs across projects and users
               </CardDescription>
             </div>
             <div className="flex gap-2">
@@ -819,59 +727,6 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
             </div>
           </div>
 
-          {/* Date Filter Section */}
-          <div className="border-t pt-4 mt-4">
-            <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted rounded-lg">
-              <div className="flex-1">
-                <Label htmlFor="dateRange" className="text-sm font-medium">Date Range</Label>
-                <Select value={dateFilter.dateRange} onValueChange={handleDateRangeChange}>
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Select date range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="last10days">Last 10 Days</SelectItem>
-                    <SelectItem value="last30days">Last 30 Days</SelectItem>
-                    <SelectItem value="custom">Custom Range</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              {dateFilter.dateRange === 'custom' && (
-                <>
-                  <div className="flex-1">
-                    <Label htmlFor="startDate" className="text-sm font-medium">Start Date</Label>
-                    <Input
-                      id="startDate"
-                      type="date"
-                      value={dateFilter.startDate}
-                      onChange={(e) => handleCustomDateChange('startDate', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                  <div className="flex-1">
-                    <Label htmlFor="endDate" className="text-sm font-medium">End Date</Label>
-                    <Input
-                      id="endDate"
-                      type="date"
-                      value={dateFilter.endDate}
-                      onChange={(e) => handleCustomDateChange('endDate', e.target.value)}
-                      className="mt-1"
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-
-            {/* Filter Summary */}
-            <div className="flex items-center justify-between mt-3">
-              <div className="text-sm text-muted-foreground">
-                Showing work logs for: <span className="font-medium">{getDateRangeLabel()}</span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                {workLogs.length} work log{workLogs.length !== 1 ? 's' : ''} found
-              </div>
-            </div>
-          </div>
 
           {/* Filters Section */}
           {showFilters && (
@@ -998,9 +853,6 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
                   {groupByDate ? 'Grouped' : 'Ungrouped'}
                 </Button>
               </div>
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {filteredWorkLogs.length} work log(s) found
             </div>
           </div>
 

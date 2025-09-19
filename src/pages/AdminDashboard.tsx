@@ -5,7 +5,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
-import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Target, FileText, RefreshCw, DollarSign } from 'lucide-react';
+import { LogOut, Users, FolderOpen, BarChart3, Plus, ArrowLeft, TrendingUp, Clock, CheckCircle, AlertCircle, Calendar, Target, FileText, RefreshCw, DollarSign, ChevronUp } from 'lucide-react';
+import { UnifiedFilter } from '@/components/ui/unified-filter';
+import { useFilter } from '@/contexts/FilterContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { ProjectForm } from '@/components/projects/ProjectForm';
@@ -47,6 +49,7 @@ interface DashboardData {
     inProgress: number;
     completed: number;
     onHold: number;
+    clientApproval: number;
   };
   taskStatusBreakdown: {
     todo: number;
@@ -61,7 +64,8 @@ interface DashboardData {
 const AdminDashboard: React.FC = () => {
   const { profile, signOut } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const { filterValue, getDateRange } = useFilter();
+  const [activeTab, setActiveTab] = useState('projects');
   const [showProjectForm, setShowProjectForm] = useState(false);
   const [editingProject, setEditingProject] = useState<any>(null);
   const [showComments, setShowComments] = useState<any>(null);
@@ -85,6 +89,7 @@ const AdminDashboard: React.FC = () => {
       inProgress: 0,
       completed: 0,
       onHold: 0,
+      clientApproval: 0,
     },
     taskStatusBreakdown: {
       todo: 0,
@@ -133,13 +138,23 @@ const AdminDashboard: React.FC = () => {
 
       if (tasksError) throw tasksError;
 
-      // Fetch work logs for total hours calculation
-      const { data: workLogs, error: workLogsError } = await supabase
+      // Fetch work logs for total hours calculation based on filter
+      const dateRange = getDateRange();
+      let workLogsQuery = supabase
         .from('work_logs')
         .select(`
           *,
           tasks(type)
         `);
+
+      // Apply date filtering if date range is available
+      if (dateRange) {
+        workLogsQuery = workLogsQuery
+          .gte('created_at', dateRange.startDate.toISOString())
+          .lte('created_at', dateRange.endDate.toISOString());
+      }
+
+      const { data: workLogs, error: workLogsError } = await workLogsQuery;
 
       if (workLogsError) throw workLogsError;
 
@@ -169,6 +184,7 @@ const AdminDashboard: React.FC = () => {
         inProgress: projects?.filter(p => p.status === 'In Progress').length || 0,
         completed: projects?.filter(p => p.status === 'Completed').length || 0,
         onHold: projects?.filter(p => p.status === 'On Hold').length || 0,
+        clientApproval: projects?.filter(p => p.status === 'Client Approval').length || 0,
       };
 
       // Task status breakdown
@@ -314,6 +330,11 @@ const AdminDashboard: React.FC = () => {
     }
   }, [refreshTrigger]);
 
+  // Refresh data when filter changes
+  useEffect(() => {
+    fetchDashboardData();
+  }, [filterValue]);
+
   const handleSignOut = async () => {
     await signOut();
   };
@@ -439,240 +460,113 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div>
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-muted-foreground">Welcome back, {profile?.name}</p>
+      {/* Header - Matching Wireframe */}
+      <header className="border-b bg-card sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h1 className="text-2xl font-bold">{profile?.name} Time to cook Business ^_^</h1>
+            </div>
+            <div className="flex items-center gap-4">
+              <UnifiedFilter
+                onRefresh={() => setRefreshTrigger(prev => prev + 1)}
+              />
+              
+              <Button variant="ghost" size="sm" onClick={handleSignOut} className="text-muted-foreground">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-3">
-            {(activeTab === 'projects' || activeTab === 'dashboard') && (
-              <Button onClick={handleCreateProject}>
-                <Plus className="mr-2 h-4 w-4" />
-                New Project
-              </Button>
-            )}
-            {activeTab === 'dashboard' && (
-              <Button variant="outline" onClick={() => setRefreshTrigger(prev => prev + 1)}>
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Refresh
-              </Button>
-            )}
-            <Button variant="outline" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
+          
+          {/* Summary Metrics Row - Matching Wireframe */}
+          <div className="grid grid-cols-3 gap-6">
+            <Card className="p-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-blue-600">
+                  {Math.floor(dashboardData.totalHours)}:{String(Math.round((dashboardData.totalHours % 1) * 60)).padStart(2, '0')}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Total Hours ({filterValue.type === 'today' ? 'Today' : 
+                               filterValue.type === 'week' ? 'This Week' : 
+                               filterValue.type === 'month' ? 'This Month' : 
+                               filterValue.type === 'quarter' ? 'This Quarter' : 
+                               filterValue.type === 'year' ? 'This Year' : 
+                               'Custom Range'})
+                </div>
+                <div className="flex justify-center gap-4 mt-2 text-xs">
+                  <span className="text-green-600 font-bold">
+                    Billable: {Math.floor(dashboardData.billableHours)}:{String(Math.round((dashboardData.billableHours % 1) * 60)).padStart(2, '0')}
+                  </span>
+                  <span className="text-red-600 font-bold">
+                    Non Billable: {Math.floor(dashboardData.nonBillableHours)}:{String(Math.round((dashboardData.nonBillableHours % 1) * 60)).padStart(2, '0')}
+                  </span>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="p-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-green-600">
+                  Projects
+                </div>
+                <div className="text-xl font-bold text-muted-foreground">
+                  {dashboardData.projectsInProgress}/{dashboardData.totalProjects}
+                </div>
+                <div className="flex flex-wrap justify-center gap-1 mt-2 text-xs">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">Open: {dashboardData.projectStatusBreakdown.open}</span>
+                  <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded">IP: {dashboardData.projectStatusBreakdown.inProgress}</span>
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Comp: {dashboardData.projectStatusBreakdown.completed}</span>
+                  <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">On Hold: {dashboardData.projectStatusBreakdown.onHold}</span>
+                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">CA: {dashboardData.projectStatusBreakdown.clientApproval}</span>
+                </div>
+              </div>
+            </Card>
+            
+            <Card className="p-2">
+              <div className="text-center">
+                <div className="text-3xl font-bold text-purple-600">
+                  Tasks
+                </div>
+                <div className="text-xl font-bold text-muted-foreground">
+                  {dashboardData.completedTasks}/{dashboardData.totalTasks}
+                </div>
+                <div className="flex flex-wrap justify-center gap-1 mt-2 text-xs">
+                  <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">To Do: {dashboardData.taskStatusBreakdown.todo}</span>
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded">In pro.: {dashboardData.taskStatusBreakdown.inProgress}</span>
+                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded">Comp. : {dashboardData.taskStatusBreakdown.completed}</span>
+                  <span className="bg-red-100 text-red-800 px-2 py-1 rounded">Block : {dashboardData.taskStatusBreakdown.blocked}</span>
+                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Review: {dashboardData.taskStatusBreakdown.review}</span>
+                </div>
+              </div>
+            </Card>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="dashboard" className="flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Dashboard
-            </TabsTrigger>
-            <TabsTrigger value="projects" className="flex items-center gap-2">
-              <FolderOpen className="h-4 w-4" />
-              Projects
-            </TabsTrigger>
-            <TabsTrigger value="tasks" className="flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Tasks
-            </TabsTrigger>
-            <TabsTrigger value="worklogs" className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              Work Logs
-            </TabsTrigger>
-            <TabsTrigger value="analytics" className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
-              Analytics
-            </TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="projects">Project</TabsTrigger>
+            <TabsTrigger value="tasks">Task</TabsTrigger>
+            <TabsTrigger value="worklogs">Work Log</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics</TabsTrigger>
           </TabsList>
 
-          {/* Dashboard Tab */}
-          <TabsContent value="dashboard" className="space-y-6">
-            {/* Key Metrics Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
-                  <FolderOpen className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{isLoading ? '...' : dashboardData.totalProjects}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {dashboardData.projectsInProgress} in progress
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Tasks</CardTitle>
-                  <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{isLoading ? '...' : dashboardData.totalTasks}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {dashboardData.completedTasks} completed
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Users</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{isLoading ? '...' : dashboardData.activeUsers}</div>
-                  <p className="text-xs text-muted-foreground">
-                    of {dashboardData.totalUsers} total users
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{isLoading ? '...' : dashboardData.totalHours}h</div>
-                  <p className="text-xs text-muted-foreground">
-                    Last 30 days
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Billable Hours</CardTitle>
-                  <DollarSign className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{isLoading ? '...' : dashboardData.billableHours}h</div>
-                  <p className="text-xs text-muted-foreground">
-                    {dashboardData.totalHours > 0 ? Math.round((dashboardData.billableHours / dashboardData.totalHours) * 100) : 0}% of total
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Non-Billable Hours</CardTitle>
-                  <Clock className="h-4 w-4 text-orange-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-orange-600">{isLoading ? '...' : dashboardData.nonBillableHours}h</div>
-                  <p className="text-xs text-muted-foreground">
-                    {dashboardData.totalHours > 0 ? Math.round((dashboardData.nonBillableHours / dashboardData.totalHours) * 100) : 0}% of total
-                  </p>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Progress and Status Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Completion Rate */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    Overall Completion Rate
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Progress</span>
-                      <span>{dashboardData.completionRate}%</span>
-                    </div>
-                    <Progress value={dashboardData.completionRate} className="w-full" />
-                    <p className="text-xs text-muted-foreground">
-                      {dashboardData.completedTasks} of {dashboardData.totalTasks} tasks completed
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Task Status Breakdown */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    Task Status Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">To Do</span>
-                      <Badge variant="secondary">{dashboardData.taskStatusBreakdown.todo}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">In Progress</span>
-                      <Badge variant="default">{dashboardData.taskStatusBreakdown.inProgress}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Review</span>
-                      <Badge variant="outline" className="bg-blue-50 text-blue-700">{dashboardData.taskStatusBreakdown.review}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Completed</span>
-                      <Badge variant="outline" className="bg-green-50 text-green-700">{dashboardData.taskStatusBreakdown.completed}</Badge>
-                    </div>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm">Blocked</span>
-                      <Badge variant="destructive">{dashboardData.taskStatusBreakdown.blocked}</Badge>
-                    </div>
-                    {dashboardData.taskStatusBreakdown.overdue > 0 && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm">Overdue</span>
-                        <Badge variant="destructive">{dashboardData.taskStatusBreakdown.overdue}</Badge>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
 
           <TabsContent value="projects" className="space-y-6">
-            {/* Quick Stats Cards */}
-            <div className="mb-8">
-             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <FolderOpen className="h-5 w-5" />
-                  Project Status Distribution
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{dashboardData.projectStatusBreakdown.open}</div>
-                    <div className="text-sm text-muted-foreground">Open</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{dashboardData.projectStatusBreakdown.inProgress}</div>
-                    <div className="text-sm text-muted-foreground">In Progress</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{dashboardData.projectStatusBreakdown.completed}</div>
-                    <div className="text-sm text-muted-foreground">Completed</div>
-                  </div>
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-gray-600">{dashboardData.projectStatusBreakdown.onHold}</div>
-                    <div className="text-sm text-muted-foreground">On Hold</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Project Management Header */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div>
+                <h2 className="text-2xl font-bold">Project Management</h2>
+                <p className="text-muted-foreground">Manage and track all projects</p>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={handleCreateProject}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              </div>
             </div>
 
             {/* Content Management */}
@@ -766,62 +660,13 @@ const AdminDashboard: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="tasks" className="space-y-6">
-            {/* Task Tab Header with Quick Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-              <Card className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <Target className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{dashboardData.totalTasks}</div>
-                    <div className="text-sm text-muted-foreground">Total Tasks</div>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <CheckCircle className="h-5 w-5 text-green-600" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{dashboardData.completedTasks}</div>
-                    <div className="text-sm text-muted-foreground">Completed</div>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
-                    <Clock className="h-5 w-5 text-orange-600" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{dashboardData.taskStatusBreakdown.inProgress}</div>
-                    <div className="text-sm text-muted-foreground">In Progress</div>
-                  </div>
-                </div>
-              </Card>
-              
-              <Card className="p-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <AlertCircle className="h-5 w-5 text-red-600" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{dashboardData.taskStatusBreakdown.blocked}</div>
-                    <div className="text-sm text-muted-foreground">Blocked</div>
-                  </div>
-                </div>
-              </Card>
-            </div>
+            
 
             {/* Task Management Header */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <h2 className="text-2xl font-bold">Task Management</h2>
-                <p className="text-muted-foreground">Manage and track all tasks across projects</p>
+                {/* <p className="text-muted-foreground">Manage and track all tasks across projects</p> */}
               </div>
               <div className="flex gap-2">
                 <Button 

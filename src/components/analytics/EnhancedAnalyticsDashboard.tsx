@@ -35,6 +35,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useFilter } from '@/contexts/FilterContext';
 import { format } from 'date-fns';
 import { UserPerformanceModal } from './UserPerformanceModal';
 
@@ -127,6 +128,7 @@ interface ChartFilters {
 }
 
 export const EnhancedAnalyticsDashboard: React.FC = () => {
+  const { filterValue, getDateRange } = useFilter();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>({
     totalProjects: 0,
     totalUsers: 0,
@@ -142,7 +144,6 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
     timeDistribution: { billable: 0, nonBillable: 0, byProject: [] },
     productivityTrends: []
   });
-  const [timeRange, setTimeRange] = useState('week');
   const [loading, setLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [chartFilters, setChartFilters] = useState<ChartFilters>({
@@ -162,6 +163,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
   const [availableUsers, setAvailableUsers] = useState<Array<{id: string, name: string}>>([]);
   const [selectedUser, setSelectedUser] = useState<UserPerformance | null>(null);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('users');
   const { toast } = useToast();
 
   // Pie Chart Component
@@ -354,58 +356,19 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
     try {
       setLoading(true);
       
-      // Get date range based on selection
-      const now = new Date();
-      let startDate = new Date();
-      let endDate = new Date();
+      // Get date range from unified filter
+      const dateRange = getDateRange();
+      let startDate: Date;
+      let endDate: Date;
       
-      switch (timeRange) {
-        case 'day':
-          // Today only - from start of today to end of today
-          startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
-          break;
-        case 'week':
-          // This week - from start of current week to end of current week
-          const startOfWeek = new Date(now);
-          startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-          startOfWeek.setHours(0, 0, 0, 0);
-          
-          const endOfWeek = new Date(startOfWeek);
-          endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
-          endOfWeek.setHours(23, 59, 59, 999);
-          
-          startDate = startOfWeek;
-          endDate = endOfWeek;
-          break;
-        case 'month':
-          // This month - from start of current month to end of current month
-          startDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-          break;
-        case 'quarter':
-          // This quarter - from start of current quarter to end of current quarter
-          const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
-          startDate = new Date(now.getFullYear(), quarterStartMonth, 1, 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), quarterStartMonth + 3, 0, 23, 59, 59, 999);
-          break;
-        case 'year':
-          // This year - from start of current year to end of current year
-          startDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
-          endDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
-          break;
-        default:
-          // Default to this week
-          const defaultStartOfWeek = new Date(now);
-          defaultStartOfWeek.setDate(now.getDate() - now.getDay());
-          defaultStartOfWeek.setHours(0, 0, 0, 0);
-          
-          const defaultEndOfWeek = new Date(defaultStartOfWeek);
-          defaultEndOfWeek.setDate(defaultStartOfWeek.getDate() + 6);
-          defaultEndOfWeek.setHours(23, 59, 59, 999);
-          
-          startDate = defaultStartOfWeek;
-          endDate = defaultEndOfWeek;
+      if (dateRange) {
+        startDate = dateRange.startDate;
+        endDate = dateRange.endDate;
+      } else {
+        // Fallback to today if no date range
+        const now = new Date();
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
+        endDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
       }
 
       // Fetch all data in parallel
@@ -621,8 +584,9 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
 
       // Generate productivity trends (mock data for now)
       const productivityTrends: ProductivityTrend[] = [];
+      const currentDate = new Date();
       for (let i = 6; i >= 0; i--) {
-        const date = new Date(now);
+        const date = new Date(currentDate);
         date.setDate(date.getDate() - i);
         productivityTrends.push({
           date: format(date, 'MMM dd'),
@@ -662,16 +626,21 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchAnalyticsData();
-  }, [timeRange]);
+  }, [filterValue]);
 
   const getTimeRangeLabel = () => {
-    switch (timeRange) {
-      case 'day': return 'Today';
+    switch (filterValue.type) {
+      case 'today': return 'Today';
       case 'week': return 'This Week';
       case 'month': return 'This Month';
       case 'quarter': return 'This Quarter';
       case 'year': return 'This Year';
-      default: return 'This Week';
+      case 'custom': 
+        if (filterValue.startDate && filterValue.endDate) {
+          return `${format(filterValue.startDate, 'MMM dd')} - ${format(filterValue.endDate, 'MMM dd, yyyy')}`;
+        }
+        return 'Custom Range';
+      default: return 'Today';
     }
   };
 
@@ -701,641 +670,323 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h2 className="text-3xl font-bold tracking-tight">Analytics Dashboard</h2>
-          <p className="text-muted-foreground">
-            Performance insights and productivity metrics for {getTimeRangeLabel().toLowerCase()}
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="day">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-              <SelectItem value="quarter">This Quarter</SelectItem>
-              <SelectItem value="year">This Year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button onClick={fetchAnalyticsData} variant="outline" size="sm">
-            <Activity className="mr-2 h-4 w-4" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Key Metrics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Hours</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.totalHours}h</div>
-            <p className="text-xs text-muted-foreground">
-              {analyticsData.activeUsers} active users
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Billable Hours</CardTitle>
-            <DollarSign className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{analyticsData.billableHours}h</div>
-            <p className="text-xs text-muted-foreground">
-              {analyticsData.totalHours > 0 ? Math.round((analyticsData.billableHours / analyticsData.totalHours) * 100) : 0}% of total
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Hours/User</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.averageHoursPerUser}h</div>
-            <p className="text-xs text-muted-foreground">
-              Per user average
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Completion Rate</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{analyticsData.completionRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              Task completion
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
+    <div className="space-y-4">
       {/* Main Analytics Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">User Performance</TabsTrigger>
-          <TabsTrigger value="projects">Project Analytics</TabsTrigger>
-        </TabsList>
-
-        {/* Overview Tab - High-level insights and key metrics */}
-        <TabsContent value="overview" className="space-y-6">
-          {/* Key Performance Indicators */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <FolderOpen className="h-5 w-5 text-blue-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{analyticsData.totalProjects}</div>
-                  <div className="text-sm text-muted-foreground">Total Projects</div>
-                  <div className="text-xs text-blue-600">
-                    Active projects
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <DollarSign className="h-5 w-5 text-green-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{analyticsData.billableHours.toFixed(1)}h</div>
-                  <div className="text-sm text-muted-foreground">Billable Hours</div>
-                  <div className="text-xs text-green-600">
-                    {analyticsData.totalHours > 0 ? Math.round((analyticsData.billableHours / analyticsData.totalHours) * 100) : 0}% of total
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <Users className="h-5 w-5 text-purple-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{analyticsData.activeUsers}</div>
-                  <div className="text-sm text-muted-foreground">Active Users</div>
-                  <div className="text-xs text-purple-600">
-                    {analyticsData.averageHoursPerUser.toFixed(1)}h avg per user
-                  </div>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-orange-100 rounded-lg">
-                  <Target className="h-5 w-5 text-orange-600" />
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{analyticsData.completionRate.toFixed(0)}%</div>
-                  <div className="text-sm text-muted-foreground">Completion Rate</div>
-                  <div className="text-xs text-orange-600">
-                    Task completion
-                  </div>
-                </div>
-              </div>
-            </Card>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+        <div className="flex gap-6">
+          {/* Common Side Navigation - Wireframe Style */}
+          <div className="flex flex-col gap-2 w-48">
+            <Button 
+              variant={activeTab === 'users' ? 'default' : 'outline'}
+              className={`justify-start ${activeTab === 'users' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+              onClick={() => setActiveTab('users')}
+            >
+              User Performance
+            </Button>
+            <Button 
+              variant={activeTab === 'projects' ? 'default' : 'outline'}
+              className={`justify-start ${activeTab === 'projects' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
+              onClick={() => setActiveTab('projects')}
+            >
+              Project Performance
+            </Button>
           </div>
-
-          {/* Time Distribution Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
-                Time Distribution Overview
-              </CardTitle>
-              <CardDescription>High-level breakdown of billable vs non-billable hours</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Pie Chart */}
-                <div className="flex justify-center">
-                  <PieChartComponent 
-                    data={[
-                      { 
-                        label: 'Billable', 
-                        value: analyticsData.billableHours, 
-                        color: '#10b981' 
-                      },
-                      { 
-                        label: 'Non-billable', 
-                        value: analyticsData.nonBillableHours, 
-                        color: '#f59e0b' 
-                      }
-                    ]} 
-                    size={200}
-                  />
-                </div>
-                
-                {/* Legend and Details */}
-                <div className="space-y-4">
-                  <div className="text-sm font-medium text-muted-foreground mb-3">
-                    Billable vs Non-billable Breakdown
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full bg-green-500"></div>
-                        <span className="font-medium">Billable Hours</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">{analyticsData.billableHours.toFixed(1)}h</div>
-                        <div className="text-sm text-muted-foreground">
-                          {analyticsData.totalHours > 0 ? Math.round((analyticsData.billableHours / analyticsData.totalHours) * 100) : 0}%
-                        </div>
-                      </div>
-                    </div>
-                    <Progress 
-                      value={analyticsData.totalHours > 0 ? (analyticsData.billableHours / analyticsData.totalHours) * 100 : 0} 
-                      className="h-2"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-4 h-4 rounded-full bg-orange-500"></div>
-                        <span className="font-medium">Non-billable Hours</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">{analyticsData.nonBillableHours.toFixed(1)}h</div>
-                        <div className="text-sm text-muted-foreground">
-                          {analyticsData.totalHours > 0 ? Math.round((analyticsData.nonBillableHours / analyticsData.totalHours) * 100) : 0}%
-                        </div>
-                      </div>
-                    </div>
-                    <Progress 
-                      value={analyticsData.totalHours > 0 ? (analyticsData.nonBillableHours / analyticsData.totalHours) * 100 : 0} 
-                      className="h-2"
-                    />
-                  </div>
+          
+          {/* Main Content Area */}
+          <div className="flex-1 space-y-4">
+            {/* User Performance Tab - Wireframe Layout */}
+            <TabsContent value="users" className="space-y-4">
+              {/* User Performance Section - Wireframe Style */}
+              <div className="space-y-4">
+              {/* Section Title */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold">User Performance</h3>
+                <div className="text-sm text-muted-foreground">
+                  Star Employee - {analyticsData.topPerformers[0]?.name || 'No data available'}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-
-          {/* Top Projects Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Top Projects Summary
-              </CardTitle>
-              <CardDescription>Top 6 performing projects with key metrics</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {analyticsData.projectMetrics.slice(0, 6).map((project) => (
-                  <div key={project.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{project.name}</h4>
-                        <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'} className="text-xs mt-1">
-                          {project.status}
-                        </Badge>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Total Hours</span>
-                        <span className="font-medium">{project.totalHours.toFixed(1)}h</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Users</span>
-                        <span className="font-medium">{project.userCount}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Completion</span>
-                        <span className="font-medium">{project.completionRate.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={project.completionRate} className="h-2 mt-2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* User Performance Tab - Grid layout */}
-        <TabsContent value="users" className="space-y-6">
-          {/* User Performance Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                User Performance Overview
-              </CardTitle>
-              <CardDescription>All users with billable and non-billable hours breakdown</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {analyticsData.allUsers.map((user, index) => (
+            
+               {/* User Performance Cards Grid - Responsive Layout */}
+               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                 {analyticsData.allUsers.map((user, index) => (
                   <div 
                     key={user.id} 
-                    className="p-4 border rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleUserClick(user)}
                   >
-                    {/* User Header */}
+                    {/* User Header - Wireframe Style */}
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="flex items-center justify-center w-10 h-10 bg-primary/10 rounded-full">
-                        <span className="text-sm font-semibold text-primary">
+                      <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+                        <span className="text-sm font-semibold text-green-600">
                           {user.name.split(' ').map(n => n[0]).join('').toUpperCase()}
                         </span>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="font-semibold truncate">{user.name}</div>
-                        <div className="text-sm text-muted-foreground truncate">{user.email}</div>
-                      </div>
-                    </div>
-                    
-                    {/* Total Hours */}
-                    <div className="text-center mb-3">
-                      <div className="text-2xl font-bold text-primary">{user.totalHours.toFixed(1)}h</div>
-                      <div className="text-sm text-muted-foreground">Total Hours</div>
-                    </div>
-                    
-                    {/* Bar Chart for Hours */}
-                    <div className="relative h-4 bg-muted rounded-full overflow-hidden mb-3">
-                      {/* Billable Hours Bar */}
-                      <div 
-                        className="absolute left-0 top-0 h-full bg-green-500 rounded-l-full"
-                        style={{ 
-                          width: `${user.totalHours > 0 ? (user.billableHours / user.totalHours) * 100 : 0}%` 
-                        }}
-                      ></div>
-                      {/* Non-billable Hours Bar */}
-                      <div 
-                        className="absolute top-0 h-full bg-orange-500 rounded-r-full"
-                        style={{ 
-                          left: `${user.totalHours > 0 ? (user.billableHours / user.totalHours) * 100 : 0}%`,
-                          width: `${user.totalHours > 0 ? (user.nonBillableHours / user.totalHours) * 100 : 0}%` 
-                        }}
-                      ></div>
-                    </div>
-                    
-                    {/* Hour Breakdown */}
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="text-center p-2 bg-green-50 rounded">
-                        <div className="font-semibold text-green-600">{user.billableHours.toFixed(1)}h</div>
-                        <div className="text-xs text-muted-foreground">Billable</div>
-                      </div>
-                      <div className="text-center p-2 bg-orange-50 rounded">
-                        <div className="font-semibold text-orange-600">{user.nonBillableHours.toFixed(1)}h</div>
-                        <div className="text-xs text-muted-foreground">Non-billable</div>
-                      </div>
-                    </div>
-                    
-                    {/* Additional Stats */}
-                    <div className="mt-3 pt-3 border-t">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Projects: {user.projectCount}</span>
-                        <span>Efficiency: {user.efficiency.toFixed(0)}%</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Project Analytics Tab - Comprehensive project insights */}
-        <TabsContent value="projects" className="space-y-6">
-          {/* Project Performance Overview */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FolderOpen className="h-5 w-5" />
-                Project Performance Overview
-              </CardTitle>
-              <CardDescription>All projects with detailed metrics and billable/non-billable hours breakdown</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {analyticsData.projectMetrics.map((project) => (
-                  <div key={project.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold truncate">{project.name}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'} className="text-xs">
-                            {project.status}
-                          </Badge>
-                          {project.totalHours === 0 && (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              No work logs
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Total Hours</span>
-                        <span className="font-medium">
-                          {project.totalHours > 0 ? `${project.totalHours.toFixed(1)}h` : '0h'}
-                        </span>
-                      </div>
-                      {project.totalHours > 0 ? (
-                        <>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-green-600">Billable</span>
-                            <span className="font-medium text-green-600">{project.billableHours.toFixed(1)}h</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-orange-600">Non-billable</span>
-                            <span className="font-medium text-orange-600">{(project.totalHours - project.billableHours).toFixed(1)}h</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-sm text-muted-foreground text-center py-2">
-                          No time tracking data available
-                        </div>
-                      )}
-                      <div className="flex justify-between text-sm">
-                        <span>Users</span>
-                        <span className="font-medium">{project.userCount}</span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span>Completion</span>
-                        <span className="font-medium">{project.completionRate.toFixed(0)}%</span>
-                      </div>
-                      <Progress value={project.completionRate} className="h-2 mt-2" />
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {analyticsData.projectMetrics.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground">
-                  No projects found in the selected time range.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Project Time Distribution Chart */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
-                Project Time Distribution
-              </CardTitle>
-              <CardDescription>Visual breakdown of hours by project</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Pie Chart */}
-                <div className="flex justify-center">
-                  <PieChartComponent 
-                    data={analyticsData.projectMetrics.slice(0, 8).map((project, index) => ({
-                      label: project.name,
-                      value: project.totalHours,
-                      color: ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5a2b', '#6366f1'][index % 8]
-                    }))} 
-                    size={200}
-                  />
-                </div>
-                
-                {/* Legend and Details */}
-                <div className="space-y-4">
-                  <div className="text-sm font-medium text-muted-foreground mb-3">
-                    Top Projects by Hours
-                  </div>
-                  
-                  {analyticsData.projectMetrics.slice(0, 8).map((project, index) => {
-                    const total = analyticsData.projectMetrics.reduce((sum, p) => sum + p.totalHours, 0);
-                    const percentage = total > 0 ? (project.totalHours / total) * 100 : 0;
-                    const color = ['#3b82f6', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ef4444', '#8b5a2b', '#6366f1'][index % 8];
-                    
-                    return (
-                      <div key={project.id} className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div 
-                              className="w-4 h-4 rounded-full"
-                              style={{ backgroundColor: color }}
-                            ></div>
-                            <span className="font-medium">{project.name}</span>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-bold">{project.totalHours.toFixed(1)}h</div>
-                            <div className="text-sm text-muted-foreground">
-                              {percentage.toFixed(0)}%
-                            </div>
-                          </div>
-                        </div>
-                        <Progress value={percentage} className="h-2" />
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Detailed Project Contributors */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                Project Contributors Details
-              </CardTitle>
-              <CardDescription>Detailed breakdown of contributors for each project</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {analyticsData.projectMetrics.slice(0, 5).map((project) => (
-                  <div key={project.id} className="p-4 border rounded-lg">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex-1">
-                        <div className="font-semibold text-lg">{project.name}</div>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'}>
-                            {project.status}
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {project.userCount} users
-                          </Badge>
-                          <Badge variant="outline" className="text-xs">
-                            {project.contributors.length} contributors
-                          </Badge>
-                          {project.totalHours === 0 && (
-                            <Badge variant="outline" className="text-xs text-muted-foreground">
-                              No work logs
-                            </Badge>
-                          )}
-                        </div>
+                        <div className="font-semibold text-sm">{user.name}</div>
+                        <div className="text-xs text-muted-foreground">Designation</div>
                       </div>
                       <div className="text-right">
-                        <div className="text-lg font-bold">{project.totalHours.toFixed(1)}h</div>
-                        <div className="text-sm text-muted-foreground">
-                          {project.billableHours.toFixed(1)}h billable
+                        <div className="text-sm font-bold text-blue-600">
+                          {Math.floor(user.totalHours)}:{String(Math.round((user.totalHours % 1) * 60)).padStart(2, '0')}
                         </div>
+                        <div className="text-xs text-muted-foreground">Total Hours</div>
                       </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span>Completion Rate</span>
-                          <span>{project.completionRate.toFixed(0)}%</span>
+                    {/* Hour Breakdown - Wireframe Style */}
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className="p-2 bg-green-100 rounded text-center">
+                        <div className="text-sm font-semibold text-green-600">
+                          {Math.floor(user.billableHours)}:{String(Math.round((user.billableHours % 1) * 60)).padStart(2, '0')}
                         </div>
-                        <Progress value={project.completionRate} className="h-2" />
+                        <div className="text-xs text-muted-foreground">Billable Hours</div>
                       </div>
-                      
-                      {/* Contributors Section */}
-                      <div className="border-t pt-3">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => toggleProjectExpansion(project.id)}
-                          className="flex items-center gap-2 text-sm"
-                        >
-                          <Eye className="h-4 w-4" />
-                          {expandedProjects.has(project.id) ? 'Hide' : 'Show'} Contributors
-                          {expandedProjects.has(project.id) ? (
-                            <ChevronUp className="h-4 w-4" />
-                          ) : (
-                            <ChevronDown className="h-4 w-4" />
-                          )}
-                        </Button>
-                        
-                        {expandedProjects.has(project.id) && (
-                          <div className="mt-3 space-y-3">
-                            <div className="text-sm font-medium text-muted-foreground">Project Contributors:</div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {project.contributors.map((contributor) => (
-                                <div key={contributor.userId} className="p-3 bg-muted/50 rounded-lg">
-                                  <div className="flex items-center gap-3">
-                                    <Avatar className="h-8 w-8">
-                                      <AvatarFallback className="text-xs">
-                                        {contributor.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                      </AvatarFallback>
-                                    </Avatar>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm truncate">{contributor.userName}</div>
-                                      <div className="text-xs text-muted-foreground truncate">{contributor.userEmail}</div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                                    <div>
-                                      <div className="text-muted-foreground">Hours</div>
-                                      <div className="font-semibold">{contributor.hours.toFixed(1)}h</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-muted-foreground">Billable</div>
-                                      <div className="font-semibold">{contributor.billableHours.toFixed(1)}h</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-muted-foreground">Tasks</div>
-                                      <div className="font-semibold">{contributor.taskCount}</div>
-                                    </div>
-                                    <div>
-                                      <div className="text-muted-foreground">Efficiency</div>
-                                      <div className="font-semibold">{contributor.efficiency.toFixed(0)}%</div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="mt-2">
-                                    <div className="flex items-center justify-between text-xs mb-1">
-                                      <span>Task Completion</span>
-                                      <span>{contributor.completedTasks}/{contributor.taskCount}</span>
-                                    </div>
-                                    <Progress 
-                                      value={contributor.taskCount > 0 ? (contributor.completedTasks / contributor.taskCount) * 100 : 0} 
-                                      className="h-1"
-                                    />
-                                  </div>
-                                </div>
-                              ))}
+                      <div className="p-2 bg-red-100 rounded text-center">
+                        <div className="text-sm font-semibold text-red-600">
+                          {Math.floor(user.nonBillableHours)}:{String(Math.round((user.nonBillableHours % 1) * 60)).padStart(2, '0')}
+                        </div>
+                        <div className="text-xs text-muted-foreground">Non-Billable Hours</div>
+                      </div>
+                    </div>
+                    
+                    {/* Projects Contributed */}
+                    <div className="text-center">
+                      <div className="text-sm text-muted-foreground">
+                        Projects Contributed - {user.projectCount}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+               </div>
+             </div>
+             </TabsContent>
+ 
+             {/* Project Performance Tab - Wireframe Layout */}
+             <TabsContent value="projects" className="space-y-4">
+               {/* Project Performance Section - Wireframe Style */}
+               <div className="space-y-4">
+                 {/* Section Title */}
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold">Project Performance</h3>
+                <div className="text-sm text-muted-foreground">
+                  Project Analytics Overview
+                </div>
+              </div>
+              
+              {/* Project Performance Overview */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <FolderOpen className="h-5 w-5" />
+                    Project Performance Overview
+                  </CardTitle>
+                  <CardDescription>All projects with detailed metrics and billable/non-billable hours breakdown</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {analyticsData.projectMetrics.map((project) => (
+                      <div key={project.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold truncate">{project.name}</h4>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'} className="text-xs">
+                                {project.status}
+                              </Badge>
+                              {project.totalHours === 0 && (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  No work logs
+                                </Badge>
+                              )}
                             </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span>Total Hours</span>
+                            <span className="font-medium">
+                              {project.totalHours > 0 ? `${project.totalHours.toFixed(1)}h` : '0h'}
+                            </span>
+                          </div>
+                          {project.totalHours > 0 ? (
+                            <>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-green-600">Billable</span>
+                                <span className="font-medium text-green-600">{project.billableHours.toFixed(1)}h</span>
+                              </div>
+                              <div className="flex justify-between text-sm">
+                                <span className="text-orange-600">Non-billable</span>
+                                <span className="font-medium text-orange-600">{(project.totalHours - project.billableHours).toFixed(1)}h</span>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-muted-foreground text-center py-2">
+                              No time tracking data available
+                            </div>
+                          )}
+                          <div className="flex justify-between text-sm">
+                            <span>Users</span>
+                            <span className="font-medium">{project.userCount}</span>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span>Completion</span>
+                            <span className="font-medium">{project.completionRate.toFixed(0)}%</span>
+                          </div>
+                          <Progress value={project.completionRate} className="h-2 mt-2" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {analyticsData.projectMetrics.length === 0 && (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No projects found in the selected time range.
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Detailed Project Contributors */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Project Contributors Details
+                  </CardTitle>
+                  <CardDescription>Detailed breakdown of contributors for each project</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {analyticsData.projectMetrics.slice(0, 5).map((project) => (
+                      <div key={project.id} className="p-4 border rounded-lg">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex-1">
+                            <div className="font-semibold text-lg">{project.name}</div>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'}>
+                                {project.status}
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {project.userCount} users
+                              </Badge>
+                              <Badge variant="outline" className="text-xs">
+                                {project.contributors.length} contributors
+                              </Badge>
+                              {project.totalHours === 0 && (
+                                <Badge variant="outline" className="text-xs text-muted-foreground">
+                                  No work logs
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold">{project.totalHours.toFixed(1)}h</div>
+                            <div className="text-sm text-muted-foreground">
+                              {project.billableHours.toFixed(1)}h billable
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between text-sm">
+                              <span>Completion Rate</span>
+                              <span>{project.completionRate.toFixed(0)}%</span>
+                            </div>
+                            <Progress value={project.completionRate} className="h-2" />
+                          </div>
+                          
+                          {/* Contributors Section */}
+                          <div className="border-t pt-3">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => toggleProjectExpansion(project.id)}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Eye className="h-4 w-4" />
+                              {expandedProjects.has(project.id) ? 'Hide' : 'Show'} Contributors
+                              {expandedProjects.has(project.id) ? (
+                                <ChevronUp className="h-4 w-4" />
+                              ) : (
+                                <ChevronDown className="h-4 w-4" />
+                              )}
+                            </Button>
                             
-                            {project.contributors.length === 0 && (
-                              <div className="text-center py-4 text-muted-foreground text-sm">
-                                {project.totalHours === 0 
-                                  ? 'No work logs or contributors found for this project' 
-                                  : 'No contributors found for this project'
-                                }
+                            {expandedProjects.has(project.id) && (
+                              <div className="mt-3 space-y-3">
+                                <div className="text-sm font-medium text-muted-foreground">Project Contributors:</div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                  {project.contributors.map((contributor) => (
+                                    <div key={contributor.userId} className="p-3 bg-muted/50 rounded-lg">
+                                      <div className="flex items-center gap-3">
+                                        <Avatar className="h-8 w-8">
+                                          <AvatarFallback className="text-xs">
+                                            {contributor.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                                          </AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 min-w-0">
+                                          <div className="font-medium text-sm truncate">{contributor.userName}</div>
+                                          <div className="text-xs text-muted-foreground truncate">{contributor.userEmail}</div>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                        <div>
+                                          <div className="text-muted-foreground">Hours</div>
+                                          <div className="font-semibold">{contributor.hours.toFixed(1)}h</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Billable</div>
+                                          <div className="font-semibold">{contributor.billableHours.toFixed(1)}h</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Tasks</div>
+                                          <div className="font-semibold">{contributor.taskCount}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Efficiency</div>
+                                          <div className="font-semibold">{contributor.efficiency.toFixed(0)}%</div>
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="mt-2">
+                                        <div className="flex items-center justify-between text-xs mb-1">
+                                          <span>Task Completion</span>
+                                          <span>{contributor.completedTasks}/{contributor.taskCount}</span>
+                                        </div>
+                                        <Progress 
+                                          value={contributor.taskCount > 0 ? (contributor.completedTasks / contributor.taskCount) * 100 : 0} 
+                                          className="h-1"
+                                        />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                                
+                                {project.contributors.length === 0 && (
+                                  <div className="text-center py-4 text-muted-foreground text-sm">
+                                    {project.totalHours === 0 
+                                      ? 'No work logs or contributors found for this project' 
+                                      : 'No contributors found for this project'
+                                    }
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
-                        )}
+                        </div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+                </CardContent>
+              </Card>
+               </div>
+             </TabsContent>
+           </div>
+         </div>
+       </Tabs>
 
       {/* User Performance Modal */}
       {selectedUser && (
