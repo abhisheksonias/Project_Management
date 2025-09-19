@@ -699,8 +699,8 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
               {/* Section Title */}
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold">User Performance</h3>
-                <div className="text-sm text-muted-foreground">
-                  Star Employee - {analyticsData.topPerformers[0]?.name || 'No data available'}
+                <div className="text-sm font-bold bg-green-100 rounded-md p-2 text-muted-foreground">
+                  Star Performer - {analyticsData.topPerformers[0]?.name || 'No data available'} Bhai
                 </div>
               </div>
               
@@ -763,84 +763,145 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
               {/* Section Title */}
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold">Project Performance</h3>
-                <div className="text-sm text-muted-foreground">
-                  Project Analytics Overview
+                <div className="text-sm font-bold bg-green-100 rounded-md p-2 text-muted-foreground">
+                  Star Project - {analyticsData.projectMetrics[0]?.name || 'No project available'}
                 </div>
               </div>
               
-              {/* Project Performance Overview */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <FolderOpen className="h-5 w-5" />
-                    Project Performance Overview
-                  </CardTitle>
-                  <CardDescription>All projects with detailed metrics and billable/non-billable hours breakdown</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {analyticsData.projectMetrics.map((project) => (
-                      <div key={project.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold truncate">{project.name}</h4>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'} className="text-xs">
-                                {project.status}
-                              </Badge>
-                              {project.totalHours === 0 && (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
-                                  No work logs
-                                </Badge>
-                              )}
+              {/* Project Performance Cards - User Performance Style */}
+              <div className="space-y-6">
+                {/* In Progress Projects */}
+                {analyticsData.projectMetrics.filter(project => project.status !== 'Completed').length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 text-gray-700">In Progress Projects</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {analyticsData.projectMetrics
+                        .filter(project => project.status !== 'Completed')
+                        .map((project) => (
+                        <div 
+                          key={project.id} 
+                          className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                          {/* Project Header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-full">
+                              <span className="text-sm font-semibold text-blue-600">
+                                {project.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-sm">{project.name}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="inline-block bg-black text-white text-xs px-2 py-1 rounded">
+                                  {project.status === 'Completed' ? 'Completed' : 'In progress'}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-blue-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.totalHours)}:${String(Math.round((project.totalHours % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Total Hours</div>
+                            </div>
+                          </div>
+                          
+                          {/* Hour Breakdown */}
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="p-2 bg-green-100 rounded text-center">
+                              <div className="text-sm font-semibold text-green-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.billableHours)}:${String(Math.round((project.billableHours % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Billable Hours</div>
+                            </div>
+                            <div className="p-2 bg-red-100 rounded text-center">
+                              <div className="text-sm font-semibold text-red-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.totalHours - project.billableHours)}:${String(Math.round(((project.totalHours - project.billableHours) % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Non-Billable Hours</div>
+                            </div>
+                          </div>
+                          
+                          {/* Contributors */}
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground">
+                              Contributors - {project.userCount}
                             </div>
                           </div>
                         </div>
-                        
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span>Total Hours</span>
-                            <span className="font-medium">
-                              {project.totalHours > 0 ? `${project.totalHours.toFixed(1)}h` : '0h'}
-                            </span>
-                          </div>
-                          {project.totalHours > 0 ? (
-                            <>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-green-600">Billable</span>
-                                <span className="font-medium text-green-600">{project.billableHours.toFixed(1)}h</span>
-                              </div>
-                              <div className="flex justify-between text-sm">
-                                <span className="text-orange-600">Non-billable</span>
-                                <span className="font-medium text-orange-600">{(project.totalHours - project.billableHours).toFixed(1)}h</span>
-                              </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-muted-foreground text-center py-2">
-                              No time tracking data available
-                            </div>
-                          )}
-                          <div className="flex justify-between text-sm">
-                            <span>Users</span>
-                            <span className="font-medium">{project.userCount}</span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span>Completion</span>
-                            <span className="font-medium">{project.completionRate.toFixed(0)}%</span>
-                          </div>
-                          <Progress value={project.completionRate} className="h-2 mt-2" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  {analyticsData.projectMetrics.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">
-                      No projects found in the selected time range.
+                      ))}
                     </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </div>
+                )}
+
+                {/* Completed Projects */}
+                {analyticsData.projectMetrics.filter(project => project.status === 'Completed').length > 0 && (
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 text-gray-700">Completed Projects</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {analyticsData.projectMetrics
+                        .filter(project => project.status === 'Completed')
+                        .map((project) => (
+                        <div 
+                          key={project.id} 
+                          className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                          {/* Project Header */}
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
+                              <span className="text-sm font-semibold text-green-600">
+                                {project.name.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              </span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-sm">{project.name}</div>
+                              <div className="flex items-center gap-2 mt-1">
+                                <span className="inline-block bg-black text-white text-xs px-2 py-1 rounded">
+                                  Completed
+                                </span>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="text-sm font-bold text-blue-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.totalHours)}:${String(Math.round((project.totalHours % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Total Hours</div>
+                            </div>
+                          </div>
+                          
+                          {/* Hour Breakdown */}
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className="p-2 bg-green-100 rounded text-center">
+                              <div className="text-sm font-semibold text-green-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.billableHours)}:${String(Math.round((project.billableHours % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Billable Hours</div>
+                            </div>
+                            <div className="p-2 bg-red-100 rounded text-center">
+                              <div className="text-sm font-semibold text-red-600">
+                                {project.totalHours > 0 ? `${Math.floor(project.totalHours - project.billableHours)}:${String(Math.round(((project.totalHours - project.billableHours) % 1) * 60)).padStart(2, '0')}` : '00:00'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">Non-Billable Hours</div>
+                            </div>
+                          </div>
+                          
+                          {/* Contributors */}
+                          <div className="text-center">
+                            <div className="text-sm text-muted-foreground">
+                              Contributors - {project.userCount}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              {analyticsData.projectMetrics.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No projects found in the selected time range.
+                </div>
+              )}
             </TabsContent>
            </div>
          </div>
