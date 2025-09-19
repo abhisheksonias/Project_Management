@@ -674,8 +674,8 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
       {/* Main Analytics Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <div className="flex gap-6">
-          {/* Common Side Navigation - Wireframe Style */}
-          <div className="flex flex-col gap-2 w-48">
+          {/* Fixed Side Navigation */}
+          <div className="flex flex-col gap-2 w-48 flex-shrink-0">
             <Button 
               variant={activeTab === 'users' ? 'default' : 'outline'}
               className={`justify-start ${activeTab === 'users' ? 'bg-green-600 hover:bg-green-700 text-white' : ''}`}
@@ -694,10 +694,8 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
           
           {/* Main Content Area */}
           <div className="flex-1 space-y-4">
-            {/* User Performance Tab - Wireframe Layout */}
+            {/* User Performance Tab */}
             <TabsContent value="users" className="space-y-4">
-              {/* User Performance Section - Wireframe Style */}
-              <div className="space-y-4">
               {/* Section Title */}
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold">User Performance</h3>
@@ -705,16 +703,16 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                   Star Employee - {analyticsData.topPerformers[0]?.name || 'No data available'}
                 </div>
               </div>
-            
-               {/* User Performance Cards Grid - Responsive Layout */}
-               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                 {analyticsData.allUsers.map((user, index) => (
+              
+              {/* User Performance Cards Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {analyticsData.allUsers.map((user, index) => (
                   <div 
                     key={user.id} 
                     className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
                     onClick={() => handleUserClick(user)}
                   >
-                    {/* User Header - Wireframe Style */}
+                    {/* User Header */}
                     <div className="flex items-center gap-3 mb-3">
                       <div className="flex items-center justify-center w-10 h-10 bg-green-100 rounded-full">
                         <span className="text-sm font-semibold text-green-600">
@@ -733,7 +731,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                       </div>
                     </div>
                     
-                    {/* Hour Breakdown - Wireframe Style */}
+                    {/* Hour Breakdown */}
                     <div className="grid grid-cols-2 gap-2 mb-3">
                       <div className="p-2 bg-green-100 rounded text-center">
                         <div className="text-sm font-semibold text-green-600">
@@ -757,15 +755,12 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                     </div>
                   </div>
                 ))}
-               </div>
-             </div>
-             </TabsContent>
+              </div>
+            </TabsContent>
  
-             {/* Project Performance Tab - Wireframe Layout */}
-             <TabsContent value="projects" className="space-y-4">
-               {/* Project Performance Section - Wireframe Style */}
-               <div className="space-y-4">
-                 {/* Section Title */}
+            {/* Project Performance Tab */}
+            <TabsContent value="projects" className="space-y-4">
+              {/* Section Title */}
               <div className="flex items-center justify-between">
                 <h3 className="text-2xl font-bold">Project Performance</h3>
                 <div className="text-sm text-muted-foreground">
@@ -846,144 +841,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Detailed Project Contributors */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Project Contributors Details
-                  </CardTitle>
-                  <CardDescription>Detailed breakdown of contributors for each project</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {analyticsData.projectMetrics.slice(0, 5).map((project) => (
-                      <div key={project.id} className="p-4 border rounded-lg">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex-1">
-                            <div className="font-semibold text-lg">{project.name}</div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant={project.status === 'Completed' ? 'default' : 'secondary'}>
-                                {project.status}
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {project.userCount} users
-                              </Badge>
-                              <Badge variant="outline" className="text-xs">
-                                {project.contributors.length} contributors
-                              </Badge>
-                              {project.totalHours === 0 && (
-                                <Badge variant="outline" className="text-xs text-muted-foreground">
-                                  No work logs
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-lg font-bold">{project.totalHours.toFixed(1)}h</div>
-                            <div className="text-sm text-muted-foreground">
-                              {project.billableHours.toFixed(1)}h billable
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="space-y-3">
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between text-sm">
-                              <span>Completion Rate</span>
-                              <span>{project.completionRate.toFixed(0)}%</span>
-                            </div>
-                            <Progress value={project.completionRate} className="h-2" />
-                          </div>
-                          
-                          {/* Contributors Section */}
-                          <div className="border-t pt-3">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => toggleProjectExpansion(project.id)}
-                              className="flex items-center gap-2 text-sm"
-                            >
-                              <Eye className="h-4 w-4" />
-                              {expandedProjects.has(project.id) ? 'Hide' : 'Show'} Contributors
-                              {expandedProjects.has(project.id) ? (
-                                <ChevronUp className="h-4 w-4" />
-                              ) : (
-                                <ChevronDown className="h-4 w-4" />
-                              )}
-                            </Button>
-                            
-                            {expandedProjects.has(project.id) && (
-                              <div className="mt-3 space-y-3">
-                                <div className="text-sm font-medium text-muted-foreground">Project Contributors:</div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                  {project.contributors.map((contributor) => (
-                                    <div key={contributor.userId} className="p-3 bg-muted/50 rounded-lg">
-                                      <div className="flex items-center gap-3">
-                                        <Avatar className="h-8 w-8">
-                                          <AvatarFallback className="text-xs">
-                                            {contributor.userName.split(' ').map(n => n[0]).join('').toUpperCase()}
-                                          </AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 min-w-0">
-                                          <div className="font-medium text-sm truncate">{contributor.userName}</div>
-                                          <div className="text-xs text-muted-foreground truncate">{contributor.userEmail}</div>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
-                                        <div>
-                                          <div className="text-muted-foreground">Hours</div>
-                                          <div className="font-semibold">{contributor.hours.toFixed(1)}h</div>
-                                        </div>
-                                        <div>
-                                          <div className="text-muted-foreground">Billable</div>
-                                          <div className="font-semibold">{contributor.billableHours.toFixed(1)}h</div>
-                                        </div>
-                                        <div>
-                                          <div className="text-muted-foreground">Tasks</div>
-                                          <div className="font-semibold">{contributor.taskCount}</div>
-                                        </div>
-                                        <div>
-                                          <div className="text-muted-foreground">Efficiency</div>
-                                          <div className="font-semibold">{contributor.efficiency.toFixed(0)}%</div>
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="mt-2">
-                                        <div className="flex items-center justify-between text-xs mb-1">
-                                          <span>Task Completion</span>
-                                          <span>{contributor.completedTasks}/{contributor.taskCount}</span>
-                                        </div>
-                                        <Progress 
-                                          value={contributor.taskCount > 0 ? (contributor.completedTasks / contributor.taskCount) * 100 : 0} 
-                                          className="h-1"
-                                        />
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                                
-                                {project.contributors.length === 0 && (
-                                  <div className="text-center py-4 text-muted-foreground text-sm">
-                                    {project.totalHours === 0 
-                                      ? 'No work logs or contributors found for this project' 
-                                      : 'No contributors found for this project'
-                                    }
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-               </div>
-             </TabsContent>
+            </TabsContent>
            </div>
          </div>
        </Tabs>

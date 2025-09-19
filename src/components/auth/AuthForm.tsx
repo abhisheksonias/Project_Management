@@ -27,13 +27,18 @@ const signUpSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const resetPasswordSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+});
+
 type SignInFormData = z.infer<typeof signInSchema>;
 type SignUpFormData = z.infer<typeof signUpSchema>;
+type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
 
 export const AuthForm: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('signin');
-  const { signIn, signUp } = useAuth();
+  const { signIn, signUp, resetPassword } = useAuth();
   const { toast } = useToast();
 
   // Sign in form
@@ -53,6 +58,14 @@ export const AuthForm: React.FC = () => {
       email: '',
       password: '',
       confirmPassword: '',
+    },
+  });
+
+  // Reset password form
+  const resetPasswordForm = useForm<ResetPasswordFormData>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      email: '',
     },
   });
 
@@ -114,6 +127,36 @@ export const AuthForm: React.FC = () => {
     }
   };
 
+  const handleResetPassword = async (data: ResetPasswordFormData) => {
+    setIsLoading(true);
+    try {
+      const { error } = await resetPassword(data.email);
+      
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Reset Password Failed",
+          description: error.message,
+        });
+      } else {
+        toast({
+          title: "Reset Email Sent!",
+          description: "Please check your email for password reset instructions.",
+        });
+        setActiveTab('signin'); // Switch to sign in tab
+        resetPasswordForm.reset(); // Clear the form
+      }
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
@@ -125,9 +168,10 @@ export const AuthForm: React.FC = () => {
         </CardHeader>
         <CardContent>
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="signin">Sign In</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
+              <TabsTrigger value="reset">Reset Password</TabsTrigger>
             </TabsList>
             
             <TabsContent value="signin" className="space-y-4">
@@ -173,6 +217,15 @@ export const AuthForm: React.FC = () => {
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('reset')}
+                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Forgot your password?
+                    </button>
+                  </div>
                 </form>
               </Form>
             </TabsContent>
@@ -255,6 +308,50 @@ export const AuthForm: React.FC = () => {
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
+                </form>
+              </Form>
+            </TabsContent>
+            
+            <TabsContent value="reset" className="space-y-4">
+              <Form {...resetPasswordForm}>
+                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4">
+                  <div className="text-center mb-4">
+                    <h3 className="text-lg font-semibold">Reset Password</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Enter your email address and we'll send you a link to reset your password.
+                    </p>
+                  </div>
+                  <FormField
+                    control={resetPasswordForm.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="Enter your email address" 
+                            type="email" 
+                            {...field} 
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="submit" className="w-full" disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Send Reset Email
+                  </Button>
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab('signin')}
+                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                    >
+                      Back to Sign In
+                    </button>
+                  </div>
                 </form>
               </Form>
             </TabsContent>
