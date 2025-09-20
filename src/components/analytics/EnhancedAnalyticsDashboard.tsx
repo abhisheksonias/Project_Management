@@ -70,7 +70,7 @@ interface UserPerformance {
   projectCount: number;
   avatar?: string;
   is_active?: boolean;
-  role?: string;
+  rank?: string;
 }
 
 interface ProjectMetric {
@@ -575,7 +575,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
           efficiency: userPerf?.efficiency || 0,
           projectCount: userPerf?.projectCount || 0,
           is_active: (user as any).is_active !== false, // Default to true if null/undefined
-          role: user.role
+          rank: user.rank
         };
       }).sort((a, b) => {
         // Sort active users first, then by total hours
@@ -844,7 +844,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                                 {user.name}
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {user.role || 'Designation'}
+                                {user.rank || 'Designation'}
                               </div>
                             </div>
                             <div className="text-right">
@@ -856,7 +856,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                           </div>
                           
                           {/* Admin Actions */}
-                          {user.role !== 'Admin' && profile?.role === 'Admin' && (
+                          {user.rank !== 'Admin' && profile?.role === 'Admin' && (
                             <div className="absolute top-2 right-2">
                               <Popover>
                                 <PopoverTrigger asChild>
@@ -945,7 +945,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                                 </Badge>
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {user.role || 'Designation'}
+                                {user.rank || 'Designation'}
                               </div>
                             </div>
                             <div className="text-right">
