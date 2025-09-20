@@ -75,6 +75,9 @@ interface WorkLog {
   hours: string;
   description: string;
   isBillable: boolean;
+  projectName?: string;
+  taskName?: string;
+  createdAt?: string;
 }
 
 interface CalendarDay {
@@ -220,7 +223,10 @@ export const UserPerformanceModal: React.FC<UserPerformanceModalProps> = ({
           date: log.created_at,
           hours: log.hours || '0:00',
           description: log.note || '',
-          isBillable: log.tasks.type === 'billable'
+          isBillable: log.tasks.type === 'billable',
+          projectName: log.projects?.name || 'Unknown Project',
+          taskName: log.tasks.name || 'Unknown Task',
+          createdAt: log.created_at
         });
       });
 
@@ -283,7 +289,10 @@ export const UserPerformanceModal: React.FC<UserPerformanceModalProps> = ({
             date: log.created_at,
             hours: log.hours || '0:00',
             description: log.note || '',
-            isBillable: log.tasks?.type === 'billable'
+            isBillable: log.tasks?.type === 'billable',
+            projectName: log.projects?.name || 'Unknown Project',
+            taskName: log.tasks?.name || 'Unknown Task',
+            createdAt: log.created_at
           }))
         };
       });
@@ -792,24 +801,34 @@ export const UserPerformanceModal: React.FC<UserPerformanceModalProps> = ({
                           <div className="space-y-3">
                             <h4 className="font-semibold">Work Logs for this day:</h4>
                             {getSelectedDateWorkLogs().map((log) => (
-                              <div key={log.id} className="p-3 border rounded-lg">
-                                <div className="flex items-center justify-between mb-2">
-                                  <div className="flex items-center gap-2">
+                              <div key={log.id} className="p-3 border rounded-lg space-y-2">
+                                {/* Header Row: Billable/Non-billable + Project + Date + Hours */}
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
                                     <Badge variant={log.isBillable ? 'default' : 'outline'}>
                                       {log.isBillable ? 'Billable' : 'Non-billable'}
                                     </Badge>
-                                    <span className="font-semibold">{log.hours}</span>
-                                    <span className="text-sm text-muted-foreground">
-                                      {log.description}
-                                    </span>
+                                    <span className="font-semibold text-sm">{log.projectName || 'Unknown Project'}</span>
                                   </div>
-                                  <span className="text-sm text-muted-foreground">
-                                    {format(new Date(log.date), 'HH:mm')}
-                                  </span>
+                                  <div className="flex items-center gap-3 text-sm">
+                                    <span className="text-gray-600">
+                                      {log.createdAt ? format(new Date(log.createdAt), 'MMM dd, HH:mm') : 'Unknown'}
+                                    </span>
+                                    <span className="font-semibold text-blue-600">{log.hours}</span>
+                                  </div>
                                 </div>
-                                {log.description && (
-                                  <p className="text-sm text-muted-foreground">{log.description}</p>
-                                )}
+                                
+                                {/* Task Name */}
+                                <div className="text-sm">
+                                  <span className="font-medium text-gray-600">Task: </span>
+                                  <span className="font-semibold">{log.taskName || 'Unknown Task'}</span>
+                                </div>
+                                
+                                {/* Description/Note */}
+                                <div className="text-sm">
+                                  <span className="font-medium text-gray-600">Note: </span>
+                                  <span className="text-gray-800">{log.description || 'No description'}</span>
+                                </div>
                               </div>
                             ))}
                           </div>
