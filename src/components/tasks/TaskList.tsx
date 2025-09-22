@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Edit, Trash2, MessageCircle, Plus, Info, Filter, X } from 'lucide-react';
+import { Edit, Trash2, MessageCircle, Plus, Info, Filter, X, Search, CheckSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,18 +53,14 @@ export const TaskList: React.FC<TaskListProps> = ({
   refreshTrigger,
 }) => {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    type: 'all-types',
-    project: 'all-projects',
-    user: 'all-users',
-    priority: 'all-priorities',
-    status: 'all-statuses',
-    search: '',
-  });
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [userFilter, setUserFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const { toast } = useToast();
   const { profile } = useAuth();
 
@@ -282,33 +278,56 @@ export const TaskList: React.FC<TaskListProps> = ({
     }
   };
 
-  // Filter tasks based on current filters
-  const filteredTasks = tasks.filter(task => {
-    if (filters.type && filters.type !== 'all-types' && task.type !== filters.type) return false;
-    if (filters.project && filters.project !== 'all-projects' && task.project_id !== filters.project) return false;
-    if (filters.user && filters.user !== 'all-users' && task.assigned_user_id !== filters.user) return false;
-    if (filters.priority && filters.priority !== 'all-priorities' && task.priority !== filters.priority) return false;
-    if (filters.status && filters.status !== 'all-statuses' && task.status !== filters.status) return false;
-    if (filters.search && !task.name.toLowerCase().includes(filters.search.toLowerCase()) && 
-        !task.description?.toLowerCase().includes(filters.search.toLowerCase())) return false;
-    return true;
-  });
+  // Filter and sort tasks
+  useEffect(() => {
+    let filtered = tasks;
 
-  // Sort tasks: completed tasks at bottom, others by creation date (newest first)
-  const sortedTasks = [...filteredTasks].sort((a, b) => {
-    // If one is completed and the other isn't, completed goes to bottom
-    const aCompleted = a.status.toLowerCase() === 'completed';
-    const bCompleted = b.status.toLowerCase() === 'completed';
-    
-    if (aCompleted && !bCompleted) return 1; // a goes after b
-    if (!aCompleted && bCompleted) return -1; // a goes before b
-    
-    // If both have same completion status, sort by creation date (newest first)
-    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-  });
+    // Apply status filter
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(task => task.status === statusFilter);
+    }
+
+    // Apply priority filter
+    if (priorityFilter !== 'all') {
+      filtered = filtered.filter(task => task.priority === priorityFilter);
+    }
+
+    // Apply user filter
+    if (userFilter !== 'all') {
+      if (userFilter === 'unassigned') {
+        filtered = filtered.filter(task => !task.assigned_user_id);
+      } else {
+        filtered = filtered.filter(task => task.assigned_user_id === userFilter);
+      }
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(task => 
+        task.name.toLowerCase().includes(query) ||
+        (task.description && task.description.toLowerCase().includes(query)) ||
+        (task.assigned_user?.name && task.assigned_user.name.toLowerCase().includes(query)) ||
+        (task.project?.name && task.project.name.toLowerCase().includes(query))
+      );
+    }
+
+    // Sort tasks: completed tasks at bottom, others by creation date (newest first)
+    const sorted = filtered.sort((a, b) => {
+      const aCompleted = a.status.toLowerCase() === 'completed';
+      const bCompleted = b.status.toLowerCase() === 'completed';
+      
+      if (aCompleted && !bCompleted) return 1;
+      if (!aCompleted && bCompleted) return -1;
+      
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+    setFilteredTasks(sorted);
+  }, [tasks, statusFilter, priorityFilter, userFilter, searchQuery]);
 
   // Group tasks by project
-  const groupedTasks = sortedTasks.reduce((groups, task) => {
+  const groupedTasks = filteredTasks.reduce((groups, task) => {
     const projectName = task.project?.name || 'No Project';
     if (!groups[projectName]) {
       groups[projectName] = [];
@@ -316,22 +335,6 @@ export const TaskList: React.FC<TaskListProps> = ({
     groups[projectName].push(task);
     return groups;
   }, {} as Record<string, Task[]>);
-
-  const clearFilters = () => {
-    setFilters({
-      type: 'all-types',
-      project: 'all-projects',
-      user: 'all-users',
-      priority: 'all-priorities',
-      status: 'all-statuses',
-      search: '',
-    });
-  };
-
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
-    if (key === 'search') return value !== '';
-    return value !== '' && !value.startsWith('all-');
-  });
 
   useEffect(() => {
     fetchTasks();
@@ -344,10 +347,23 @@ export const TaskList: React.FC<TaskListProps> = ({
   if (loading) {
     return (
       <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center">
+        <CardHeader className="pb-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">All Tasks</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track all your tasks
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center space-y-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <span className="ml-2 text-muted-foreground">Loading tasks...</span>
+            <div className="text-center">
+              <p className="text-muted-foreground font-medium">Loading tasks...</p>
+              <p className="text-sm text-muted-foreground mt-1">Please wait while we fetch your data</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -356,144 +372,29 @@ export const TaskList: React.FC<TaskListProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <div>
-            <CardTitle>Tasks for {projectName}</CardTitle>
-            <p className="text-muted-foreground">
-              {sortedTasks.length} task(s) found
-              {hasActiveFilters && ` (${tasks.length} total)`}
-            </p>
-          </div>
-          <div className="flex gap-2">
-            {!projectId && (
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge variant="secondary" className="ml-1">
-                    {Object.values(filters).filter(f => f !== '').length}
-                  </Badge>
-                )}
-              </Button>
-            )}
-            <Button onClick={onCreateTask}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
-          </div>
-        </div>
-
-        {/* Filters Section */}
-        {!projectId && showFilters && (
-          <div className="border-t pt-4 mt-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="search">Search</Label>
-                <Input
-                  id="search"
-                  placeholder="Search tasks..."
-                  value={filters.search}
-                  onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="type-filter">Type</Label>
-                <Select
-                  value={filters.type}
-                  onValueChange={(value) => setFilters({ ...filters, type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All types" />
+      <CardHeader className="pb-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">
+                {projectId ? `Tasks for ${projectName}` : 'All Tasks'}
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {projectId 
+                  ? `Manage tasks for this project` 
+                  : 'Manage and track all your tasks'
+                }
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all-types">All types</SelectItem>
-                    {taskTypeOptions.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="project-filter">Project</Label>
-                <Select
-                  value={filters.project}
-                  onValueChange={(value) => setFilters({ ...filters, project: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All projects" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-projects">All projects</SelectItem>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="user-filter">User</Label>
-                <Select
-                  value={filters.user}
-                  onValueChange={(value) => setFilters({ ...filters, user: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All users" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-users">All users</SelectItem>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority-filter">Priority</Label>
-                <Select
-                  value={filters.priority}
-                  onValueChange={(value) => setFilters({ ...filters, priority: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All priorities" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-priorities">All priorities</SelectItem>
-                    {priorityOptions.map((priority) => (
-                      <SelectItem key={priority} value={priority}>
-                        {priority}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status-filter">Status</Label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) => setFilters({ ...filters, status: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All statuses" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-statuses">All statuses</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
                     {taskStatusOptions.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
@@ -502,142 +403,234 @@ export const TaskList: React.FC<TaskListProps> = ({
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            {hasActiveFilters && (
-              <div className="flex justify-end mt-4">
-                <Button variant="outline" onClick={clearFilters} className="flex items-center gap-2">
-                  <X className="h-4 w-4" />
-                  Clear Filters
-                </Button>
+              
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Priority:</span>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Priority</SelectItem>
+                    {priorityOptions.map((priority) => (
+                      <SelectItem key={priority} value={priority}>
+                        {priority}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+              
+              {!projectId && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Assignee:</span>
+                  <Select value={userFilter} onValueChange={setUserFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Users</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks by name, description, assignee, or project..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+              </Button>
             )}
           </div>
-        )}
+        </div>
       </CardHeader>
-      <CardContent>
-        {sortedTasks.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">
-              {hasActiveFilters ? 'No tasks match the current filters' : 'No tasks found'}
-            </p>
-            {hasActiveFilters ? (
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            ) : (
-              <Button onClick={onCreateTask}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create First Task
-              </Button>
-            )}
+      <CardContent className="p-0">
+        {filteredTasks.length === 0 ? (
+          <div className="py-12">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <CheckSquare className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">No tasks found</h3>
+                <p className="text-muted-foreground mt-1">
+                  {searchQuery.trim() 
+                    ? `No tasks match "${searchQuery}"`
+                    : 'No tasks match your current filters'
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try adjusting your search, status, or priority filters
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="space-y-6">
-            {Object.entries(groupedTasks).map(([projectName, projectTasks]) => (
-              <div key={projectName} className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-lg font-semibold">{projectName}</h3>
-                  <Badge variant="outline">{projectTasks.length} task(s)</Badge>
-                </div>
-                
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Type</TableHead>
-                        <TableHead>Priority</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead>Assigned To</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Est. Hours</TableHead>
-                        <TableHead>Created</TableHead>
-                        <TableHead>Updated</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {projectTasks.map((task) => (
-                        <TableRow key={task.id}>
-                          <TableCell className="font-medium">{task.name}</TableCell>
-                          <TableCell>{task.type}</TableCell>
-                          <TableCell>
-                            <Badge variant={getPriorityBadgeVariant(task.priority)}>
-                              {task.priority || 'Not Set'}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="max-w-xs truncate" title={task.description}>
-                            {task.description}
-                          </TableCell>
-                          <TableCell>
-                            {task.assigned_user?.name || 'Unassigned'}
-                          </TableCell>
-                          <TableCell>
-                            <Select
-                              value={task.status}
-                              onValueChange={(value) => handleStatusChange(task.id, value)}
-                            >
-                              <SelectTrigger className="w-32">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {taskStatusOptions.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </TableCell>
-                          <TableCell>{task.estimate_hours || 'N/A'}</TableCell>
-                          <TableCell>
-                            {task.created_at && format(new Date(task.created_at), 'MMM dd, yyyy')}
-                          </TableCell>
-                          <TableCell>
-                            {task.updated_at && format(new Date(task.updated_at), 'MMM dd, yyyy')}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex gap-1">
-                              {onViewDetails && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => onViewDetails(task)}
-                                >
-                                  <Info className="h-3 w-3" />
-                                </Button>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onEditTask(task)}
-                              >
-                                <Edit className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => onTaskComments(task)}
-                              >
-                                <MessageCircle className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDeleteTask(task.id)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b">
+                  <TableHead className="font-semibold text-left min-w-[200px]">Task Name</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Type</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Priority</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[150px]">Assignee</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[140px]">Status</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Est. Hours</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Created</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[180px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTasks.map((task) => {
+                  const isCompleted = task.status?.toLowerCase() === 'completed';
+                  return (
+                    <TableRow 
+                      key={task.id} 
+                      className={`hover:bg-muted/30 transition-colors border-b ${
+                        isCompleted ? 'opacity-75 bg-muted/20' : ''
+                      }`}
+                    >
+                      <TableCell className="font-medium py-4">
+                        <div className="space-y-1">
+                          <div className="font-semibold text-sm">{task.name}</div>
+                          {task.description && (
+                            <div className="text-xs text-muted-foreground line-clamp-2 max-w-[180px]">
+                              {task.description}
                             </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            ))}
+                          )}
+                          {!projectId && task.project?.name && (
+                            <div className="text-xs text-blue-600">
+                              {task.project.name}
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <Badge variant="secondary" className="text-xs">
+                          {task.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <Badge 
+                          variant={getPriorityBadgeVariant(task.priority)} 
+                          className="text-xs"
+                        >
+                          {task.priority || 'Not Set'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          {task.assigned_user ? (
+                            <span className="font-medium">{task.assigned_user.name}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Unassigned</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <Select
+                          value={task.status}
+                          onValueChange={(value) => handleStatusChange(task.id, value)}
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {taskStatusOptions.map((status) => (
+                              <SelectItem key={status} value={status} className="text-xs">
+                                {status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          {task.estimate_hours ? (
+                            <span className="font-medium">{task.estimate_hours}h</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          <div className="font-medium">
+                            {format(new Date(task.created_at), 'MMM dd')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(task.created_at), 'yyyy')}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="flex justify-center gap-1">
+                          {onViewDetails && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onViewDetails(task)}
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                            >
+                              <Info className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onEditTask(task)}
+                            className="h-8 w-8 p-0"
+                            title="Edit Task"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onTaskComments(task)}
+                            className="h-8 w-8 p-0"
+                            title="View Comments"
+                          >
+                            <MessageCircle className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="h-8 w-8 p-0"
+                            title="Delete Task"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>

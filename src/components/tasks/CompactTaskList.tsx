@@ -4,26 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { 
   Edit, 
   Trash2, 
   MessageCircle, 
-  Plus, 
   Info, 
-  Filter, 
-  X, 
   Search,
-  Calendar,
-  User,
-  Clock,
-  AlertTriangle,
-  CheckCircle2,
-  Circle,
-  Play,
-  Pause,
-  Target,
-  FolderOpen
+  X,
+  CheckSquare
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -74,20 +63,14 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
   const [loading, setLoading] = useState(true);
   const [projects, setProjects] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    type: 'all-types',
-    project: 'all-projects',
-    user: 'all-users',
-    priority: 'all-priorities',
-    status: 'all-statuses',
-    search: '',
-  });
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [priorityFilter, setPriorityFilter] = useState('all');
+  const [userFilter, setUserFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
   const { profile } = useAuth();
 
   const taskStatusOptions = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
-  const taskTypeOptions = ['billable', 'non-billable'];
   const priorityOptions = ['Low', 'Medium', 'High'];
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
@@ -265,20 +248,6 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
     }
   };
 
-  const getStatusIcon = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'completed':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case 'in progress':
-        return <Play className="h-4 w-4 text-blue-600" />;
-      case 'blocked':
-        return <AlertTriangle className="h-4 w-4 text-red-600" />;
-      case 'review':
-        return <Pause className="h-4 w-4 text-yellow-600" />;
-      default:
-        return <Circle className="h-4 w-4 text-gray-400" />;
-    }
-  };
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -308,26 +277,32 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
     }
   };
 
-  const getTypeBadgeVariant = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'billable':
-        return 'default';
-      case 'non-billable':
-        return 'outline';
-      default:
-        return 'outline';
-    }
-  };
 
   // Filter tasks based on current filters
   const filteredTasks = tasks.filter(task => {
-    if (filters.type && filters.type !== 'all-types' && task.type !== filters.type) return false;
-    if (filters.project && filters.project !== 'all-projects' && task.project_id !== filters.project) return false;
-    if (filters.user && filters.user !== 'all-users' && task.assigned_user_id !== filters.user) return false;
-    if (filters.priority && filters.priority !== 'all-priorities' && task.priority !== filters.priority) return false;
-    if (filters.status && filters.status !== 'all-statuses' && task.status !== filters.status) return false;
-    if (filters.search && !task.name.toLowerCase().includes(filters.search.toLowerCase()) && 
-        !task.description?.toLowerCase().includes(filters.search.toLowerCase())) return false;
+    // Search filter
+    if (searchQuery.trim()) {
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = 
+        task.name.toLowerCase().includes(searchLower) ||
+        task.description?.toLowerCase().includes(searchLower) ||
+        task.assigned_user?.name?.toLowerCase().includes(searchLower) ||
+        task.project?.name?.toLowerCase().includes(searchLower);
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (statusFilter !== 'all' && task.status !== statusFilter) return false;
+
+    // Priority filter
+    if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false;
+
+    // User filter
+    if (userFilter !== 'all') {
+      if (userFilter === 'unassigned' && task.assigned_user_id) return false;
+      if (userFilter !== 'unassigned' && task.assigned_user_id !== userFilter) return false;
+    }
+
     return true;
   });
 
@@ -344,21 +319,6 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
 
-  const clearFilters = () => {
-    setFilters({
-      type: 'all-types',
-      project: 'all-projects',
-      user: 'all-users',
-      priority: 'all-priorities',
-      status: 'all-statuses',
-      search: '',
-    });
-  };
-
-  const hasActiveFilters = Object.entries(filters).some(([key, value]) => {
-    if (key === 'search') return value !== '';
-    return value !== '' && !value.startsWith('all-');
-  });
 
   useEffect(() => {
     fetchTasks();
@@ -383,64 +343,29 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <CardHeader className="pb-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
           <div>
-            <CardTitle className="flex items-center gap-2">
-              {projectName}
+              <CardTitle className="text-xl">
+                {projectId ? `Tasks for ${projectName}` : 'All Tasks'}
             </CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                {projectId 
+                  ? `Manage tasks for this project` 
+                  : 'Manage and track all your tasks'
+                }
+              </p>
           </div>
-          <div className="flex gap-2">
-            {!projectId && (
-              <Button
-                variant="outline"
-                onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center gap-2"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-                {hasActiveFilters && (
-                  <Badge variant="secondary" className="ml-1">
-                    {Object.values(filters).filter(f => f !== '').length}
-                  </Badge>
-                )}
-              </Button>
-            )}
-            <Button onClick={onCreateTask} className="flex items-center gap-2">
-              Add Task
-            </Button>
-          </div>
-        </div>
-
-        {/* Compact Filters Section */}
-        {!projectId && showFilters && (
-          <div className="border-t pt-4 mt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="search" className="text-xs">Search</Label>
-                <div className="relative">
-                  <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="search"
-                    placeholder="Search tasks..."
-                    value={filters.search}
-                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                    className="pl-8 h-8"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status-filter" className="text-xs">Status</Label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) => setFilters({ ...filters, status: value })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="All statuses" />
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all-statuses">All statuses</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
                     {taskStatusOptions.map((status) => (
                       <SelectItem key={status} value={status}>
                         {status}
@@ -450,58 +375,14 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="project-filter" className="text-xs">Project</Label>
-                <Select
-                  value={filters.project}
-                  onValueChange={(value) => setFilters({ ...filters, project: value })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="All projects" />
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Priority:</span>
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all-projects">All projects</SelectItem>
-                    {projects.map((project) => (
-                      <SelectItem key={project.id} value={project.id}>
-                        {project.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="user-filter" className="text-xs">User</Label>
-                <Select
-                  value={filters.user}
-                  onValueChange={(value) => setFilters({ ...filters, user: value })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="All users" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-users">All users</SelectItem>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {users.map((user) => (
-                      <SelectItem key={user.id} value={user.id}>
-                        {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="priority-filter" className="text-xs">Priority</Label>
-                <Select
-                  value={filters.priority}
-                  onValueChange={(value) => setFilters({ ...filters, priority: value })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="All priorities" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all-priorities">All priorities</SelectItem>
+                    <SelectItem value="all">All Priority</SelectItem>
                     {priorityOptions.map((priority) => (
                       <SelectItem key={priority} value={priority}>
                         {priority}
@@ -511,118 +392,135 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="type-filter" className="text-xs">Type</Label>
-                <Select
-                  value={filters.type}
-                  onValueChange={(value) => setFilters({ ...filters, type: value })}
-                >
-                  <SelectTrigger className="h-8">
-                    <SelectValue placeholder="All types" />
+              {!projectId && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Assignee:</span>
+                  <Select value={userFilter} onValueChange={setUserFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all-types">All types</SelectItem>
-                    {taskTypeOptions.map((type) => (
-                      <SelectItem key={type} value={type}>
-                        {type}
+                      <SelectItem value="all">All Users</SelectItem>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {users.map((user) => (
+                        <SelectItem key={user.id} value={user.id}>
+                          {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                </div>
+              )}
               </div>
             </div>
 
-            {hasActiveFilters && (
-              <div className="flex justify-end mt-3">
-                <Button variant="outline" onClick={clearFilters} className="flex items-center gap-2 h-8">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks by name, description, assignee, or project..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              >
                   <X className="h-3 w-3" />
-                  Clear Filters
                 </Button>
-              </div>
             )}
           </div>
-        )}
+        </div>
       </CardHeader>
       
-      <CardContent>
+      <CardContent className="p-0">
         {sortedTasks.length === 0 ? (
-          <div className="text-center py-12">
-            <div className="mx-auto w-24 h-24 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Target className="h-12 w-12 text-muted-foreground" />
+          <div className="py-12">
+            <div className="flex flex-col items-center justify-center space-y-4">
+              <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+                <CheckSquare className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="text-center">
+                <h3 className="text-lg font-semibold">No tasks found</h3>
+                <p className="text-muted-foreground mt-1">
+                  {searchQuery.trim() 
+                    ? `No tasks match "${searchQuery}"`
+                    : 'No tasks match your current filters'
+                  }
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Try adjusting your search, status, or priority filters
+                </p>
+              </div>
             </div>
-            <h3 className="text-lg font-semibold mb-2">No tasks found</h3>
-            <p className="text-muted-foreground mb-4">
-              {hasActiveFilters ? 'No tasks match the current filters' : 'Get started by creating your first task'}
-            </p>
-            {hasActiveFilters ? (
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            ) : (
-              <Button onClick={onCreateTask} className="flex items-center gap-2">
-                <Plus className="h-4 w-4" />
-                Create First Task
-              </Button>
-            )}
           </div>
         ) : (
-          <div className="space-y-3">
-            {sortedTasks.map((task) => (
-              <div
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-b">
+                  <TableHead className="font-semibold text-left min-w-[200px]">Task Name</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Type</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Priority</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[150px]">Assignee</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[140px]">Status</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Est. Hours</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[120px]">Created</TableHead>
+                  <TableHead className="font-semibold text-center min-w-[180px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedTasks.map((task) => {
+                  const isCompleted = task.status?.toLowerCase() === 'completed';
+                  return (
+                    <TableRow 
                 key={task.id}
-                className="border rounded-lg p-4 hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  {/* Task Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(task.status)}
-                        <h3 className="font-semibold text-sm truncate">{task.name}</h3>
+                      className={`hover:bg-muted/30 transition-colors border-b ${
+                        isCompleted ? 'opacity-75 bg-muted/20' : ''
+                      }`}
+                    >
+                      <TableCell className="font-medium py-4">
+                        <div className="space-y-1">
+                          <div className="font-semibold text-sm">{task.name}</div>
+                          {task.description && (
+                            <div className="text-xs text-muted-foreground line-clamp-2 max-w-[180px]">
+                              {task.description}
+                            </div>
+                          )}
+                          {!projectId && task.project?.name && (
+                            <div className="text-xs text-blue-600">
+                              {task.project.name}
+                            </div>
+                          )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Badge variant={getStatusBadgeVariant(task.status)} className="text-xs">
-                          {task.status}
-                        </Badge>
-                        <Badge variant={getPriorityBadgeVariant(task.priority)} className="text-xs">
-                          {task.priority || 'Not Set'}
-                        </Badge>
-                        <Badge variant={getTypeBadgeVariant(task.type)} className="text-xs">
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <Badge variant="secondary" className="text-xs">
                           {task.type}
                         </Badge>
-                      </div>
-                    </div>
-                    
-                    {task.description && (
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                        {task.description}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1">
-                        <FolderOpen className="h-3 w-3" />
-                        <span>{task.project?.name || 'No Project'}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3" />
-                        <span>{task.assigned_user?.name || 'Unassigned'}</span>
-                      </div>
-                      {task.estimate_hours && (
-                        <div className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          <span>{task.estimate_hours}h</span>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <Badge 
+                          variant={getPriorityBadgeVariant(task.priority)} 
+                          className="text-xs"
+                        >
+                          {task.priority || 'Not Set'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          {task.assigned_user ? (
+                            <span className="font-medium">{task.assigned_user.name}</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">Unassigned</span>
+                          )}
                         </div>
-                      )}
-                      <div className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        <span>{format(new Date(task.created_at), 'MMM dd')}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Quick Actions */}
-                  <div className="flex items-center gap-2">
+                      </TableCell>
+                      <TableCell className="text-center py-4">
                     <Select
                       value={task.status}
                       onValueChange={(value) => handleStatusChange(task.id, value)}
@@ -638,12 +536,32 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                         ))}
                       </SelectContent>
                     </Select>
-                    
-                    <div className="flex items-center gap-1">
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          {task.estimate_hours ? (
+                            <span className="font-medium">{task.estimate_hours}h</span>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">N/A</span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="text-sm">
+                          <div className="font-medium">
+                            {format(new Date(task.created_at), 'MMM dd')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(task.created_at), 'yyyy')}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-center py-4">
+                        <div className="flex justify-center gap-1">
                       {onViewDetails && (
                         <Button
+                              size="sm"
                           variant="outline"
-                          size="sm"
                           onClick={() => onViewDetails(task)}
                           className="h-8 w-8 p-0"
                           title="View Details"
@@ -652,8 +570,8 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                         </Button>
                       )}
                       <Button
+                            size="sm"
                         variant="outline"
-                        size="sm"
                         onClick={() => onEditTask(task)}
                         className="h-8 w-8 p-0"
                         title="Edit Task"
@@ -661,28 +579,30 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                         <Edit className="h-3 w-3" />
                       </Button>
                       <Button
+                            size="sm"
                         variant="outline"
-                        size="sm"
                         onClick={() => onTaskComments(task)}
                         className="h-8 w-8 p-0"
-                        title="Comments"
+                            title="View Comments"
                       >
                         <MessageCircle className="h-3 w-3" />
                       </Button>
                       <Button
+                            size="sm"
                         variant="outline"
-                        size="sm"
                         onClick={() => handleDeleteTask(task.id)}
-                        className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            className="h-8 w-8 p-0"
                         title="Delete Task"
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>
                     </div>
-                  </div>
-                </div>
-              </div>
-            ))}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </div>
         )}
       </CardContent>
