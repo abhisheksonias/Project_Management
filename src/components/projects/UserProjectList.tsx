@@ -102,18 +102,25 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
           };
         });
 
-      // Sort projects: assigned tasks first, then by creation date
+      // Sort projects: assigned tasks first, then latest first, completed at bottom
       const sortedProjects = processedProjects.sort((a, b) => {
+        const aIsCompleted = a.status?.toLowerCase() === 'completed';
+        const bIsCompleted = b.status?.toLowerCase() === 'completed';
+        
         // First priority: projects with assigned tasks
         if (a.hasAssignedTasks && !b.hasAssignedTasks) return -1;
         if (!a.hasAssignedTasks && b.hasAssignedTasks) return 1;
         
-        // Second priority: number of assigned tasks (more tasks first)
+        // Second priority: completed projects at bottom
+        if (aIsCompleted && !bIsCompleted) return 1;
+        if (!aIsCompleted && bIsCompleted) return -1;
+        
+        // Third priority: number of assigned tasks (more tasks first)
         if (a.hasAssignedTasks && b.hasAssignedTasks) {
           return b.assignedTasksCount! - a.assignedTasksCount!;
         }
         
-        // Third priority: creation date (newer first)
+        // Fourth priority: creation date (newer first)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 

@@ -147,7 +147,22 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         admin_name: project.admin?.name || 'Unknown',
       })) || [];
 
-      setProjects(formattedProjects);
+      // Custom sorting: Latest first, but completed projects at bottom
+      const sortedProjects = formattedProjects.sort((a, b) => {
+        const aIsCompleted = a.status?.toLowerCase() === 'completed';
+        const bIsCompleted = b.status?.toLowerCase() === 'completed';
+        
+        // If one is completed and other is not, put completed at bottom
+        if (aIsCompleted && !bIsCompleted) return 1;
+        if (!aIsCompleted && bIsCompleted) return -1;
+        
+        // If both have same completion status, sort by created_at (latest first)
+        const aDate = new Date(a.created_at).getTime();
+        const bDate = new Date(b.created_at).getTime();
+        return bDate - aDate;
+      });
+
+      setProjects(sortedProjects);
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -377,8 +392,15 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProjects.map((project) => (
-                <TableRow key={project.id} className="hover:bg-muted/30 transition-colors border-b">
+              {filteredProjects.map((project) => {
+                const isCompleted = project.status?.toLowerCase() === 'completed';
+                return (
+                <TableRow 
+                  key={project.id} 
+                  className={`hover:bg-muted/30 transition-colors border-b ${
+                    isCompleted ? 'opacity-75 bg-muted/20' : ''
+                  }`}
+                >
                   <TableCell className="font-medium py-4">
                     <div className="space-y-1">
                       <div className="font-semibold text-sm">{project.name}</div>
@@ -506,7 +528,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                );
+              })}
             </TableBody>
           </Table>
         </div>
