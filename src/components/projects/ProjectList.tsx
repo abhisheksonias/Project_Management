@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Edit, MessageSquare, Eye, CheckSquare, Info } from 'lucide-react';
+import { Edit, MessageSquare, Eye, CheckSquare, Info, Search, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -45,6 +46,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
   const { toast } = useToast();
   const { profile } = useAuth();
 
@@ -178,20 +180,35 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     fetchProjects();
   }, [refreshTrigger]);
 
-  // Filter projects based on status and category
+  // Filter projects based on status, category, and search query
   useEffect(() => {
     let filtered = projects;
 
+    // Apply status filter
     if (statusFilter !== 'all') {
       filtered = filtered.filter(project => project.status === statusFilter);
     }
 
+    // Apply category filter
     if (categoryFilter !== 'all') {
       filtered = filtered.filter(project => project.category === categoryFilter);
     }
 
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(project => 
+        project.name.toLowerCase().includes(query) ||
+        project.type.toLowerCase().includes(query) ||
+        (project.category && project.category.toLowerCase().includes(query)) ||
+        (project.reference && project.reference.toLowerCase().includes(query)) ||
+        (project.description && project.description.toLowerCase().includes(query)) ||
+        (project.admin_name && project.admin_name.toLowerCase().includes(query))
+      );
+    }
+
     setFilteredProjects(filtered);
-  }, [projects, statusFilter, categoryFilter]);
+  }, [projects, statusFilter, categoryFilter, searchQuery]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -262,10 +279,103 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     );
   }
 
-  if (filteredProjects.length === 0 && (statusFilter !== 'all' || categoryFilter !== 'all')) {
+  if (filteredProjects.length === 0 && (statusFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim())) {
     return (
       <Card>
         <CardHeader className="pb-4">
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+              <div>
+                <CardTitle className="text-xl">All Projects</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Manage and track all your projects
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      {projectStatusOptions.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {status}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-muted-foreground">Category:</span>
+                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                    <SelectTrigger className="w-36">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Categories</SelectItem>
+                      {projectCategoryOptions.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            
+            {/* Search Bar */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search projects by name, type, category, reference, or admin..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+              <CheckSquare className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">No projects found</h3>
+              <p className="text-muted-foreground mt-1">
+                {searchQuery.trim() 
+                  ? `No projects match "${searchQuery}"`
+                  : 'No projects match your current filters'
+                }
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Try adjusting your search, status, or category filters
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <CardTitle className="text-xl">All Projects</CardTitle>
@@ -308,70 +418,26 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               </div>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="py-12">
-          <div className="flex flex-col items-center justify-center space-y-4">
-            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
-              <CheckSquare className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-semibold">No projects found</h3>
-              <p className="text-muted-foreground mt-1">
-                No projects match your current filters
-              </p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Try adjusting your status or category filters
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader className="pb-4">
-        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-          <div>
-            <CardTitle className="text-xl">All Projects</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Manage and track all your projects
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Status:</span>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  {projectStatusOptions.map((status) => (
-                    <SelectItem key={status} value={status}>
-                      {status}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-muted-foreground">Category:</span>
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-36">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  {projectCategoryOptions.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects by name, type, category, reference, or admin..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 pr-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
