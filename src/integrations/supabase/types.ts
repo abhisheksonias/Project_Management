@@ -17,34 +17,40 @@ export type Database = {
       projects: {
         Row: {
           admin_id: string | null
+          category: string | null
           comments: Json | null
           created_at: string | null
           deadline: string | null
           description: string | null
           id: string
           name: string
+          reference: string | null
           status: string | null
           type: string
         }
         Insert: {
           admin_id?: string | null
+          category?: string | null
           comments?: Json | null
           created_at?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
           name: string
+          reference?: string | null
           status?: string | null
           type: string
         }
         Update: {
           admin_id?: string | null
+          category?: string | null
           comments?: Json | null
           created_at?: string | null
           deadline?: string | null
           description?: string | null
           id?: string
           name?: string
+          reference?: string | null
           status?: string | null
           type?: string
         }

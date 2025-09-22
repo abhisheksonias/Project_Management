@@ -14,6 +14,8 @@ interface Project {
   id: string;
   name: string;
   type: string;
+  category?: string;
+  reference?: string;
   status: string;
   deadline: string | null;
   created_at: string;
@@ -42,10 +44,12 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const { toast } = useToast();
   const { profile } = useAuth();
 
   const projectStatusOptions = ['Open', 'In Progress', 'Completed', 'On Hold', 'Client Approval'];
+  const projectCategoryOptions = ['One-time', 'Maintenance', 'Hourly'];
 
   const handleStatusChange = async (projectId: string, newStatus: string) => {
     try {
@@ -132,6 +136,8 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         id: project.id,
         name: project.name,
         type: project.type,
+        category: project.category,
+        reference: project.reference,
         status: project.status || 'Open',
         deadline: project.deadline,
         created_at: project.created_at || new Date().toISOString(),
@@ -157,14 +163,20 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     fetchProjects();
   }, [refreshTrigger]);
 
-  // Filter projects based on status
+  // Filter projects based on status and category
   useEffect(() => {
-    if (statusFilter === 'all') {
-      setFilteredProjects(projects);
-    } else {
-      setFilteredProjects(projects.filter(project => project.status === statusFilter));
+    let filtered = projects;
+
+    if (statusFilter !== 'all') {
+      filtered = filtered.filter(project => project.status === statusFilter);
     }
-  }, [projects, statusFilter]);
+
+    if (categoryFilter !== 'all') {
+      filtered = filtered.filter(project => project.category === categoryFilter);
+    }
+
+    setFilteredProjects(filtered);
+  }, [projects, statusFilter, categoryFilter]);
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -184,8 +196,24 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   if (loading) {
     return (
       <Card>
-        <CardContent className="py-8">
-          <div className="text-center text-muted-foreground">Loading projects...</div>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">All Projects</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track all your projects
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <div className="text-center">
+              <p className="text-muted-foreground font-medium">Loading projects...</p>
+              <p className="text-sm text-muted-foreground mt-1">Please wait while we fetch your data</p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -194,26 +222,113 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   if (projects.length === 0) {
     return (
       <Card>
-        <CardContent className="py-8">
-          <div className="text-center text-muted-foreground">
-            <p>No projects found.</p>
-            <p className="text-sm mt-2">Create your first project to get started.</p>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">All Projects</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track all your projects
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+              <CheckSquare className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">No projects found</h3>
+              <p className="text-muted-foreground mt-1">Get started by creating your first project</p>
+            </div>
           </div>
         </CardContent>
       </Card>
     );
   }
 
-  if (filteredProjects.length === 0 && statusFilter !== 'all') {
+  if (filteredProjects.length === 0 && (statusFilter !== 'all' || categoryFilter !== 'all')) {
     return (
       <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>All Projects</CardTitle>
+        <CardHeader className="pb-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">All Projects</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track all your projects
+              </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    {projectStatusOptions.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">Category:</span>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {projectCategoryOptions.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="py-12">
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
+              <CheckSquare className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-semibold">No projects found</h3>
+              <p className="text-muted-foreground mt-1">
+                No projects match your current filters
+              </p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Try adjusting your status or category filters
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-4">
+        <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+          <div>
+            <CardTitle className="text-xl">All Projects</CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Manage and track all your projects
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Filter by status:</span>
+              <span className="text-sm font-medium text-muted-foreground">Status:</span>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-36">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -226,119 +341,166 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="py-8">
-          <div className="text-center text-muted-foreground">
-            <p>No projects found with status "{statusFilter}".</p>
-            <p className="text-sm mt-2">Try selecting a different status or "All Status".</p>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle>All Projects</CardTitle>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground">Filter by status:</span>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-40">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                {projectStatusOptions.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {status}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Category:</span>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  {projectCategoryOptions.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Deadline</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead>Admin</TableHead>
-                <TableHead>Actions</TableHead>
+              <TableRow className="border-b">
+                <TableHead className="font-semibold text-left min-w-[200px]">Project Name</TableHead>
+                <TableHead className="font-semibold text-center min-w-[120px]">Type</TableHead>
+                <TableHead className="font-semibold text-center min-w-[120px]">Category</TableHead>
+                <TableHead className="font-semibold text-center min-w-[150px]">Reference</TableHead>
+                <TableHead className="font-semibold text-center min-w-[140px]">Status</TableHead>
+                <TableHead className="font-semibold text-center min-w-[120px]">Deadline</TableHead>
+                <TableHead className="font-semibold text-center min-w-[120px]">Created</TableHead>
+                <TableHead className="font-semibold text-center min-w-[120px]">Admin</TableHead>
+                <TableHead className="font-semibold text-center min-w-[180px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredProjects.map((project) => (
-                <TableRow key={project.id} className="cursor-pointer hover:bg-muted/50">
-                  <TableCell className="font-medium">{project.name}</TableCell>
-                  <TableCell>{project.type}</TableCell>
-                  <TableCell>
+                <TableRow key={project.id} className="hover:bg-muted/30 transition-colors border-b">
+                  <TableCell className="font-medium py-4">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-sm">{project.name}</div>
+                      {project.description && (
+                        <div className="text-xs text-muted-foreground line-clamp-2 max-w-[180px]">
+                          {project.description}
+                        </div>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center py-4">
+                    <Badge variant="secondary" className="text-xs">
+                      {project.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center py-4">
+                    <Badge 
+                      variant={project.category ? "default" : "outline"} 
+                      className="text-xs"
+                    >
+                      {project.category || 'Not set'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center py-4">
+                    <div className="text-sm">
+                      {project.reference ? (
+                        <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs">
+                          {project.reference}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not set</span>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center py-4">
                     <Select
                       value={project.status}
                       onValueChange={(value) => handleStatusChange(project.id, value)}
                     >
-                      <SelectTrigger className="w-32">
+                      <SelectTrigger className="w-32 h-8 text-xs">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
                         {projectStatusOptions.map((status) => (
-                          <SelectItem key={status} value={status}>
+                          <SelectItem key={status} value={status} className="text-xs">
                             {status}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </TableCell>
-                  <TableCell>
-                    {project.deadline 
-                      ? format(new Date(project.deadline), 'MMM dd, yyyy')
-                      : 'Not set'
-                    }
+                  <TableCell className="text-center py-4">
+                    <div className="text-sm">
+                      {project.deadline ? (
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {format(new Date(project.deadline), 'MMM dd')}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {format(new Date(project.deadline), 'yyyy')}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">Not set</span>
+                      )}
+                    </div>
                   </TableCell>
-                  <TableCell>
-                    {format(new Date(project.created_at), 'MMM dd, yyyy')}
+                  <TableCell className="text-center py-4">
+                    <div className="text-sm">
+                      <div className="font-medium">
+                        {format(new Date(project.created_at), 'MMM dd')}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(new Date(project.created_at), 'yyyy')}
+                      </div>
+                    </div>
                   </TableCell>
-                  <TableCell>{project.admin_name}</TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
+                  <TableCell className="text-center py-4">
+                    <div className="text-sm font-medium">
+                      {project.admin_name}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center py-4">
+                    <div className="flex justify-center gap-1">
                       {onViewDetails && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => onViewDetails(project)}
+                          className="h-8 w-8 p-0"
+                          title="View Details"
                         >
-                          <Info className="h-4 w-4" />
+                          <Info className="h-3 w-3" />
                         </Button>
                       )}
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => onEditProject(project)}
+                        className="h-8 w-8 p-0"
+                        title="Edit Project"
                       >
-                        <Edit className="h-4 w-4" />
+                        <Edit className="h-3 w-3" />
                       </Button>
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => onViewComments(project)}
+                        className="h-8 w-8 p-0"
+                        title="View Comments"
                       >
-                        <MessageSquare className="h-4 w-4" />
+                        <MessageSquare className="h-3 w-3" />
                       </Button>
                       {onViewTasks && (
                         <Button
                           size="sm"
                           variant="outline"
                           onClick={() => onViewTasks(project)}
+                          className="h-8 w-8 p-0"
+                          title="View Tasks"
                         >
-                          <CheckSquare className="h-4 w-4" />
+                          <CheckSquare className="h-3 w-3" />
                         </Button>
                       )}
                     </div>

@@ -39,6 +39,8 @@ interface Project {
   id: string;
   name: string;
   type: string;
+  category?: string;
+  reference?: string;
   status: string;
   deadline: string | null;
   created_at: string;
@@ -303,10 +305,14 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
               <Badge variant="outline" className="text-xs">
                 {project.type}
               </Badge>
-              {project.type === 'billable' && (
-                <Badge variant="default" className="text-xs bg-green-600">
-                  <DollarSign className="h-3 w-3 mr-1" />
-                  Billable
+              {project.category && (
+                <Badge variant="secondary" className="text-xs">
+                  {project.category}
+                </Badge>
+              )}
+              {project.reference && (
+                <Badge variant="outline" className="text-xs">
+                  {project.reference}
                 </Badge>
               )}
             </div>
@@ -485,6 +491,22 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                       <div className="flex items-center gap-2">
                         <FileText className="h-4 w-4 text-muted-foreground" />
                         <span>{project.type}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Category</label>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-xs">
+                          {project.category || 'Not set'}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Reference</label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm">{project.reference || 'Not set'}</span>
                       </div>
                     </div>
                     

@@ -14,6 +14,8 @@ interface Project {
   id: string;
   name: string;
   type: string;
+  category?: string;
+  reference?: string;
   description: string | null;
   status: string | null;
   deadline: string | null;

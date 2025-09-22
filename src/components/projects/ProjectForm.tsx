@@ -19,9 +19,14 @@ import { useToast } from '@/hooks/use-toast';
 // Project status options
 const PROJECT_STATUSES = ['Open', 'In Progress', 'On Hold', 'Client Approval', 'Completed'] as const;
 
+// Project category options
+const PROJECT_CATEGORIES = ['One-time', 'Maintenance', 'Hourly'] as const;
+
 const projectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   type: z.string().min(1, 'Project type is required'),
+  category: z.enum(PROJECT_CATEGORIES),
+  reference: z.string().min(1, 'Reference is required'),
   description: z.string().optional(),
   status: z.enum(PROJECT_STATUSES),
   deadline: z.date().optional(),
@@ -36,6 +41,8 @@ interface ProjectFormProps {
     id: string;
     name: string;
     type: string;
+    category?: string;
+    reference?: string;
     description?: string;
     status: string;
     deadline?: string;
@@ -51,6 +58,8 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
     defaultValues: {
       name: editProject?.name || '',
       type: editProject?.type || '',
+      category: (editProject?.category as typeof PROJECT_CATEGORIES[number]) || 'One-time',
+      reference: editProject?.reference || '',
       description: editProject?.description || '',
       status: (editProject?.status as typeof PROJECT_STATUSES[number]) || 'Open',
       deadline: editProject?.deadline ? new Date(editProject.deadline) : undefined,
@@ -101,6 +110,8 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
           .update({
             name: data.name,
             type: data.type,
+            category: data.category,
+            reference: data.reference,
             description: data.description,
             status: data.status,
             deadline: data.deadline?.toISOString().split('T')[0] || null,
@@ -123,6 +134,8 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
           .insert({
             name: data.name,
             type: data.type,
+            category: data.category,
+            reference: data.reference,
             description: data.description,
             status: data.status,
             admin_id: profile.id,
@@ -178,6 +191,45 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
               <FormLabel>Project Type</FormLabel>
               <FormControl>
                 <Input placeholder="Enter project type" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="category"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Category</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project category" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {PROJECT_CATEGORIES.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="reference"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Reference</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter reference (e.g., Direct, B2B (Company Name))" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
