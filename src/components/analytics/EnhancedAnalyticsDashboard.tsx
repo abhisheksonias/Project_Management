@@ -42,6 +42,7 @@ import { useFilter } from '@/contexts/FilterContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { UserPerformanceModal } from './UserPerformanceModal';
+import { ProjectPerformanceModal } from './ProjectPerformanceModal';
 
 interface AnalyticsData {
   totalProjects: number;
@@ -153,6 +154,9 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
   });
   const [loading, setLoading] = useState(true);
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
+  
+  // Project Performance Modal states
+  const [showProjectPerformance, setShowProjectPerformance] = useState<any>(null);
   const [chartFilters, setChartFilters] = useState<ChartFilters>({
     timeDistribution: {
       type: 'billable',
@@ -274,6 +278,15 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
   const closeUserModal = () => {
     setIsUserModalOpen(false);
     setSelectedUser(null);
+  };
+
+  // Project Performance Modal handlers
+  const handleProjectClick = (project: any) => {
+    setShowProjectPerformance(project);
+  };
+
+  const handleProjectPerformanceClose = () => {
+    setShowProjectPerformance(null);
   };
 
   const deactivateUser = async (userId: string, userName: string) => {
@@ -1043,6 +1056,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                         <div 
                           key={project.id} 
                           className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleProjectClick(project)}
                         >
                           {/* Project Header */}
                           <div className="flex items-center gap-3 mb-3">
@@ -1106,6 +1120,7 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
                         <div 
                           key={project.id} 
                           className="p-4 border rounded-lg bg-white hover:shadow-md transition-shadow cursor-pointer"
+                          onClick={() => handleProjectClick(project)}
                         >
                           {/* Project Header */}
                           <div className="flex items-center gap-3 mb-3">
@@ -1175,6 +1190,15 @@ export const EnhancedAnalyticsDashboard: React.FC = () => {
           isOpen={isUserModalOpen}
           onClose={closeUserModal}
           user={selectedUser}
+        />
+      )}
+
+      {/* Project Performance Modal */}
+      {showProjectPerformance && (
+        <ProjectPerformanceModal
+          isOpen={!!showProjectPerformance}
+          onClose={handleProjectPerformanceClose}
+          project={showProjectPerformance}
         />
       )}
     </div>

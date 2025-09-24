@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Edit, MessageSquare, Eye, CheckSquare, Info, Search, X } from 'lucide-react';
+import { Edit, MessageSquare, Eye, CheckSquare, Info, Search, X, BarChart3 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -31,6 +31,7 @@ interface ProjectListProps {
   onViewTasks?: (project: Project) => void;
   onViewComments: (project: Project) => void;
   onViewDetails?: (project: Project) => void;
+  onViewPerformance?: (project: Project) => void;
   refreshTrigger: number;
 }
 
@@ -39,6 +40,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   onViewComments, 
   onViewTasks,
   onViewDetails,
+  onViewPerformance,
   refreshTrigger 
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
@@ -562,6 +564,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                           <Info className="h-3 w-3" />
                         </Button>
                       )}
+                      
                       <Button
                         size="sm"
                         variant="outline"

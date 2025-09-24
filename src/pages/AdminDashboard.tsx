@@ -19,8 +19,9 @@ import { CompactTaskList } from '@/components/tasks/CompactTaskList';
 import { TaskForm } from '@/components/tasks/TaskForm';
 import { TaskComments } from '@/components/tasks/TaskComments';
 import { TaskDetail } from '@/components/tasks/TaskDetail';
-import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
+// import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 import { EnhancedAnalyticsDashboard } from '@/components/analytics/EnhancedAnalyticsDashboard';
+import { ProjectPerformanceModal } from '@/components/analytics/ProjectPerformanceModal';
 import { EnhancedWorkLogManager } from '@/components/admin/EnhancedWorkLogManager';
 
 // Dashboard analytics interface
@@ -111,6 +112,9 @@ const AdminDashboard: React.FC = () => {
   // Detail view states
   const [showProjectDetail, setShowProjectDetail] = useState<any>(null);
   const [showTaskDetail, setShowTaskDetail] = useState<any>(null);
+  
+  // Project Performance Modal states
+  const [showProjectPerformance, setShowProjectPerformance] = useState<any>(null);
 
   // Real-time data fetching function
   const fetchDashboardData = async () => {
@@ -436,6 +440,15 @@ const AdminDashboard: React.FC = () => {
     setShowTaskDetail(null);
   };
 
+  // Project Performance Modal handlers
+  const handleViewProjectPerformance = (project: any) => {
+    setShowProjectPerformance(project);
+  };
+
+  const handleProjectPerformanceClose = () => {
+    setShowProjectPerformance(null);
+  };
+
   // Show access denied for non-admin users
   if (profile?.role !== 'Admin') {
     return (
@@ -654,6 +667,7 @@ const AdminDashboard: React.FC = () => {
                 onViewComments={handleViewComments}
                 onViewTasks={handleViewTasks}
                 onViewDetails={handleViewProjectDetail}
+                onViewPerformance={handleViewProjectPerformance}
                 refreshTrigger={refreshTrigger}
               />
             )}
@@ -764,6 +778,14 @@ const AdminDashboard: React.FC = () => {
             task={showTaskComments}
             onClose={handleTaskCommentsClose}
             onCommentAdded={handleTaskCommentsClose}
+          />
+        )}
+
+        {showProjectPerformance && (
+          <ProjectPerformanceModal
+            isOpen={!!showProjectPerformance}
+            onClose={handleProjectPerformanceClose}
+            project={showProjectPerformance}
           />
         )}
       </main>
