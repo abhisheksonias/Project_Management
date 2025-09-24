@@ -5,14 +5,15 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { 
-  Edit, 
-  Trash2, 
-  MessageCircle, 
-  Info, 
+import {
+  Edit,
+  Trash2,
+  MessageCircle,
+  Info,
   Search,
   X,
-  CheckSquare
+  CheckSquare,
+  Plus
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -80,7 +81,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
 
       const { error } = await supabase
         .from('tasks')
-        .update({ 
+        .update({
           status: newStatus,
           updated_at: new Date().toISOString()
         })
@@ -209,7 +210,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
   const fetchTasks = async () => {
     try {
       setLoading(true);
-      
+
       let query = supabase
         .from('tasks')
         .select(`
@@ -283,7 +284,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
     // Search filter
     if (searchQuery.trim()) {
       const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = 
+      const matchesSearch =
         task.name.toLowerCase().includes(searchLower) ||
         task.description?.toLowerCase().includes(searchLower) ||
         task.assigned_user?.name?.toLowerCase().includes(searchLower) ||
@@ -311,10 +312,10 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
     // If one is completed and the other isn't, completed goes to bottom
     const aCompleted = a.status.toLowerCase() === 'completed';
     const bCompleted = b.status.toLowerCase() === 'completed';
-    
+
     if (aCompleted && !bCompleted) return 1; // a goes after b
     if (!aCompleted && bCompleted) return -1; // a goes before b
-    
+
     // If both have same completion status, sort by creation date (newest first)
     return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
   });
@@ -346,20 +347,40 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
       <CardHeader className="pb-4">
         <div className="flex flex-col gap-4">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-          <div>
+            <div>
               <CardTitle className="text-xl">
                 {projectId ? `Tasks for ${projectName}` : 'All Tasks'}
-            </CardTitle>
+              </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                {projectId 
-                  ? `Manage tasks for this project` 
+                {projectId
+                  ? `Manage tasks for this project`
                   : 'Manage and track all your tasks'
                 }
               </p>
-          </div>
+            </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search tasks by name, description, assignee, or project..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                {/* <span className="text-sm font-medium text-muted-foreground">Status:</span> */}
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-36">
                     <SelectValue />
@@ -376,7 +397,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Priority:</span>
+                {/* <span className="text-sm font-medium text-muted-foreground">Priority:</span> */}
                 <Select value={priorityFilter} onValueChange={setPriorityFilter}>
                   <SelectTrigger className="w-36">
                     <SelectValue />
@@ -392,51 +413,41 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                 </Select>
               </div>
 
+
               {!projectId && (
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">Assignee:</span>
+                  {/* <span className="text-sm font-medium text-muted-foreground">Assignee:</span> */}
                   <Select value={userFilter} onValueChange={setUserFilter}>
                     <SelectTrigger className="w-36">
                       <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
+                    </SelectTrigger>
+                    <SelectContent>
                       <SelectItem value="all">All Users</SelectItem>
                       <SelectItem value="unassigned">Unassigned</SelectItem>
                       {users.map((user) => (
                         <SelectItem key={user.id} value={user.id}>
                           {user.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    onCreateTask();
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  Add Task
+                </Button>
               </div>
             </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tasks by name, description, assignee, or project..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
-              >
-                  <X className="h-3 w-3" />
-                </Button>
-            )}
           </div>
         </div>
       </CardHeader>
-      
+
       <CardContent className="p-0">
         {sortedTasks.length === 0 ? (
           <div className="py-12">
@@ -447,7 +458,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
               <div className="text-center">
                 <h3 className="text-lg font-semibold">No tasks found</h3>
                 <p className="text-muted-foreground mt-1">
-                  {searchQuery.trim() 
+                  {searchQuery.trim()
                     ? `No tasks match "${searchQuery}"`
                     : 'No tasks match your current filters'
                   }
@@ -477,11 +488,10 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                 {sortedTasks.map((task) => {
                   const isCompleted = task.status?.toLowerCase() === 'completed';
                   return (
-                    <TableRow 
-                key={task.id}
-                      className={`hover:bg-muted/30 transition-colors border-b ${
-                        isCompleted ? 'opacity-75 bg-muted/20' : ''
-                      }`}
+                    <TableRow
+                      key={task.id}
+                      className={`hover:bg-muted/30 transition-colors border-b ${isCompleted ? 'opacity-75 bg-muted/20' : ''
+                        }`}
                     >
                       <TableCell className="font-medium py-4">
                         <div className="space-y-1">
@@ -496,7 +506,7 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                               {task.project.name}
                             </div>
                           )}
-                      </div>
+                        </div>
                       </TableCell>
                       <TableCell className="text-center py-4">
                         <Badge variant="secondary" className="text-xs">
@@ -504,8 +514,8 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                         </Badge>
                       </TableCell>
                       <TableCell className="text-center py-4">
-                        <Badge 
-                          variant={getPriorityBadgeVariant(task.priority)} 
+                        <Badge
+                          variant={getPriorityBadgeVariant(task.priority)}
                           className="text-xs"
                         >
                           {task.priority || 'Not Set'}
@@ -521,21 +531,21 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                         </div>
                       </TableCell>
                       <TableCell className="text-center py-4">
-                    <Select
-                      value={task.status}
-                      onValueChange={(value) => handleStatusChange(task.id, value)}
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {taskStatusOptions.map((status) => (
-                          <SelectItem key={status} value={status} className="text-xs">
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                        <Select
+                          value={task.status}
+                          onValueChange={(value) => handleStatusChange(task.id, value)}
+                        >
+                          <SelectTrigger className="w-32 h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {taskStatusOptions.map((status) => (
+                              <SelectItem key={status} value={status} className="text-xs">
+                                {status}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </TableCell>
                       <TableCell className="text-center py-4">
                         <div className="text-sm">
@@ -558,45 +568,45 @@ export const CompactTaskList: React.FC<CompactTaskListProps> = ({
                       </TableCell>
                       <TableCell className="text-center py-4">
                         <div className="flex justify-center gap-1">
-                      {onViewDetails && (
-                        <Button
+                          {onViewDetails && (
+                            <Button
                               size="sm"
-                          variant="outline"
-                          onClick={() => onViewDetails(task)}
-                          className="h-8 w-8 p-0"
-                          title="View Details"
-                        >
-                          <Info className="h-3 w-3" />
-                        </Button>
-                      )}
-                      <Button
+                              variant="outline"
+                              onClick={() => onViewDetails(task)}
+                              className="h-8 w-8 p-0"
+                              title="View Details"
+                            >
+                              <Info className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
                             size="sm"
-                        variant="outline"
-                        onClick={() => onEditTask(task)}
-                        className="h-8 w-8 p-0"
-                        title="Edit Task"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                            size="sm"
-                        variant="outline"
-                        onClick={() => onTaskComments(task)}
-                        className="h-8 w-8 p-0"
-                            title="View Comments"
-                      >
-                        <MessageCircle className="h-3 w-3" />
-                      </Button>
-                      <Button
-                            size="sm"
-                        variant="outline"
-                        onClick={() => handleDeleteTask(task.id)}
+                            variant="outline"
+                            onClick={() => onEditTask(task)}
                             className="h-8 w-8 p-0"
-                        title="Delete Task"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                            title="Edit Task"
+                          >
+                            <Edit className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onTaskComments(task)}
+                            className="h-8 w-8 p-0"
+                            title="View Comments"
+                          >
+                            <MessageCircle className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="h-8 w-8 p-0"
+                            title="Delete Task"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );

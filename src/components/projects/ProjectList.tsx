@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Edit, MessageSquare, Eye, CheckSquare, Info, Search, X, BarChart3 } from 'lucide-react';
+import { Edit, MessageSquare, Eye, CheckSquare, Info, Search, X, BarChart3, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -35,13 +35,13 @@ interface ProjectListProps {
   refreshTrigger: number;
 }
 
-export const ProjectList: React.FC<ProjectListProps> = ({ 
-  onEditProject, 
-  onViewComments, 
+export const ProjectList: React.FC<ProjectListProps> = ({
+  onEditProject,
+  onViewComments,
   onViewTasks,
   onViewDetails,
   onViewPerformance,
-  refreshTrigger 
+  refreshTrigger
 }) => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
@@ -64,7 +64,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       // Update project status
       const { error } = await supabase
         .from('projects')
-        .update({ 
+        .update({
           status: newStatus,
           updated_at: new Date().toISOString()
         })
@@ -124,7 +124,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   const fetchProjects = async () => {
     try {
       setLoading(true);
-      
+
       // Fetch projects with admin names via join
       const { data, error } = await supabase
         .from('projects')
@@ -155,11 +155,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
       const sortedProjects = formattedProjects.sort((a, b) => {
         const aIsCompleted = a.status?.toLowerCase() === 'completed';
         const bIsCompleted = b.status?.toLowerCase() === 'completed';
-        
+
         // If one is completed and other is not, put completed at bottom
         if (aIsCompleted && !bIsCompleted) return 1;
         if (!aIsCompleted && bIsCompleted) return -1;
-        
+
         // If both have same completion status, sort by created_at (latest first)
         const aDate = new Date(a.created_at).getTime();
         const bDate = new Date(b.created_at).getTime();
@@ -199,7 +199,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      filtered = filtered.filter(project => 
+      filtered = filtered.filter(project =>
         project.name.toLowerCase().includes(query) ||
         project.type.toLowerCase().includes(query) ||
         (project.category && project.category.toLowerCase().includes(query)) ||
@@ -284,73 +284,82 @@ export const ProjectList: React.FC<ProjectListProps> = ({
   if (filteredProjects.length === 0 && (statusFilter !== 'all' || categoryFilter !== 'all' || searchQuery.trim())) {
     return (
       <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4">
-            <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
-              <div>
-                <CardTitle className="text-xl">All Projects</CardTitle>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Manage and track all your projects
-                </p>
-              </div>
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">Status:</span>
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-36">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      {projectStatusOptions.map((status) => (
-                        <SelectItem key={status} value={status}>
-                          {status}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-muted-foreground">Category:</span>
-                  <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                    <SelectTrigger className="w-36">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Categories</SelectItem>
-                      {projectCategoryOptions.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+              <CardHeader className="pb-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
+            <div>
+              <CardTitle className="text-xl">All Projects</CardTitle>
+              <p className="text-sm text-muted-foreground mt-1">
+                Manage and track all your projects
+              </p>
             </div>
-            
-            {/* Search Bar */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search projects by name, type, category, reference, or admin..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
-              {searchQuery && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects by name, type, category, reference, or admin..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {/* <span className="text-sm font-medium text-muted-foreground">Status:</span> */}
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    {projectStatusOptions.map((status) => (
+                      <SelectItem key={status} value={status}>
+                        {status}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* <span className="text-sm font-medium text-muted-foreground">Category:</span> */}
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger className="w-36">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {projectCategoryOptions.map((category) => (
+                      <SelectItem key={category} value={category}>
+                        {category}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-2">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                  onClick={() => {
+                    onEditProject(null);
+                  }}
+                  className="flex items-center gap-2"
                 >
-                  <X className="h-3 w-3" />
+                  Add Project
                 </Button>
-              )}
+              </div>
             </div>
           </div>
-        </CardHeader>
+        </div>
+      </CardHeader>
         <CardContent className="py-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center">
@@ -359,7 +368,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
             <div className="text-center">
               <h3 className="text-lg font-semibold">No projects found</h3>
               <p className="text-muted-foreground mt-1">
-                {searchQuery.trim() 
+                {searchQuery.trim()
                   ? `No projects match "${searchQuery}"`
                   : 'No projects match your current filters'
                 }
@@ -386,8 +395,28 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               </p>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects by name, type, category, reference, or admin..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Status:</span>
+                {/* <span className="text-sm font-medium text-muted-foreground">Status:</span> */}
                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger className="w-36">
                     <SelectValue />
@@ -403,7 +432,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium text-muted-foreground">Category:</span>
+                {/* <span className="text-sm font-medium text-muted-foreground">Category:</span> */}
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                   <SelectTrigger className="w-36">
                     <SelectValue />
@@ -418,28 +447,17 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  onClick={() => {
+                    onEditProject(null);
+                  }}
+                  className="flex items-center gap-2"
+                >
+                  Add Project
+                </Button>
+              </div>
             </div>
-          </div>
-          
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search projects by name, type, category, reference, or admin..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-10"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-muted"
-              >
-                <X className="h-3 w-3" />
-              </Button>
-            )}
           </div>
         </div>
       </CardHeader>
@@ -463,140 +481,139 @@ export const ProjectList: React.FC<ProjectListProps> = ({
               {filteredProjects.map((project) => {
                 const isCompleted = project.status?.toLowerCase() === 'completed';
                 return (
-                <TableRow 
-                  key={project.id} 
-                  className={`hover:bg-muted/30 transition-colors border-b ${
-                    isCompleted ? 'opacity-75 bg-muted/20' : ''
-                  }`}
-                >
-                  <TableCell className="font-medium py-4">
-                    <div className="space-y-1">
-                      <div className="font-semibold text-sm">{project.name}</div>
-                      {project.description && (
-                        <div className="text-xs text-muted-foreground line-clamp-2 max-w-[180px]">
-                          {project.description}
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <Badge variant="secondary" className="text-xs">
-                      {project.type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <Badge 
-                      variant={project.category ? "default" : "outline"} 
-                      className="text-xs"
-                    >
-                      {project.category || 'Not set'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <div className="text-sm">
-                      {project.reference ? (
-                        <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs">
-                          {project.reference}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">Not set</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <Select
-                      value={project.status}
-                      onValueChange={(value) => handleStatusChange(project.id, value)}
-                    >
-                      <SelectTrigger className="w-32 h-8 text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {projectStatusOptions.map((status) => (
-                          <SelectItem key={status} value={status} className="text-xs">
-                            {status}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <div className="text-sm">
-                      {project.deadline ? (
-                        <div className="space-y-1">
-                          <div className="font-medium">
-                            {format(new Date(project.deadline), 'MMM dd')}
+                  <TableRow
+                    key={project.id}
+                    className={`hover:bg-muted/30 transition-colors border-b ${isCompleted ? 'opacity-75 bg-muted/20' : ''
+                      }`}
+                  >
+                    <TableCell className="font-medium py-4">
+                      <div className="space-y-1">
+                        <div className="font-semibold text-sm">{project.name}</div>
+                        {project.description && (
+                          <div className="text-xs text-muted-foreground line-clamp-2 max-w-[180px]">
+                            {project.description}
                           </div>
-                          <div className="text-xs text-muted-foreground">
-                            {format(new Date(project.deadline), 'yyyy')}
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Badge variant="secondary" className="text-xs">
+                        {project.type}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Badge
+                        variant={project.category ? "default" : "outline"}
+                        className="text-xs"
+                      >
+                        {project.category || 'Not set'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="text-sm">
+                        {project.reference ? (
+                          <span className="inline-block px-2 py-1 bg-blue-50 text-blue-700 rounded-md text-xs">
+                            {project.reference}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Not set</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Select
+                        value={project.status}
+                        onValueChange={(value) => handleStatusChange(project.id, value)}
+                      >
+                        <SelectTrigger className="w-32 h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {projectStatusOptions.map((status) => (
+                            <SelectItem key={status} value={status} className="text-xs">
+                              {status}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="text-sm">
+                        {project.deadline ? (
+                          <div className="space-y-1">
+                            <div className="font-medium">
+                              {format(new Date(project.deadline), 'MMM dd')}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {format(new Date(project.deadline), 'yyyy')}
+                            </div>
                           </div>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">Not set</span>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="text-sm">
+                        <div className="font-medium">
+                          {format(new Date(project.created_at), 'MMM dd')}
                         </div>
-                      ) : (
-                        <span className="text-muted-foreground text-xs">Not set</span>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <div className="text-sm">
-                      <div className="font-medium">
-                        {format(new Date(project.created_at), 'MMM dd')}
+                        <div className="text-xs text-muted-foreground">
+                          {format(new Date(project.created_at), 'yyyy')}
+                        </div>
                       </div>
-                      <div className="text-xs text-muted-foreground">
-                        {format(new Date(project.created_at), 'yyyy')}
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="text-sm font-medium">
+                        {project.admin_name}
                       </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <div className="text-sm font-medium">
-                      {project.admin_name}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-center py-4">
-                    <div className="flex justify-center gap-1">
-                      {onViewDetails && (
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <div className="flex justify-center gap-1">
+                        {onViewDetails && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onViewDetails(project)}
+                            className="h-8 w-8 p-0"
+                            title="View Details"
+                          >
+                            <Info className="h-3 w-3" />
+                          </Button>
+                        )}
+
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onViewDetails(project)}
+                          onClick={() => onEditProject(project)}
                           className="h-8 w-8 p-0"
-                          title="View Details"
+                          title="Edit Project"
                         >
-                          <Info className="h-3 w-3" />
+                          <Edit className="h-3 w-3" />
                         </Button>
-                      )}
-                      
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onEditProject(project)}
-                        className="h-8 w-8 p-0"
-                        title="Edit Project"
-                      >
-                        <Edit className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onViewComments(project)}
-                        className="h-8 w-8 p-0"
-                        title="View Comments"
-                      >
-                        <MessageSquare className="h-3 w-3" />
-                      </Button>
-                      {onViewTasks && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => onViewTasks(project)}
+                          onClick={() => onViewComments(project)}
                           className="h-8 w-8 p-0"
-                          title="View Tasks"
+                          title="View Comments"
                         >
-                          <CheckSquare className="h-3 w-3" />
+                          <MessageSquare className="h-3 w-3" />
                         </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
+                        {onViewTasks && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onViewTasks(project)}
+                            className="h-8 w-8 p-0"
+                            title="View Tasks"
+                          >
+                            <CheckSquare className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
             </TableBody>

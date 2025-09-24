@@ -122,11 +122,11 @@ const AdminDashboard: React.FC = () => {
       setIsLoading(true);
 
       // Fetch projects data
-      const { data: projects, error: projectsError } = await supabase
+      const { data: projects, error: projectsErtaskror } = await supabase
         .from('projects')
         .select('*');
 
-      if (projectsError) throw projectsError;
+      if (projectsErtaskror) throw projectsErtaskror;
 
       // Fetch users data
       const { data: users, error: usersError } = await supabase
@@ -568,19 +568,6 @@ const AdminDashboard: React.FC = () => {
 
 
           <TabsContent value="projects" className="space-y-6">
-            {/* Project Management Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold">Project Management</h2>
-                <p className="text-muted-foreground">Manage and track all projects</p>
-              </div>
-              <div className="flex gap-2">
-                <Button onClick={handleCreateProject}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Project
-                </Button>
-              </div>
-            </div>
 
             {/* Content Management */}
             {selectedProject ? (
@@ -626,7 +613,7 @@ const AdminDashboard: React.FC = () => {
                     onViewComments={handleTaskComments}
                   />
                 ) : (
-                  <TaskList
+                  <CompactTaskList
                     projectId={selectedProject.id}
                     projectName={selectedProject.name}
                     onCreateTask={handleCreateTask}
@@ -673,36 +660,7 @@ const AdminDashboard: React.FC = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="tasks" className="space-y-6">
-            
-
-            {/* Task Management Header */}
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <h2 className="text-2xl font-bold">Task Management</h2>
-                {/* <p className="text-muted-foreground">Manage and track all tasks across projects</p> */}
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  onClick={() => setRefreshTrigger(prev => prev + 1)}
-                  className="flex items-center gap-2"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  Refresh
-                </Button>
-                {/* <Button 
-                  onClick={() => {
-                    setEditingTask(null);
-                    setShowTaskForm(true);
-                  }} 
-                  className="flex items-center gap-2"
-                >
-                  <Plus className="h-4 w-4" />
-                  Create Task
-                </Button> */}
-              </div>
-            </div>
+          <TabsContent value="tasks" className="space-y-6"> 
             
             {showTaskForm ? (
               <Card>
