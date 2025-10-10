@@ -26,6 +26,17 @@ interface Task {
   assigned_user_id: string | null;
 }
 
+interface ProjectWithTasks {
+  id: string;
+  name: string;
+  type: string;
+  tasks?: Array<{
+    id: string;
+    assigned_user_id: string | null;
+    status: string;
+  }>;
+}
+
 interface ManualWorkLogFormProps {
   onSuccess?: () => void;
   className?: string;
@@ -73,15 +84,21 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           return;
         }
 
-        // Process projects to check for assigned non-completed tasks
-        const processedProjects = (data || []).map(project => ({
-          id: project.id,
-          name: project.name,
-          type: project.type || 'non-billable',
-          hasAssignedTasks: project.tasks?.some((task: any) => 
-            task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
-          ) || false
-        }));
+        // Process projects to check for assigned non-completed tasks and filter out completed projects
+        const processedProjects = (data as ProjectWithTasks[] || [])
+          .filter(project => {
+            // Show projects that have no tasks or have at least one non-completed task
+            if (!project.tasks || project.tasks.length === 0) return true;
+            return project.tasks.some(task => task.status?.toLowerCase() !== 'completed');
+          })
+          .map(project => ({
+            id: project.id,
+            name: project.name,
+            type: project.type || 'non-billable',
+            hasAssignedTasks: project.tasks?.some(task => 
+              task.assigned_user_id === profile?.id && task.status?.toLowerCase() !== 'completed'
+            ) || false
+          }));
 
         setProjects(processedProjects);
       } catch (error) {
@@ -115,6 +132,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
           .from('tasks')
           .select('id, name, project_id, status, assigned_user_id')
           .eq('project_id', selectedProject)
+          .neq('status', 'Completed') // Filter out completed tasks
           .order('name');
 
         if (error) {
@@ -340,7 +358,7 @@ export const ManualWorkLogForm: React.FC<ManualWorkLogFormProps> = ({
     return a.name.localeCompare(b.name);
   });
 
-  // Sort tasks: assigned tasks first, then by name
+  // Sort tasks: assigned tasks first, then by name (only non-completed tasks are shown)
   const sortedTasks = [...tasks].sort((a, b) => {
     const aAssigned = a.assigned_user_id === profile?.id;
     const bAssigned = b.assigned_user_id === profile?.id;
