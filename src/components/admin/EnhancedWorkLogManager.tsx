@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -121,21 +121,7 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     search: '',
   });
 
-  // Check if user is admin
-  if (profile?.role !== 'Admin') {
-    return (
-      <Card className={className}>
-        <CardHeader>
-          <CardTitle className="text-destructive">Access Denied</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">You don't have permission to access this feature.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -208,11 +194,11 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     } finally {
       setLoading(false);
     }
-  };
+  }, [getDateRange, toast]);
 
   useEffect(() => {
     fetchData();
-  }, [filterValue]);
+  }, [filterValue, fetchData]);
 
   const handleCreateWorkLog = () => {
     setEditingWorkLog(null);
@@ -380,7 +366,7 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
 
   // Filter and sort work logs
   const getFilteredAndSortedWorkLogs = () => {
-    let filtered = workLogs.filter(workLog => {
+    const filtered = workLogs.filter(workLog => {
       if (filters.project !== 'all-projects' && workLog.project_id !== filters.project) return false;
       if (filters.user !== 'all-users' && workLog.user_id !== filters.user) return false;
       if (filters.search && !workLog.users.name.toLowerCase().includes(filters.search.toLowerCase()) &&
@@ -392,10 +378,11 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
     // Sort based on selected criteria
     return filtered.sort((a, b) => {
       switch (sortBy) {
-        case 'project':
+        case 'project': {
           const projectA = a.projects?.name || 'No Project';
           const projectB = b.projects?.name || 'No Project';
           return projectA.localeCompare(projectB);
+        }
         case 'user':
           return a.users.name.localeCompare(b.users.name);
         case 'date':
@@ -493,6 +480,20 @@ export const EnhancedWorkLogManager: React.FC<EnhancedWorkLogManagerProps> = ({ 
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Check if user is admin
+  if (profile?.role !== 'Admin') {
+    return (
+      <Card className={className}>
+        <CardHeader>
+          <CardTitle className="text-destructive">Access Denied</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground">You don't have permission to access this feature.</p>
         </CardContent>
       </Card>
     );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +21,7 @@ interface Project {
   deadline: string | null;
   created_at: string;
   admin_id: string | null;
-  comments: any;
+  comments: unknown;
   admin_name?: string;
   hasAssignedTasks?: boolean;
   assignedTasksCount?: number;
@@ -38,7 +38,7 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
   const [showComments, setShowComments] = useState<Project | null>(null);
   const { toast } = useToast();
 
-  const fetchProjects = async () => {
+  const fetchProjects = useCallback(async () => {
     if (!profile?.id) return;
 
     try {
@@ -63,10 +63,10 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
         return;
       }
 
-      // Fetch user's assigned tasks to determine which projects have assigned tasks
+      // Fetch user's assigned tasks to determine which projects have active assigned tasks
       const { data: tasksData, error: tasksError } = await supabase
         .from('tasks')
-        .select('project_id')
+        .select('project_id, status')
         .eq('assigned_user_id', profile.id);
 
       if (tasksError) {
@@ -79,21 +79,24 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
         return;
       }
 
-      // Create a map of project IDs to task counts
-      const projectTaskCounts = new Map<string, number>();
+      // Create a map of project IDs to active (non-completed) task counts
+      const projectActiveTaskCounts = new Map<string, number>();
       (tasksData || []).forEach(task => {
-        const count = projectTaskCounts.get(task.project_id) || 0;
-        projectTaskCounts.set(task.project_id, count + 1);
+        // Only count tasks that are not completed
+        if (task.status?.toLowerCase() !== 'completed') {
+          const count = projectActiveTaskCounts.get(task.project_id) || 0;
+          projectActiveTaskCounts.set(task.project_id, count + 1);
+        }
       });
 
-      // Process projects to include admin name and assigned task information
+      // Process projects to include admin name and active task information
       const processedProjects = (projectsData || [])
         .filter(project => {
           const status = project.status?.toLowerCase();
           return status !== 'completed' && status !== 'cancelled'; // Filter out completed and cancelled projects
         })
         .map(project => {
-          const assignedTasksCount = projectTaskCounts.get(project.id) || 0;
+          const assignedTasksCount = projectActiveTaskCounts.get(project.id) || 0;
           return {
             ...project,
             admin_name: project.users?.name || 'Unknown Admin',
@@ -102,25 +105,18 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
           };
         });
 
-      // Sort projects: assigned tasks first, then latest first, completed at bottom
+      // Sort projects: projects with active tasks first, then by task count, then by creation date
       const sortedProjects = processedProjects.sort((a, b) => {
-        const aIsCompleted = a.status?.toLowerCase() === 'completed';
-        const bIsCompleted = b.status?.toLowerCase() === 'completed';
-        
-        // First priority: projects with assigned tasks
+        // First priority: projects with active assigned tasks
         if (a.hasAssignedTasks && !b.hasAssignedTasks) return -1;
         if (!a.hasAssignedTasks && b.hasAssignedTasks) return 1;
         
-        // Second priority: completed projects at bottom
-        if (aIsCompleted && !bIsCompleted) return 1;
-        if (!aIsCompleted && bIsCompleted) return -1;
-        
-        // Third priority: number of assigned tasks (more tasks first)
+        // Second priority: number of active assigned tasks (more tasks first)
         if (a.hasAssignedTasks && b.hasAssignedTasks) {
           return b.assignedTasksCount! - a.assignedTasksCount!;
         }
         
-        // Fourth priority: creation date (newer first)
+        // Third priority: creation date (newer first)
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
@@ -135,11 +131,11 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile?.id, toast]);
 
   useEffect(() => {
     fetchProjects();
-  }, [profile?.id]);
+  }, [fetchProjects]);
 
   const handleCommentsClick = (project: Project) => {
     setShowComments(project);
@@ -220,46 +216,44 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Projects with Assigned Tasks */}
-              {projects.filter(p => p.hasAssignedTasks).length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-0.5 w-6 bg-blue-500 rounded"></div>
-                    <h3 className="text-sm font-semibold text-blue-700">My Assigned Projects</h3>
-                    <Badge variant="default" className="ml-1 text-xs px-1.5 py-0.5">
-                      {projects.filter(p => p.hasAssignedTasks).length}
-                    </Badge>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="h-8">
-                          <TableHead className="text-xs py-2">Name</TableHead>
-                          <TableHead className="text-xs py-2">Type</TableHead>
-                          <TableHead className="text-xs py-2">Status</TableHead>
-                          <TableHead className="text-xs py-2">Admin</TableHead>
-                          <TableHead className="text-xs py-2">Deadline</TableHead>
-                          <TableHead className="text-xs py-2">Comments</TableHead>
-                          <TableHead className="text-xs py-2">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {projects.filter(p => p.hasAssignedTasks).map((project) => {
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="h-8">
+                    <TableHead className="text-xs py-2 w-8"></TableHead>
+                    <TableHead className="text-xs py-2">Name</TableHead>
+                    <TableHead className="text-xs py-2">Type</TableHead>
+                    <TableHead className="text-xs py-2">Status</TableHead>
+                    <TableHead className="text-xs py-2">Admin</TableHead>
+                    <TableHead className="text-xs py-2">Deadline</TableHead>
+                    <TableHead className="text-xs py-2">Comments</TableHead>
+                    <TableHead className="text-xs py-2">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projects.map((project) => {
                     const commentsCount = Array.isArray(project.comments) ? project.comments.length : 0;
                     
                     return (
                       <TableRow 
                         key={project.id} 
-                        className={`h-10 ${project.hasAssignedTasks ? "bg-blue-50 border-l-4 border-l-blue-500" : ""}`}
+                        className="h-10 hover:bg-muted/50"
                       >
+                        <TableCell className="py-2 px-2">
+                          {project.hasAssignedTasks && (
+                            <div 
+                              className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"
+                              title={`${project.assignedTasksCount} active task${project.assignedTasksCount !== 1 ? 's' : ''} assigned`}
+                            />
+                          )}
+                        </TableCell>
                         <TableCell className="font-medium py-2">
                           <div>
                             <div className="flex items-center gap-1.5">
                               <div className="font-medium text-sm">{project.name}</div>
                               {project.hasAssignedTasks && (
-                                <Badge variant="default" className="text-xs px-1.5 py-0.5">
-                                  {project.assignedTasksCount} task{project.assignedTasksCount !== 1 ? 's' : ''}
+                                <Badge variant="default" className="text-xs px-1.5 py-0.5 bg-blue-500">
+                                  {project.assignedTasksCount} active
                                 </Badge>
                               )}
                             </div>
@@ -320,108 +314,9 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
                         </TableCell>
                       </TableRow>
                     );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
-
-              {/* Other Projects */}
-              {projects.filter(p => !p.hasAssignedTasks).length > 0 && (
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-0.5 w-6 bg-gray-300 rounded"></div>
-                    <h3 className="text-sm font-semibold text-gray-600">Other Projects</h3>
-                    <Badge variant="outline" className="ml-1 text-xs px-1.5 py-0.5">
-                      {projects.filter(p => !p.hasAssignedTasks).length}
-                    </Badge>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="h-8">
-                          <TableHead className="text-xs py-2">Name</TableHead>
-                          <TableHead className="text-xs py-2">Type</TableHead>
-                          <TableHead className="text-xs py-2">Status</TableHead>
-                          <TableHead className="text-xs py-2">Admin</TableHead>
-                          <TableHead className="text-xs py-2">Deadline</TableHead>
-                          <TableHead className="text-xs py-2">Comments</TableHead>
-                          <TableHead className="text-xs py-2">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {projects.filter(p => !p.hasAssignedTasks).map((project) => {
-                          const commentsCount = Array.isArray(project.comments) ? project.comments.length : 0;
-                          
-                          return (
-                            <TableRow key={project.id} className="h-10">
-                              <TableCell className="font-medium py-2">
-                                <div>
-                                  <div className="font-medium text-sm">{project.name}</div>
-                                  {project.description && (
-                                    <div className="text-xs text-muted-foreground mt-0.5">
-                                      {project.description.length > 80 
-                                        ? `${project.description.substring(0, 80)}...` 
-                                        : project.description
-                                      }
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <Badge variant={getTypeBadgeVariant(project.type)} className="text-xs px-1.5 py-0.5">
-                                  {project.type}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <Badge variant={getStatusBadgeVariant(project.status)} className="text-xs px-1.5 py-0.5">
-                                  {project.status || 'Not Set'}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <div className="flex items-center gap-1.5">
-                                  <User className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs">{project.admin_name}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                {project.deadline ? (
-                                  <div className="flex items-center gap-1.5">
-                                    <Calendar className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-xs">
-                                      {format(new Date(project.deadline), 'MMM dd')}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground">No deadline</span>
-                                )}
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <div className="flex items-center gap-1.5">
-                                  <MessageSquare className="h-3 w-3 text-muted-foreground" />
-                                  <span className="text-xs">{commentsCount}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell className="py-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleCommentsClick(project)}
-                                  className="flex items-center gap-1.5 text-xs px-2 py-1 h-7"
-                                >
-                                  <MessageSquare className="h-3 w-3" />
-                                  {commentsCount > 0 ? 'View' : 'Add'}
-                                </Button>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              )}
+                  })}
+                </TableBody>
+              </Table>
             </div>
           )}
         </CardContent>

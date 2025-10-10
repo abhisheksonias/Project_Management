@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,23 +12,30 @@ import { format } from 'date-fns';
 import { TaskComments } from './TaskComments';
 import { TaskForm } from './TaskForm';
 
+interface Comment {
+  id: string;
+  content: string;
+  created_at: string;
+  user_id: string;
+}
+
 interface Task {
   id: string;
   name: string;
   type: string;
-  description: string;
+  description: string | null;
   status: string;
-  estimate_hours: number;
+  estimate_hours: number | null;
   created_at: string;
   updated_at: string;
-  assigned_user_id: string;
+  assigned_user_id: string | null;
   project_id: string;
-  comment: any;
+  comment: unknown; // Json type from Supabase
   projects: {
     id: string;
     name: string;
     type: string;
-  };
+  } | null;
 }
 
 interface UserTaskListProps {
@@ -45,7 +52,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
 
   const taskStatusOptions = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
 
-  const fetchTasks = async () => {
+  const fetchTasks = useCallback(async () => {
     if (!profile?.id) return;
 
     try {
@@ -74,7 +81,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
       // Filter out completed tasks
       const filteredTasks = (data || []).filter(task => 
         task.status.toLowerCase() !== 'completed'
-      );
+      ) as Task[];
       setTasks(filteredTasks);
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -86,7 +93,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [profile?.id, toast]);
 
   const handleStatusChange = async (taskId: string, newStatus: string) => {
     try {
@@ -202,7 +209,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
 
   useEffect(() => {
     fetchTasks();
-  }, [profile?.id]);
+  }, [profile?.id, fetchTasks]);
 
   if (loading) {
     return (
@@ -273,9 +280,9 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
               <CheckSquare className="h-4 w-4" />
               My Tasks
             </CardTitle>
-            <CardDescription className="text-sm">
+            {/* <CardDescription className="text-sm">
               {taskCounts.total} task{taskCounts.total !== 1 ? 's' : ''} assigned to you
-            </CardDescription>
+            </CardDescription> */}
           </div>
           <Button
             onClick={handleCreateTask}
@@ -289,12 +296,12 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
         
         {/* Task Status Summary */}
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {taskCounts.todo > 0 && (
+          {/* {taskCounts.todo > 0 && (
             <Badge variant="outline" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <Info className="h-3 w-3" />
               {taskCounts.todo} To Do
             </Badge>
-          )}
+          )} */}
           {taskCounts.inProgress > 0 && (
             <Badge variant="secondary" className="flex items-center gap-1 text-xs px-1.5 py-0.5">
               <Clock className="h-3 w-3" />
@@ -358,7 +365,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
                   </TableCell>
                   <TableCell className="py-2">
                     <Badge variant="secondary" className="text-xs px-1.5 py-0.5">
-                      {task.projects.name}
+                      {task.projects?.name || 'No Project'}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-2">
@@ -400,7 +407,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs">
-                        {Array.isArray(task.comment) ? task.comment.length : 0}
+                        {Array.isArray(task.comment) ? (task.comment as Comment[]).length : 0}
                       </span>
                     </div>
                   </TableCell>
@@ -412,7 +419,7 @@ export const UserTaskList: React.FC<UserTaskListProps> = ({ className }) => {
                       className="flex items-center gap-1.5 text-xs px-2 py-1 h-7"
                     >
                       <MessageSquare className="h-3 w-3" />
-                      {Array.isArray(task.comment) && task.comment.length > 0 ? 'View' : 'Add'}
+                      {Array.isArray(task.comment) && (task.comment as Comment[]).length > 0 ? 'View' : 'Add'}
                     </Button>
                   </TableCell>
                 </TableRow>
