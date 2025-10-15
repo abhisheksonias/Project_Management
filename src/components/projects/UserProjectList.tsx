@@ -15,6 +15,7 @@ interface Project {
   name: string;
   type: string;
   category?: string;
+  priority?: string;
   reference?: string;
   description: string | null;
   status: string | null;
@@ -223,6 +224,7 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
                     <TableHead className="text-xs py-2 w-8"></TableHead>
                     <TableHead className="text-xs py-2">Name</TableHead>
                     <TableHead className="text-xs py-2">Type</TableHead>
+                    <TableHead className="text-xs py-2">Priority</TableHead>
                     <TableHead className="text-xs py-2">Status</TableHead>
                     <TableHead className="text-xs py-2">Admin</TableHead>
                     <TableHead className="text-xs py-2">Deadline</TableHead>
@@ -270,6 +272,20 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
                         <TableCell className="py-2">
                           <Badge variant={getTypeBadgeVariant(project.type)} className="text-xs px-1.5 py-0.5">
                             {project.type}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="py-2">
+                          <Badge 
+                            variant={
+                              project.priority === 'Critical' ? 'destructive' :
+                              project.priority === 'High' ? 'default' :
+                              project.priority === 'Medium' ? 'secondary' :
+                              project.priority === 'Low' ? 'outline' :
+                              'outline'
+                            }
+                            className="text-xs px-1.5 py-0.5"
+                          >
+                            {project.priority || 'Not Set'}
                           </Badge>
                         </TableCell>
                         <TableCell className="py-2">

@@ -22,10 +22,14 @@ const PROJECT_STATUSES = ['Open', 'In Progress', 'On Hold', 'Client Approval', '
 // Project category options
 const PROJECT_CATEGORIES = ['One-time', 'Maintenance', 'Hourly'] as const;
 
+// Project priority options
+const PROJECT_PRIORITIES = ['Low', 'Medium', 'High', 'Critical'] as const;
+
 const projectSchema = z.object({
   name: z.string().min(1, 'Project name is required'),
   type: z.string().min(1, 'Project type is required'),
   category: z.enum(PROJECT_CATEGORIES),
+  priority: z.enum(PROJECT_PRIORITIES).optional(),
   reference: z.string().min(1, 'Reference is required'),
   description: z.string().optional(),
   status: z.enum(PROJECT_STATUSES),
@@ -42,6 +46,7 @@ interface ProjectFormProps {
     name: string;
     type: string;
     category?: string;
+    priority?: string;
     reference?: string;
     description?: string;
     status: string;
@@ -59,6 +64,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
       name: editProject?.name || '',
       type: editProject?.type || '',
       category: (editProject?.category as typeof PROJECT_CATEGORIES[number]) || 'One-time',
+      priority: (editProject?.priority as typeof PROJECT_PRIORITIES[number]) || undefined,
       reference: editProject?.reference || '',
       description: editProject?.description || '',
       status: (editProject?.status as typeof PROJECT_STATUSES[number]) || 'Open',
@@ -111,6 +117,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
             name: data.name,
             type: data.type,
             category: data.category,
+            priority: data.priority || null,
             reference: data.reference,
             description: data.description,
             status: data.status,
@@ -135,6 +142,7 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
             name: data.name,
             type: data.type,
             category: data.category,
+            priority: data.priority || null,
             reference: data.reference,
             description: data.description,
             status: data.status,
@@ -213,6 +221,31 @@ export const ProjectForm: React.FC<ProjectFormProps> = ({ onSuccess, onCancel, e
                   {PROJECT_CATEGORIES.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="priority"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Priority</FormLabel>
+              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select project priority" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {PROJECT_PRIORITIES.map((priority) => (
+                    <SelectItem key={priority} value={priority}>
+                      {priority}
                     </SelectItem>
                   ))}
                 </SelectContent>

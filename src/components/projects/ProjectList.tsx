@@ -16,6 +16,7 @@ interface Project {
   name: string;
   type: string;
   category?: string;
+  priority?: string;
   reference?: string;
   status: string;
   deadline: string | null;
@@ -141,6 +142,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
         name: project.name,
         type: project.type,
         category: project.category,
+        priority: project.priority,
         reference: project.reference,
         status: project.status || 'Open',
         deadline: project.deadline,
@@ -469,6 +471,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <TableHead className="font-semibold text-left min-w-[200px]">Project Name</TableHead>
                 <TableHead className="font-semibold text-center min-w-[120px]">Type</TableHead>
                 <TableHead className="font-semibold text-center min-w-[120px]">Category</TableHead>
+                <TableHead className="font-semibold text-center min-w-[100px]">Priority</TableHead>
                 <TableHead className="font-semibold text-center min-w-[150px]">Reference</TableHead>
                 <TableHead className="font-semibold text-center min-w-[140px]">Status</TableHead>
                 <TableHead className="font-semibold text-center min-w-[120px]">Deadline</TableHead>
@@ -507,6 +510,20 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         className="text-xs"
                       >
                         {project.category || 'Not set'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-center py-4">
+                      <Badge
+                        variant={
+                          project.priority === 'Critical' ? 'destructive' :
+                          project.priority === 'High' ? 'default' :
+                          project.priority === 'Medium' ? 'secondary' :
+                          project.priority === 'Low' ? 'outline' :
+                          'outline'
+                        }
+                        className="text-xs"
+                      >
+                        {project.priority || 'Not set'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center py-4">

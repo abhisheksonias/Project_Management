@@ -40,6 +40,7 @@ interface Project {
   name: string;
   type: string;
   category?: string;
+  priority?: string;
   reference?: string;
   status: string;
   deadline: string | null;
@@ -310,6 +311,19 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                   {project.category}
                 </Badge>
               )}
+              {project.priority && (
+                <Badge 
+                  variant={
+                    project.priority === 'Critical' ? 'destructive' :
+                    project.priority === 'High' ? 'default' :
+                    project.priority === 'Medium' ? 'secondary' :
+                    'outline'
+                  } 
+                  className="text-xs"
+                >
+                  {project.priority}
+                </Badge>
+              )}
               {project.reference && (
                 <Badge variant="outline" className="text-xs">
                   {project.reference}
@@ -499,6 +513,24 @@ export const ProjectDetail: React.FC<ProjectDetailProps> = ({
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
                           {project.category || 'Not set'}
+                        </Badge>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium text-muted-foreground">Priority</label>
+                      <div className="flex items-center gap-2">
+                        <Badge 
+                          variant={
+                            project.priority === 'Critical' ? 'destructive' :
+                            project.priority === 'High' ? 'default' :
+                            project.priority === 'Medium' ? 'secondary' :
+                            project.priority === 'Low' ? 'outline' :
+                            'outline'
+                          }
+                          className="text-xs"
+                        >
+                          {project.priority || 'Not set'}
                         </Badge>
                       </div>
                     </div>
