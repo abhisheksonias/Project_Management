@@ -226,7 +226,7 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
                     <TableHead className="text-xs py-2">Type</TableHead>
                     <TableHead className="text-xs py-2">Priority</TableHead>
                     <TableHead className="text-xs py-2">Status</TableHead>
-                    <TableHead className="text-xs py-2">Admin</TableHead>
+                    {/* <TableHead className="text-xs py-2">Admin</TableHead> */}
                     <TableHead className="text-xs py-2">Deadline</TableHead>
                     <TableHead className="text-xs py-2">Comments</TableHead>
                     <TableHead className="text-xs py-2">Actions</TableHead>
@@ -293,12 +293,12 @@ export const UserProjectList: React.FC<UserProjectListProps> = ({ className }) =
                             {project.status || 'Not Set'}
                           </Badge>
                         </TableCell>
-                        <TableCell className="py-2">
+                        {/* <TableCell className="py-2">
                           <div className="flex items-center gap-1.5">
                             <User className="h-3 w-3 text-muted-foreground" />
                             <span className="text-xs">{project.admin_name}</span>
                           </div>
-                        </TableCell>
+                        </TableCell> */}
                         <TableCell className="py-2">
                           {project.deadline ? (
                             <div className="flex items-center gap-1.5">

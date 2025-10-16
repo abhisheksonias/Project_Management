@@ -476,7 +476,7 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                 <TableHead className="font-semibold text-center min-w-[140px]">Status</TableHead>
                 <TableHead className="font-semibold text-center min-w-[120px]">Deadline</TableHead>
                 <TableHead className="font-semibold text-center min-w-[120px]">Created</TableHead>
-                <TableHead className="font-semibold text-center min-w-[120px]">Admin</TableHead>
+                {/* <TableHead className="font-semibold text-center min-w-[120px]">Admin</TableHead> */}
                 <TableHead className="font-semibold text-center min-w-[180px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -580,11 +580,11 @@ export const ProjectList: React.FC<ProjectListProps> = ({
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center py-4">
+                    {/* <TableCell className="text-center py-4">
                       <div className="text-sm font-medium">
                         {project.admin_name}
                       </div>
-                    </TableCell>
+                    </TableCell> */}
                     <TableCell className="text-center py-4">
                       <div className="flex justify-center gap-1">
                         {onViewDetails && (
