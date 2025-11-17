@@ -22,6 +22,7 @@ import { ResetPassword } from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import AdminWorklogs from "./pages/AdminWorklogs";
 import AdminEfficiency from "./pages/AdminEfficiency";
+import AdminProjectEfficiency from "./pages/AdminProjectEfficiency";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminEfficiency />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/project-efficiency" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminProjectEfficiency />
               </ProtectedRoute>
             } 
           />

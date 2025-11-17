@@ -11,7 +11,8 @@ import {
   Settings, 
   HelpCircle,
   Menu,
-  X
+  X,
+  TrendingUp
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ const navItems: NavItem[] = [
   { id: 'tasks', label: 'Tasks', icon: CheckSquare, path: '/admin/tasks' },
   { id: 'worklogs', label: 'Worklogs', icon: Clock, path: '/admin/worklogs' },
   { id: 'team-efficiency', label: 'Team Efficiency', icon: Users, path: '/admin/team-efficiency' },
+  { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
   { id: 'reports', label: 'Reports', icon: FileText, path: '/admin/reports' },
   { id: 'history', label: 'History', icon: History, path: '/admin/history' },
 ];
