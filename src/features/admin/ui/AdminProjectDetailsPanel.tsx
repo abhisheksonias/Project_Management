@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Project, ProjectComment } from '@/features/projects/services/projectService';
 import { Task } from '@/features/tasks/services/taskService';
 import {
@@ -41,7 +42,7 @@ import {
 } from '@/features/admin/hooks/useAdminProjectMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
 import { useQuery } from '@tanstack/react-query';
@@ -59,6 +60,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useStatusHistory } from '@/features/statusHistory/hooks/useStatusHistory';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PROJECT_CATEGORY_OPTIONS = [
   { value: 'One-time', label: 'One-time' },
@@ -112,6 +115,13 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
     queryKey: ['all-users'],
     queryFn: () => userService.getAllUsers(),
   });
+
+  // Fetch status history for the project
+  const {
+    data: statusHistory = [],
+    isLoading: statusHistoryLoading,
+    error: statusHistoryError,
+  } = useStatusHistory(project?.id, 'project', !!project);
 
   // Initialize form data when project changes
   useEffect(() => {
@@ -356,9 +366,20 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             </div>
           </SheetHeader>
 
-          <div className="mt-6 space-y-4">
-            {/* Project Info - Editable */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="mt-6">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 rounded-[14px]">
+                <TabsTrigger value="overview" className="rounded-[14px]">
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="status-history" className="rounded-[14px]">
+                  Status History
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-4 space-y-4">
+                {/* Project Info - Editable */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Status */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -601,6 +622,78 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 )}
               </div>
             </div>
+              </TabsContent>
+
+              <TabsContent value="status-history" className="mt-4">
+                {statusHistoryLoading ? (
+                  <Card>
+                    <CardContent className="p-6 space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : statusHistoryError ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Failed to load status history</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : statusHistory.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="text-center text-muted-foreground py-6">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No status history available</p>
+                        <p className="text-sm">Status changes will appear here once they occur</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {statusHistory.map((item, index) => (
+                          <div key={item.id} className="flex items-start gap-3">
+                            {/* Timeline dot */}
+                            <div className="relative">
+                              <div className="w-3 h-3 bg-primary rounded-full mt-1.5" />
+                              {index < statusHistory.length - 1 && (
+                                <div className="absolute top-3 left-1.5 w-px h-8 bg-border" />
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="secondary">{item.status}</Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {item.updated_at
+                                    ? format(new Date(item.updated_at), 'MMM dd, yyyy HH:mm')
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <User className="h-3 w-3" />
+                                <span>{item.user_name || 'Unknown User'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </SheetContent>
       </Sheet>

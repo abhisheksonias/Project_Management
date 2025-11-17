@@ -13,9 +13,13 @@ export const useCreateProject = () => {
       if (!profile?.id) throw new Error('User not authenticated');
       return adminProjectService.createProject(data, profile.id);
     },
-    onSuccess: () => {
+    onSuccess: (createdProject, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'projects'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'project-stats'] });
+      // Invalidate status history if status was provided during creation
+      if (variables.status && createdProject) {
+        queryClient.invalidateQueries({ queryKey: ['status-history', 'project', createdProject.id] });
+      }
       toast.success('Project created successfully');
     },
     onError: (error: Error) => {
@@ -37,6 +41,8 @@ export const useUpdateProject = () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'projects'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'project', updatedProject.id] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'project-stats'] });
+      // Invalidate status history when project is updated (status might have changed)
+      queryClient.invalidateQueries({ queryKey: ['status-history', 'project', updatedProject.id] });
       toast.success('Project updated successfully');
     },
     onError: (error: Error) => {
