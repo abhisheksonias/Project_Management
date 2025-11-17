@@ -22,7 +22,10 @@ const Index = () => {
 
   // Redirect authenticated users to their appropriate dashboard
   if (user && profile) {
-    const redirectPath = profile.role === 'Admin' ? '/admin/dashboard' : '/user/dashboard';
+    let redirectPath = '/user/dashboard';
+    if (profile.role === 'Admin') redirectPath = '/admin/dashboard';
+    else if (profile.role === 'Sales') redirectPath = '/sales/dashboard';
+    
     return <Navigate to={redirectPath} replace />;
   }
 

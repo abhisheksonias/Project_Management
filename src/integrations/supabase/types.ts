@@ -106,8 +106,10 @@ export type Database = {
         Row: {
           added_by: string | null
           assigned_user_id: string | null
+          category: string | null
           comment: Json | null
           created_at: string | null
+          deadline: string | null
           description: string | null
           estimate_hours: number | null
           id: string
@@ -121,8 +123,10 @@ export type Database = {
         Insert: {
           added_by?: string | null
           assigned_user_id?: string | null
+          category?: string | null
           comment?: Json | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           estimate_hours?: number | null
           id?: string
@@ -136,8 +140,10 @@ export type Database = {
         Update: {
           added_by?: string | null
           assigned_user_id?: string | null
+          category?: string | null
           comment?: Json | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           estimate_hours?: number | null
           id?: string
@@ -168,27 +174,36 @@ export type Database = {
       users: {
         Row: {
           created_at: string | null
+          department: string | null
           email: string
           id: string
+          is_active: boolean | null
           name: string
+          password: string | null
           rank: string | null
           role: string | null
           specialization: string | null
         }
         Insert: {
           created_at?: string | null
+          department?: string | null
           email: string
           id?: string
+          is_active?: boolean | null
           name: string
+          password?: string | null
           rank?: string | null
           role?: string | null
           specialization?: string | null
         }
         Update: {
           created_at?: string | null
+          department?: string | null
           email?: string
           id?: string
+          is_active?: boolean | null
           name?: string
+          password?: string | null
           rank?: string | null
           role?: string | null
           specialization?: string | null

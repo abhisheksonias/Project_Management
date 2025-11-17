@@ -1,0 +1,416 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Project } from '@/features/projects/services/projectService';
+import { User } from '@/features/users/services/userService';
+import { format } from 'date-fns';
+import { useCreateWorklogForUser } from '../hooks/useAdminWorklogs';
+import { useQuery } from '@tanstack/react-query';
+import { adminTaskService } from '../services/adminTaskService';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+
+interface AdminAddWorklogDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedDate: Date;
+  selectedUserId?: string;
+  projects: Project[];
+  users: User[];
+  onSuccess?: () => void;
+}
+
+export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
+  open,
+  onOpenChange,
+  selectedDate,
+  selectedUserId,
+  projects,
+  users,
+  onSuccess,
+}) => {
+  const { profile } = useAuth();
+  const [userId, setUserId] = useState<string>(selectedUserId || '');
+  const [projectId, setProjectId] = useState<string>('');
+  const [taskId, setTaskId] = useState<string>('');
+  const [hours, setHours] = useState<string>('');
+  const [note, setNote] = useState<string>('');
+
+  const createWorklogMutation = useCreateWorklogForUser();
+
+  // Filter out admin users
+  const filteredUsers = users.filter((user) => user.role !== 'Admin');
+
+  // Fetch tasks for selected project
+  const { data: allTasks = [] } = useQuery({
+    queryKey: ['admin', 'tasks'],
+    queryFn: () => adminTaskService.getAllTasks(),
+    enabled: open,
+  });
+
+  // First, get tasks assigned to the selected user (excluding completed tasks)
+  const userAssignedTasks = React.useMemo(() => {
+    if (!userId) {
+      return [];
+    }
+
+    return allTasks.filter((task) => {
+      // Exclude completed tasks
+      if (task.status === 'Completed') {
+        return false;
+      }
+
+      // Check assignees from task_assignees table
+      if (task.assignees && task.assignees.length > 0) {
+        return task.assignees.some((assignee) => assignee.user_id === userId);
+      }
+      return false;
+    });
+  }, [allTasks, userId]);
+
+  // Get projects that have tasks assigned to the selected user (excluding completed projects)
+  const userProjects = React.useMemo(() => {
+    if (!userId) {
+      // Filter out completed projects even when no user is selected
+      return projects.filter(
+        (project) => project.status?.toLowerCase() !== 'completed'
+      );
+    }
+
+    // Get unique project IDs from tasks assigned to the user
+    const userTaskProjectIds = new Set(
+      userAssignedTasks
+        .map((task) => task.project_id)
+        .filter((id): id is string => id !== null && id !== undefined)
+    );
+
+    return projects.filter(
+      (project) =>
+        userTaskProjectIds.has(project.id) &&
+        project.status?.toLowerCase() !== 'completed'
+    );
+  }, [projects, userId, userAssignedTasks]);
+
+  // When task is selected, filter projects to show only that task's project (excluding completed)
+  const availableProjects = React.useMemo(() => {
+    if (taskId) {
+      const selectedTask = allTasks.find((t) => t.id === taskId);
+      if (selectedTask?.project_id) {
+        return projects.filter(
+          (p) =>
+            p.id === selectedTask.project_id &&
+            p.status?.toLowerCase() !== 'completed'
+        );
+      }
+      return [];
+    }
+    return userProjects;
+  }, [taskId, allTasks, projects, userProjects]);
+
+  // Filter tasks based on selected user and project (tasks only shown when project is selected)
+  const availableTasks = React.useMemo(() => {
+    if (!userId || !projectId) {
+      return [];
+    }
+
+    // Only show tasks when both user and project are selected
+    return userAssignedTasks.filter((task) => task.project_id === projectId);
+  }, [userId, userAssignedTasks, projectId]);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      // Only set userId if the selected user is not an admin
+      const selectedUser = filteredUsers.find((u) => u.id === selectedUserId);
+      if (selectedUser && selectedUser.role !== 'Admin') {
+        setUserId(selectedUserId);
+      } else {
+        setUserId('');
+      }
+    }
+  }, [selectedUserId, filteredUsers]);
+
+  useEffect(() => {
+    if (!open) {
+      // Reset form when dialog closes
+      setUserId(selectedUserId || '');
+      setProjectId('');
+      setTaskId('');
+      setHours('');
+      setNote('');
+    }
+  }, [open, selectedUserId]);
+
+  // Reset dependent fields when user changes
+  useEffect(() => {
+    if (userId) {
+      // Reset project and task when user changes
+      setProjectId('');
+      setTaskId('');
+    }
+  }, [userId]);
+
+  // Reset task when project changes
+  useEffect(() => {
+    if (projectId) {
+      setTaskId('');
+    }
+  }, [projectId]);
+
+  // Auto-select project when task is selected
+  useEffect(() => {
+    if (taskId && !projectId) {
+      const selectedTask = allTasks.find((t) => t.id === taskId);
+      if (selectedTask?.project_id) {
+        setProjectId(selectedTask.project_id);
+      }
+    }
+  }, [taskId, projectId, allTasks]);
+
+  const handleSave = async () => {
+    if (!userId || !projectId || !taskId || !hours) {
+      toast.error('Please fill all required fields');
+      return;
+    }
+
+    // Prevent creating worklogs for admin users
+    const selectedUser = filteredUsers.find((u) => u.id === userId);
+    if (selectedUser?.role === 'Admin') {
+      toast.error('Cannot create worklogs for admin users');
+      return;
+    }
+
+    // Normalize hours to HH:MM format
+    const normalizedHours = normalizeHoursToHHMM(hours);
+    
+    // Validate that hours is not 00:00
+    if (normalizedHours === '00:00' && hours.trim() !== '0' && hours.trim() !== '0:00' && hours.trim() !== '00:00') {
+      toast.error('Please enter valid hours');
+      return;
+    }
+
+    // Check if hours is actually 0
+    const [h, m] = normalizedHours.split(':');
+    const totalMinutes = parseInt(h || '0', 10) * 60 + parseInt(m || '0', 10);
+    if (totalMinutes <= 0) {
+      toast.error('Hours must be greater than 0');
+      return;
+    }
+
+    if (!profile?.id) {
+      toast.error('User profile not found');
+      return;
+    }
+
+    try {
+      // Set time to start of selected date
+      const worklogDate = new Date(selectedDate);
+      worklogDate.setHours(0, 0, 0, 0);
+
+      await createWorklogMutation.mutateAsync({
+        user_id: userId,
+        task_id: taskId,
+        project_id: projectId,
+        hours: normalizedHours, // Store in HH:MM format
+        note: note || null,
+        created_at: worklogDate.toISOString(),
+        added_by: profile.id,
+      });
+
+      toast.success('Worklog added successfully');
+      onOpenChange(false);
+      onSuccess?.();
+    } catch (error) {
+      console.error('Error creating worklog:', error);
+      toast.error('Error adding worklog');
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px] rounded-[14px]">
+        <DialogHeader>
+          <DialogTitle>Add Worklog</DialogTitle>
+          <DialogDescription>
+            {selectedDate && `Add worklog for ${format(selectedDate, 'dd/MM/yyyy')}`}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid grid-cols-2 gap-4 py-4">
+          {/* Left Column */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="user">User *</Label>
+              <Select value={userId} onValueChange={setUserId}>
+                <SelectTrigger id="user" className="rounded-[14px]">
+                  <SelectValue placeholder="Select a user" />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  {filteredUsers.map((user) => (
+                    <SelectItem key={user.id} value={user.id}>
+                      {user.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="project">Project *</Label>
+              <Select
+                value={projectId}
+                onValueChange={(value) => {
+                  setProjectId(value);
+                }}
+                disabled={!userId}
+              >
+                <SelectTrigger id="project" className="rounded-[14px]">
+                  <SelectValue 
+                    placeholder={
+                      !userId
+                        ? 'Select user first' 
+                        : availableProjects.length === 0 
+                        ? 'No projects available' 
+                        : 'Select a project'
+                    } 
+                  />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  {availableProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="task">Task *</Label>
+              <Select 
+                value={taskId} 
+                onValueChange={setTaskId} 
+                disabled={!userId || !projectId || availableTasks.length === 0}
+              >
+                <SelectTrigger id="task" className="rounded-[14px]">
+                  <SelectValue 
+                    placeholder={
+                      !userId 
+                        ? 'Select user first' 
+                        : !projectId
+                        ? 'Select project first'
+                        : availableTasks.length === 0 
+                        ? 'No tasks available' 
+                        : 'Select a task'
+                    } 
+                  />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  {availableTasks.map((task) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="hours">Hours *</Label>
+              <Input
+                id="hours"
+                type="text"
+                placeholder="08:00"
+                value={hours}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow typing HH:MM format (e.g., 08:30, 8:30) or decimal (e.g., 8.5)
+                  // Pattern: HH:MM format - up to 2 digits, colon, up to 2 digits
+                  // Or decimal format - digits with optional decimal point
+                  const hhmmPattern = /^\d{0,2}:?\d{0,2}$/;
+                  const decimalPattern = /^\d*\.?\d*$/;
+                  
+                  if (value === '' || hhmmPattern.test(value) || decimalPattern.test(value)) {
+                    setHours(value);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Normalize to HH:MM format on blur
+                  if (e.target.value.trim()) {
+                    const normalized = normalizeHoursToHHMM(e.target.value);
+                    setHours(normalized);
+                  }
+                }}
+                maxLength={5}
+                className="rounded-[14px]"
+              />
+              <p className="text-xs text-muted-foreground">Enter hours in HH:MM format (e.g., 08:00 for 8 hours)</p>
+              <div className="flex gap-2 mt-2">
+                {['04:00', '08:00', '02:00'].map((val) => (
+                  <Button
+                    key={val}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-8 px-3 rounded-[14px] text-xs"
+                    onClick={() => setHours(val)}
+                  >
+                    {val}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="note">Description (optional)</Label>
+              <Textarea
+                id="note"
+                placeholder="Add a description..."
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                rows={5}
+                className="rounded-[14px]"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="flex justify-end gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            className="rounded-[14px]"
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSave}
+            disabled={createWorklogMutation.isPending || !userId || !projectId || !taskId || !hours}
+            className="bg-primary text-white hover:bg-primary/90 rounded-[14px]"
+          >
+            {createWorklogMutation.isPending ? 'Saving...' : 'Save Log'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
