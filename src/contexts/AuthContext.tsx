@@ -7,9 +7,11 @@ interface UserProfile {
   id: string;
   name: string;
   email: string;
-  role: 'Admin' | 'User';
+  role: 'Admin' | 'User' | 'Sales';
   rank?: string;
+  department?: string;
   specialization?: string;
+  is_active?: boolean;
   created_at?: string;
 }
 
