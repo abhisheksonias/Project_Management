@@ -189,7 +189,12 @@ const AdminWorklogs: React.FC = () => {
 
                 {/* Right: Today's Worklogs */}
                 <div className="lg:col-span-1 min-h-0">
-                  <TodaysWorklogsTable worklogs={todaysWorklogs} isLoading={isLoadingTodays} />
+                  <TodaysWorklogsTable
+                    worklogs={todaysWorklogs}
+                    isLoading={isLoadingTodays}
+                    projects={projects}
+                    users={users}
+                  />
                 </div>
               </div>
 
@@ -202,6 +207,8 @@ const AdminWorklogs: React.FC = () => {
                     setRecentWorklogsStartDate(startDate);
                     setRecentWorklogsEndDate(endDate);
                   }}
+                  projects={projects}
+                  users={users}
                 />
               </div>
             </div>

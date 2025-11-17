@@ -43,6 +43,12 @@ const Projects: React.FC = () => {
   // Filter projects
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
+      // Exclude completed and on hold projects
+      const projectStatus = (project.status || '').toLowerCase();
+      if (projectStatus === 'completed' || projectStatus === 'on hold') {
+        return false;
+      }
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -53,7 +59,6 @@ const Projects: React.FC = () => {
 
       // Status filter
       if (status !== 'All Statuses') {
-        const projectStatus = project.status?.toLowerCase() || '';
         const filterStatus = status.toLowerCase();
         if (projectStatus !== filterStatus) {
           return false;

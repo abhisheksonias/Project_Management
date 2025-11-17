@@ -63,9 +63,20 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
   isSaving,
   onCancel,
 }) => {
-  const filteredTasks = selectedProjectId
+  // Filter out completed and on hold projects
+  const availableProjects = projects.filter((project) => {
+    const projectStatus = (project.status || '').toLowerCase();
+    return projectStatus !== 'completed' && projectStatus !== 'on hold';
+  });
+
+  // Filter out completed and on hold tasks, then filter by project
+  const filteredTasks = (selectedProjectId
     ? tasks.filter((task) => task.project_id === selectedProjectId)
-    : tasks;
+    : tasks
+  ).filter((task) => {
+    const taskStatus = (task.status || '').toLowerCase();
+    return taskStatus !== 'completed' && taskStatus !== 'on hold';
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,7 +103,7 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
                   <SelectValue placeholder="Select a project" />
                 </SelectTrigger>
                 <SelectContent>
-                  {projects.map((project) => (
+                  {availableProjects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
                     </SelectItem>

@@ -390,6 +390,35 @@ class AdminWorklogService {
       throw error;
     }
   }
+
+  async updateWorklog(worklogId: string, data: {
+    user_id?: string;
+    task_id?: string;
+    project_id?: string;
+    hours?: string;
+    note?: string | null;
+    created_at?: string;
+  }): Promise<void> {
+    const { error } = await supabase
+      .from('work_logs')
+      .update(data)
+      .eq('id', worklogId);
+
+    if (error) {
+      throw error;
+    }
+  }
+
+  async deleteWorklog(worklogId: string): Promise<void> {
+    const { error } = await supabase
+      .from('work_logs')
+      .delete()
+      .eq('id', worklogId);
+
+    if (error) {
+      throw error;
+    }
+  }
 }
 
 export const adminWorklogService = new AdminWorklogService();

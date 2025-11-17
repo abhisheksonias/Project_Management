@@ -50,6 +50,12 @@ export const EditWorklogDialogHistory: React.FC<EditWorklogDialogHistoryProps> =
   onSave,
   isSaving,
 }) => {
+  // Filter out completed and on hold tasks
+  const availableTasks = tasks.filter((task) => {
+    const taskStatus = (task.status || '').toLowerCase();
+    return taskStatus !== 'completed' && taskStatus !== 'on hold';
+  });
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -67,7 +73,7 @@ export const EditWorklogDialogHistory: React.FC<EditWorklogDialogHistoryProps> =
                 <SelectValue placeholder="Select a task" />
               </SelectTrigger>
               <SelectContent>
-                {tasks.map((task) => (
+                {availableTasks.map((task) => (
                   <SelectItem key={task.id} value={task.id}>
                     {task.name}
                   </SelectItem>

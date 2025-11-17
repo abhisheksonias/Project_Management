@@ -73,6 +73,41 @@ export const useCreateWorklogForUser = () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs', 'recent'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'no-logs'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs', 'date-range'] });
+    },
+  });
+};
+
+export const useUpdateWorklog = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ worklogId, data }: {
+      worklogId: string;
+      data: {
+        user_id?: string;
+        task_id?: string;
+        project_id?: string;
+        hours?: string;
+        note?: string | null;
+        created_at?: string;
+      };
+    }) => adminWorklogService.updateWorklog(worklogId, data),
+    onSuccess: () => {
+      // Invalidate all worklog queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
+    },
+  });
+};
+
+export const useDeleteWorklog = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (worklogId: string) => adminWorklogService.deleteWorklog(worklogId),
+    onSuccess: () => {
+      // Invalidate all worklog queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
     },
   });
 };
