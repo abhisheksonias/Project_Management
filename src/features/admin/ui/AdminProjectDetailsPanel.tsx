@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Project, ProjectComment } from '@/features/projects/services/projectService';
 import { Task } from '@/features/tasks/services/taskService';
 import {
@@ -41,7 +42,7 @@ import {
 } from '@/features/admin/hooks/useAdminProjectMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2 } from 'lucide-react';
+import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
 import { useQuery } from '@tanstack/react-query';
@@ -59,6 +60,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useStatusHistory } from '@/features/statusHistory/hooks/useStatusHistory';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const PROJECT_CATEGORY_OPTIONS = [
   { value: 'One-time', label: 'One-time' },
@@ -113,16 +116,39 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
     queryFn: () => userService.getAllUsers(),
   });
 
+  // Fetch status history for the project
+  const {
+    data: statusHistory = [],
+    isLoading: statusHistoryLoading,
+    error: statusHistoryError,
+  } = useStatusHistory(project?.id, 'project', !!project);
+
   // Initialize form data when project changes
   useEffect(() => {
     if (project) {
+      // Parse deadline date correctly - handle date-only strings
+      let deadlineDate: Date | null = null;
+      if (project.deadline) {
+        const dateStr = project.deadline;
+        // If it's already a date string, parse it and create date at noon UTC to avoid timezone shifts
+        if (typeof dateStr === 'string') {
+          // If it's in YYYY-MM-DD format or ISO format, extract date part
+          const dateOnly = dateStr.split('T')[0]; // Get YYYY-MM-DD part
+          const [year, month, day] = dateOnly.split('-').map(Number);
+          // Create date at noon UTC to avoid timezone conversion issues
+          deadlineDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        } else {
+          deadlineDate = new Date(dateStr);
+        }
+      }
+      
       setFormData({
         name: project.name || '',
         description: project.description || '',
         status: project.status || '',
         type: project.type || '',
         priority: project.priority || '',
-        deadline: project.deadline ? new Date(project.deadline) : null,
+        deadline: deadlineDate,
         category: project.category || '',
         reference: project.reference || '',
         admin_id: project.admin_id || '',
@@ -135,13 +161,29 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
   const resetFormToProject = () => {
     if (!project) return;
+    // Parse deadline date correctly - handle date-only strings
+    let deadlineDate: Date | null = null;
+    if (project.deadline) {
+      const dateStr = project.deadline;
+      // If it's already a date string, parse it and create date at noon UTC to avoid timezone shifts
+      if (typeof dateStr === 'string') {
+        // If it's in YYYY-MM-DD format or ISO format, extract date part
+        const dateOnly = dateStr.split('T')[0]; // Get YYYY-MM-DD part
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        // Create date at noon UTC to avoid timezone conversion issues
+        deadlineDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      } else {
+        deadlineDate = new Date(dateStr);
+      }
+    }
+    
     setFormData({
       name: project.name || '',
       description: project.description || '',
       status: project.status || '',
       type: project.type || '',
       priority: project.priority || '',
-      deadline: project.deadline ? new Date(project.deadline) : null,
+      deadline: deadlineDate,
       category: project.category || '',
       reference: project.reference || '',
       admin_id: project.admin_id || '',
@@ -156,6 +198,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const handleSave = () => {
     if (!profile) return;
 
+    // Format deadline as date-only string (YYYY-MM-DD) or as ISO string at noon UTC to avoid timezone shifts
+    let deadlineString: string | null = null;
+    if (formData.deadline) {
+      // Get date components from the selected date (local time)
+      const year = formData.deadline.getFullYear();
+      const month = formData.deadline.getMonth();
+      const day = formData.deadline.getDate();
+      // Create date at noon UTC to avoid timezone conversion issues when saving/loading
+      const dateAtNoonUTC = new Date(Date.UTC(year, month, day, 12, 0, 0));
+      deadlineString = dateAtNoonUTC.toISOString();
+    }
+
     updateProjectMutation.mutate(
       {
         projectId: project.id,
@@ -165,7 +219,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
           status: formData.status || null,
           type: formData.type,
           priority: formData.priority || null,
-          deadline: formData.deadline ? formData.deadline.toISOString() : null,
+          deadline: deadlineString,
           category: formData.category || null,
           reference: formData.reference || null,
           admin_id: formData.admin_id || null,
@@ -356,9 +410,20 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             </div>
           </SheetHeader>
 
-          <div className="mt-6 space-y-4">
-            {/* Project Info - Editable */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="mt-6">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 rounded-[14px]">
+                <TabsTrigger value="overview" className="rounded-[14px]">
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger value="status-history" className="rounded-[14px]">
+                  Status History
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="overview" className="mt-4 space-y-4">
+                {/* Project Info - Editable */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Status */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -394,7 +459,14 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span>
                   {project.deadline
-                    ? format(new Date(project.deadline), 'dd MMM yyyy')
+                    ? (() => {
+                        // Parse deadline correctly to avoid timezone shifts
+                        const dateStr = project.deadline;
+                        const dateOnly = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr;
+                        const [year, month, day] = dateOnly.split('-').map(Number);
+                        const dateAtNoonUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                        return format(dateAtNoonUTC, 'dd MMM yyyy');
+                      })()
                     : 'No deadline'}
                 </span>
               </div>
@@ -601,6 +673,78 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 )}
               </div>
             </div>
+              </TabsContent>
+
+              <TabsContent value="status-history" className="mt-4">
+                {statusHistoryLoading ? (
+                  <Card>
+                    <CardContent className="p-6 space-y-3">
+                      {[1, 2, 3].map((i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-4 w-4 rounded-full" />
+                          <Skeleton className="h-4 w-20" />
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-4 w-24" />
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                ) : statusHistoryError ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="flex items-center gap-2 text-destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <span>Failed to load status history</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : statusHistory.length === 0 ? (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="text-center text-muted-foreground py-6">
+                        <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p>No status history available</p>
+                        <p className="text-sm">Status changes will appear here once they occur</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="space-y-4">
+                        {statusHistory.map((item, index) => (
+                          <div key={item.id} className="flex items-start gap-3">
+                            {/* Timeline dot */}
+                            <div className="relative">
+                              <div className="w-3 h-3 bg-primary rounded-full mt-1.5" />
+                              {index < statusHistory.length - 1 && (
+                                <div className="absolute top-3 left-1.5 w-px h-8 bg-border" />
+                              )}
+                            </div>
+
+                            {/* Content */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <Badge variant="secondary">{item.status}</Badge>
+                                <span className="text-sm text-muted-foreground">
+                                  {item.updated_at
+                                    ? format(new Date(item.updated_at), 'MMM dd, yyyy HH:mm')
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <User className="h-3 w-3" />
+                                <span>{item.user_name || 'Unknown User'}</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </TabsContent>
+            </Tabs>
           </div>
         </SheetContent>
       </Sheet>

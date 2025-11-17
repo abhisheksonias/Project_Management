@@ -61,6 +61,12 @@ const Tasks: React.FC = () => {
   // Filter tasks
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
+      // Exclude completed and on hold tasks
+      const taskStatus = (task.status || '').toLowerCase();
+      if (taskStatus === 'completed' || taskStatus === 'on hold') {
+        return false;
+      }
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
