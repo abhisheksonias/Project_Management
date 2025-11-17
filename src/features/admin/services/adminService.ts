@@ -26,6 +26,7 @@ export interface ProjectWithHours {
   client?: string;
   hours: number;
   status: string;
+  deadline?: string | null;
 }
 
 export interface DailyHoursData {
@@ -325,6 +326,12 @@ class AdminService {
         const project = log.projects as { id: string; name: string; status: string; deadline: string | null };
         const hours = parseHours(log.hours);
         
+        // Skip completed, cancelled, and on hold projects
+        const projectStatus = (project.status || '').toLowerCase();
+        if (projectStatus === 'completed' || projectStatus === 'cancelled' || projectStatus === 'on hold') {
+          return;
+        }
+        
         if (projectHoursMap.has(project.id)) {
           const existing = projectHoursMap.get(project.id)!;
           existing.hours += hours;
@@ -339,16 +346,47 @@ class AdminService {
       }
     });
 
-    // Convert to array, sort by hours, and take top N
+    // Convert to array and calculate deadline proximity score
+    const now = new Date();
     const projects = Array.from(projectHoursMap.entries())
-      .map(([id, data]) => ({
-        id,
-        name: data.name,
-        hours: Math.round(data.hours * 10) / 10,
-        status: this.getProjectStatus(data.status, data.deadline),
-      }))
-      .sort((a, b) => b.hours - a.hours)
-      .slice(0, limit);
+      .map(([id, data]) => {
+        // Calculate deadline proximity: projects near deadline get higher priority
+        let deadlinePriority = 0; // Higher number = higher priority (appears first)
+        
+        if (data.deadline) {
+          const deadlineDate = new Date(data.deadline);
+          const daysUntilDeadline = Math.ceil((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          
+          // Projects with deadline in next 7 days get high priority
+          if (daysUntilDeadline >= 0 && daysUntilDeadline <= 7) {
+            // Closer to deadline = higher priority (inverse: 7 days = priority 7, 0 days = priority 14)
+            deadlinePriority = 100 - daysUntilDeadline; // 93 to 100
+          } else if (daysUntilDeadline < 0) {
+            // Overdue projects get highest priority
+            deadlinePriority = 200 - Math.abs(daysUntilDeadline); // Very high priority
+          }
+          // Projects with deadline > 7 days get priority 0 (sorted by hours only)
+        }
+        
+        return {
+          id,
+          name: data.name,
+          hours: Math.round(data.hours * 10) / 10,
+          status: this.getProjectStatus(data.status, data.deadline),
+          deadline: data.deadline,
+          deadlinePriority,
+        };
+      })
+      .sort((a, b) => {
+        // First sort by deadline priority (higher priority first)
+        if (b.deadlinePriority !== a.deadlinePriority) {
+          return b.deadlinePriority - a.deadlinePriority;
+        }
+        // If same deadline priority, sort by hours (most hours first)
+        return b.hours - a.hours;
+      })
+      .slice(0, limit)
+      .map(({ deadlinePriority, ...project }) => project); // Remove deadlinePriority from final result
 
     return projects;
   }

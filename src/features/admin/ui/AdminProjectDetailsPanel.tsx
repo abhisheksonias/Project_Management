@@ -126,13 +126,29 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   // Initialize form data when project changes
   useEffect(() => {
     if (project) {
+      // Parse deadline date correctly - handle date-only strings
+      let deadlineDate: Date | null = null;
+      if (project.deadline) {
+        const dateStr = project.deadline;
+        // If it's already a date string, parse it and create date at noon UTC to avoid timezone shifts
+        if (typeof dateStr === 'string') {
+          // If it's in YYYY-MM-DD format or ISO format, extract date part
+          const dateOnly = dateStr.split('T')[0]; // Get YYYY-MM-DD part
+          const [year, month, day] = dateOnly.split('-').map(Number);
+          // Create date at noon UTC to avoid timezone conversion issues
+          deadlineDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+        } else {
+          deadlineDate = new Date(dateStr);
+        }
+      }
+      
       setFormData({
         name: project.name || '',
         description: project.description || '',
         status: project.status || '',
         type: project.type || '',
         priority: project.priority || '',
-        deadline: project.deadline ? new Date(project.deadline) : null,
+        deadline: deadlineDate,
         category: project.category || '',
         reference: project.reference || '',
         admin_id: project.admin_id || '',
@@ -145,13 +161,29 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
   const resetFormToProject = () => {
     if (!project) return;
+    // Parse deadline date correctly - handle date-only strings
+    let deadlineDate: Date | null = null;
+    if (project.deadline) {
+      const dateStr = project.deadline;
+      // If it's already a date string, parse it and create date at noon UTC to avoid timezone shifts
+      if (typeof dateStr === 'string') {
+        // If it's in YYYY-MM-DD format or ISO format, extract date part
+        const dateOnly = dateStr.split('T')[0]; // Get YYYY-MM-DD part
+        const [year, month, day] = dateOnly.split('-').map(Number);
+        // Create date at noon UTC to avoid timezone conversion issues
+        deadlineDate = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+      } else {
+        deadlineDate = new Date(dateStr);
+      }
+    }
+    
     setFormData({
       name: project.name || '',
       description: project.description || '',
       status: project.status || '',
       type: project.type || '',
       priority: project.priority || '',
-      deadline: project.deadline ? new Date(project.deadline) : null,
+      deadline: deadlineDate,
       category: project.category || '',
       reference: project.reference || '',
       admin_id: project.admin_id || '',
@@ -166,6 +198,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const handleSave = () => {
     if (!profile) return;
 
+    // Format deadline as date-only string (YYYY-MM-DD) or as ISO string at noon UTC to avoid timezone shifts
+    let deadlineString: string | null = null;
+    if (formData.deadline) {
+      // Get date components from the selected date (local time)
+      const year = formData.deadline.getFullYear();
+      const month = formData.deadline.getMonth();
+      const day = formData.deadline.getDate();
+      // Create date at noon UTC to avoid timezone conversion issues when saving/loading
+      const dateAtNoonUTC = new Date(Date.UTC(year, month, day, 12, 0, 0));
+      deadlineString = dateAtNoonUTC.toISOString();
+    }
+
     updateProjectMutation.mutate(
       {
         projectId: project.id,
@@ -175,7 +219,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
           status: formData.status || null,
           type: formData.type,
           priority: formData.priority || null,
-          deadline: formData.deadline ? formData.deadline.toISOString() : null,
+          deadline: deadlineString,
           category: formData.category || null,
           reference: formData.reference || null,
           admin_id: formData.admin_id || null,
@@ -415,7 +459,14 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span>
                   {project.deadline
-                    ? format(new Date(project.deadline), 'dd MMM yyyy')
+                    ? (() => {
+                        // Parse deadline correctly to avoid timezone shifts
+                        const dateStr = project.deadline;
+                        const dateOnly = typeof dateStr === 'string' ? dateStr.split('T')[0] : dateStr;
+                        const [year, month, day] = dateOnly.split('-').map(Number);
+                        const dateAtNoonUTC = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+                        return format(dateAtNoonUTC, 'dd MMM yyyy');
+                      })()
                     : 'No deadline'}
                 </span>
               </div>
