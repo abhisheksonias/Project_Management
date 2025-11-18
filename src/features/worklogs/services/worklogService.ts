@@ -31,6 +31,7 @@ export interface UpdateWorklogData {
   hours: string;
   note?: string | null;
   task_id: string;
+  created_at?: string;
 }
 
 class WorklogService {
@@ -81,13 +82,24 @@ class WorklogService {
   }
 
   async updateWorklog(id: string, data: UpdateWorklogData): Promise<void> {
+    const updatePayload: {
+      hours: string;
+      note?: string | null;
+      task_id: string;
+      created_at?: string;
+    } = {
+      hours: data.hours,
+      note: data.note,
+      task_id: data.task_id,
+    };
+
+    if (data.created_at) {
+      updatePayload.created_at = data.created_at;
+    }
+
     const { error } = await supabase
       .from('work_logs')
-      .update({
-        hours: data.hours,
-        note: data.note,
-        task_id: data.task_id,
-      })
+      .update(updatePayload)
       .eq('id', id);
 
     if (error) throw error;

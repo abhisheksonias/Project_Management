@@ -30,6 +30,7 @@ const CalendarView: React.FC = () => {
   const [editingLog, setEditingLog] = useState<Worklog | null>(null);
   const [editedHours, setEditedHours] = useState<string>('');
   const [editedNote, setEditedNote] = useState<string>('');
+  const [editedDate, setEditedDate] = useState<Date | null>(null);
 
   // Add worklog state
   const [isAddLogDialogOpen, setIsAddLogDialogOpen] = useState(false);
@@ -37,10 +38,6 @@ const CalendarView: React.FC = () => {
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [worklogHours, setWorklogHours] = useState<string>('');
   const [worklogNote, setWorklogNote] = useState<string>('');
-  const [worklogTime, setWorklogTime] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  });
 
   // Data fetching via hooks (services)
   const { data: worklogs = [], isLoading } = useCalendarWorklogs(
@@ -151,13 +148,28 @@ const CalendarView: React.FC = () => {
     setEditingLog(log);
     setEditedHours(log.hours);
     setEditedNote(log.note || '');
+    const logDate = new Date(log.created_at);
+    setEditedDate(logDate);
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = () => {
-    if (!editingLog || !editedHours || !editingLog.task_id) {
+    if (!editingLog || !editedHours || !editingLog.task_id || !editedDate) {
       return;
     }
+
+    // Use current time with selected date, preserving timezone
+    const now = new Date();
+    const year = editedDate.getFullYear();
+    const month = editedDate.getMonth();
+    const day = editedDate.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    // Create date in local timezone with current time
+    const updatedDate = new Date(year, month, day, hours, minutes, seconds, 0);
+    const isoString = updatedDate.toISOString();
 
     updateWorklogMutation.mutate({
       id: editingLog.id,
@@ -165,6 +177,7 @@ const CalendarView: React.FC = () => {
         hours: editedHours,
         note: editedNote,
         task_id: editingLog.task_id,
+        created_at: isoString,
       },
     }, {
       onSuccess: () => {
@@ -172,6 +185,7 @@ const CalendarView: React.FC = () => {
         setEditingLog(null);
         setEditedHours('');
         setEditedNote('');
+        setEditedDate(null);
       },
     });
   };
@@ -193,12 +207,17 @@ const CalendarView: React.FC = () => {
       return;
     }
 
-    // Combine date and time to create a proper datetime
-    const [hoursStr, minutesStr] = worklogTime.split(':');
+    // Use current time with selected date, preserving timezone
+    const now = new Date();
     const year = selectedDate.getFullYear();
     const month = selectedDate.getMonth();
     const day = selectedDate.getDate();
-    const localDateTime = new Date(year, month, day, parseInt(hoursStr), parseInt(minutesStr), 0, 0);
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    // Create date in local timezone with current time
+    const localDateTime = new Date(year, month, day, hours, minutes, seconds, 0);
     const isoString = localDateTime.toISOString();
 
     createWorklogMutation.mutate({
@@ -216,8 +235,6 @@ const CalendarView: React.FC = () => {
         setSelectedTaskId('');
         setWorklogHours('');
         setWorklogNote('');
-        const now = new Date();
-        setWorklogTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
       },
     });
   };
@@ -298,8 +315,10 @@ const CalendarView: React.FC = () => {
         tasks={allTasks}
         editedHours={editedHours}
         editedNote={editedNote}
+        editedDate={editedDate}
         onHoursChange={setEditedHours}
         onNoteChange={setEditedNote}
+        onDateChange={setEditedDate}
         onSave={handleSaveEdit}
         isSaving={updateWorklogMutation.isPending}
       />
@@ -314,12 +333,11 @@ const CalendarView: React.FC = () => {
         selectedTaskId={selectedTaskId}
         worklogHours={worklogHours}
         worklogNote={worklogNote}
-        worklogTime={worklogTime}
         onProjectChange={setSelectedProjectId}
         onTaskChange={setSelectedTaskId}
         onHoursChange={setWorklogHours}
         onNoteChange={setWorklogNote}
-        onTimeChange={setWorklogTime}
+        onDateChange={setSelectedDate}
         onSave={handleAddWorklog}
         isSaving={createWorklogMutation.isPending}
         onCancel={() => {
@@ -328,8 +346,6 @@ const CalendarView: React.FC = () => {
           setSelectedTaskId('');
           setWorklogHours('');
           setWorklogNote('');
-          const now = new Date();
-          setWorklogTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
         }}
       />
     </div>

@@ -18,8 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Worklog } from '@/features/worklogs/services/worklogService';
 import { Task } from '@/features/tasks/services/taskService';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
 
 interface EditWorklogDialogHistoryProps {
   open: boolean;
@@ -29,9 +34,11 @@ interface EditWorklogDialogHistoryProps {
   editedHours: string;
   editedNote: string;
   editedTaskId: string;
+  editedDate: Date | null;
   onHoursChange: (hours: string) => void;
   onNoteChange: (note: string) => void;
   onTaskIdChange: (taskId: string) => void;
+  onDateChange: (date: Date | null) => void;
   onSave: () => void;
   isSaving: boolean;
 }
@@ -44,9 +51,11 @@ export const EditWorklogDialogHistory: React.FC<EditWorklogDialogHistoryProps> =
   editedHours,
   editedNote,
   editedTaskId,
+  editedDate,
   onHoursChange,
   onNoteChange,
   onTaskIdChange,
+  onDateChange,
   onSave,
   isSaving,
 }) => {
@@ -66,6 +75,31 @@ export const EditWorklogDialogHistory: React.FC<EditWorklogDialogHistoryProps> =
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-date">Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !editedDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {editedDate ? format(editedDate, 'dd/MM/yyyy') : 'Select date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={editedDate || undefined}
+                  onSelect={(date) => onDateChange(date || null)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
           <div className="space-y-2">
             <Label htmlFor="edit-task">Task *</Label>
             <Select value={editedTaskId || undefined} onValueChange={onTaskIdChange}>
