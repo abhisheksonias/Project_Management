@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,9 +18,13 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Project } from '@/features/projects/services/projectService';
 import { Task } from '@/features/tasks/services/taskService';
 import { format } from 'date-fns';
+import { cn } from '@/lib/utils';
 
 interface AddWorklogDialogProps {
   open: boolean;
@@ -32,12 +36,11 @@ interface AddWorklogDialogProps {
   selectedTaskId: string;
   worklogHours: string;
   worklogNote: string;
-  worklogTime: string;
   onProjectChange: (projectId: string) => void;
   onTaskChange: (taskId: string) => void;
   onHoursChange: (hours: string) => void;
   onNoteChange: (note: string) => void;
-  onTimeChange: (time: string) => void;
+  onDateChange: (date: Date | null) => void;
   onSave: () => void;
   isSaving: boolean;
   onCancel: () => void;
@@ -53,16 +56,24 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
   selectedTaskId,
   worklogHours,
   worklogNote,
-  worklogTime,
   onProjectChange,
   onTaskChange,
   onHoursChange,
   onNoteChange,
-  onTimeChange,
+  onDateChange,
   onSave,
   isSaving,
   onCancel,
 }) => {
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [internalDate, setInternalDate] = useState<Date | null>(selectedDate || new Date());
+
+  // Sync internal date with prop when dialog opens or selectedDate changes
+  React.useEffect(() => {
+    if (open) {
+      setInternalDate(selectedDate || new Date());
+    }
+  }, [open, selectedDate]);
   // Filter out completed and on hold projects
   const availableProjects = projects.filter((project) => {
     const projectStatus = (project.status || '').toLowerCase();
@@ -84,12 +95,44 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Log Work</DialogTitle>
           <DialogDescription>
-            Add a new work log entry for {selectedDate && format(selectedDate, 'MMMM d, yyyy')}
+            Add a new work log entry
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-4">
           {/* Left Column */}
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Date</Label>
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !internalDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {internalDate ? format(internalDate, 'dd/MM/yyyy') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={internalDate || undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        setInternalDate(date);
+                        onDateChange(date);
+                        setIsDatePickerOpen(false);
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="project">Project</Label>
               <Select 
@@ -128,14 +171,6 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Input
-                type="time"
-                value={worklogTime}
-                onChange={(e) => onTimeChange(e.target.value)}
-              />
-            </div>
           </div>
 
           {/* Right Column */}

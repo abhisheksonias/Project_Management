@@ -53,16 +53,13 @@ const WorklogHistory: React.FC = () => {
   const [editedHours, setEditedHours] = useState<string>('');
   const [editedNote, setEditedNote] = useState<string>('');
   const [editedTaskId, setEditedTaskId] = useState<string>('');
+  const [editedDate, setEditedDate] = useState<Date | null>(null);
 
   // Add Worklog states
   const [isAddLogDialogOpen, setIsAddLogDialogOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string>('');
   const [selectedTaskId, setSelectedTaskId] = useState<string>('');
   const [worklogDate, setWorklogDate] = useState<Date | undefined>(new Date());
-  const [worklogTime, setWorklogTime] = useState<string>(() => {
-    const now = new Date();
-    return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
-  });
   const [worklogHours, setWorklogHours] = useState<string>('');
   const [worklogNote, setWorklogNote] = useState<string>('');
 
@@ -236,14 +233,29 @@ const WorklogHistory: React.FC = () => {
     setEditedHours(log.hours);
     setEditedNote(log.note || '');
     setEditedTaskId(log.task_id || '');
+    const logDate = new Date(log.created_at);
+    setEditedDate(logDate);
     setIsEditDialogOpen(true);
   };
 
   const handleSaveEdit = () => {
-    if (!editingLog || !editedHours || !editedTaskId) {
+    if (!editingLog || !editedHours || !editedTaskId || !editedDate) {
       toast.error('Please fill all required fields');
       return;
     }
+
+    // Use current time with selected date, preserving timezone
+    const now = new Date();
+    const year = editedDate.getFullYear();
+    const month = editedDate.getMonth();
+    const day = editedDate.getDate();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    // Create date in local timezone with current time
+    const updatedDate = new Date(year, month, day, hours, minutes, seconds, 0);
+    const isoString = updatedDate.toISOString();
 
     updateWorklogMutation.mutate({
       id: editingLog.id,
@@ -251,6 +263,7 @@ const WorklogHistory: React.FC = () => {
         hours: editedHours,
         note: editedNote,
         task_id: editedTaskId,
+        created_at: isoString,
       },
     }, {
       onSuccess: () => {
@@ -259,6 +272,7 @@ const WorklogHistory: React.FC = () => {
         setEditedHours('');
         setEditedNote('');
         setEditedTaskId('');
+        setEditedDate(null);
       },
     });
   };
@@ -298,7 +312,7 @@ const WorklogHistory: React.FC = () => {
   };
 
   const handleAddWorklog = (addAnother: boolean = false) => {
-    if (!selectedTaskId || !worklogHours || !worklogDate || !worklogTime) {
+    if (!selectedTaskId || !worklogHours || !worklogDate) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -310,12 +324,17 @@ const WorklogHistory: React.FC = () => {
       return;
     }
 
-    // Combine date and time to create a proper datetime
-    const [hoursStr, minutesStr] = worklogTime.split(':');
+    // Use current time with selected date, preserving timezone
+    const now = new Date();
     const year = worklogDate.getFullYear();
     const month = worklogDate.getMonth();
     const day = worklogDate.getDate();
-    const localDateTime = new Date(year, month, day, parseInt(hoursStr), parseInt(minutesStr), 0, 0);
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const seconds = now.getSeconds();
+    
+    // Create date in local timezone with current time
+    const localDateTime = new Date(year, month, day, hours, minutes, seconds, 0);
     const isoString = localDateTime.toISOString();
 
     createWorklogMutation.mutate({
@@ -333,8 +352,6 @@ const WorklogHistory: React.FC = () => {
           setSelectedProjectId('');
           setSelectedTaskId('');
           setWorklogDate(new Date());
-          const now = new Date();
-          setWorklogTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
           setWorklogHours('');
           setWorklogNote('');
         } else {
@@ -475,9 +492,11 @@ const WorklogHistory: React.FC = () => {
         editedHours={editedHours}
         editedNote={editedNote}
         editedTaskId={editedTaskId}
+        editedDate={editedDate}
         onHoursChange={setEditedHours}
         onNoteChange={setEditedNote}
         onTaskIdChange={setEditedTaskId}
+        onDateChange={setEditedDate}
         onSave={handleSaveEdit}
         isSaving={updateWorklogMutation.isPending}
       />
@@ -490,13 +509,11 @@ const WorklogHistory: React.FC = () => {
         selectedProjectId={selectedProjectId}
         selectedTaskId={selectedTaskId}
         worklogDate={worklogDate}
-        worklogTime={worklogTime}
         worklogHours={worklogHours}
         worklogNote={worklogNote}
         onProjectChange={setSelectedProjectId}
         onTaskChange={setSelectedTaskId}
         onDateChange={setWorklogDate}
-        onTimeChange={setWorklogTime}
         onHoursChange={setWorklogHours}
         onNoteChange={setWorklogNote}
         onSave={handleAddWorklog}
@@ -506,8 +523,6 @@ const WorklogHistory: React.FC = () => {
           setSelectedProjectId('');
           setSelectedTaskId('');
           setWorklogDate(new Date());
-          const now = new Date();
-          setWorklogTime(`${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`);
           setWorklogHours('');
           setWorklogNote('');
         }}

@@ -34,13 +34,11 @@ interface AddWorklogDialogHistoryProps {
   selectedProjectId: string;
   selectedTaskId: string;
   worklogDate: Date | undefined;
-  worklogTime: string;
   worklogHours: string;
   worklogNote: string;
   onProjectChange: (projectId: string) => void;
   onTaskChange: (taskId: string) => void;
   onDateChange: (date: Date | undefined) => void;
-  onTimeChange: (time: string) => void;
   onHoursChange: (hours: string) => void;
   onNoteChange: (note: string) => void;
   onSave: (addAnother: boolean) => void;
@@ -56,13 +54,11 @@ export const AddWorklogDialogHistory: React.FC<AddWorklogDialogHistoryProps> = (
   selectedProjectId,
   selectedTaskId,
   worklogDate,
-  worklogTime,
   worklogHours,
   worklogNote,
   onProjectChange,
   onTaskChange,
   onDateChange,
-  onTimeChange,
   onHoursChange,
   onNoteChange,
   onSave,
@@ -135,37 +131,29 @@ export const AddWorklogDialogHistory: React.FC<AddWorklogDialogHistoryProps> = (
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="date">Date & Time</Label>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        'w-full justify-start text-left font-normal',
-                        !worklogDate && 'text-muted-foreground'
-                      )}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {worklogDate ? format(worklogDate, 'PPP') : 'Pick a date'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent
-                      mode="single"
-                      selected={worklogDate}
-                      onSelect={onDateChange}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Input
-                  type="time"
-                  value={worklogTime}
-                  onChange={(e) => onTimeChange(e.target.value)}
-                  className="w-32"
-                />
-              </div>
+              <Label htmlFor="date">Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal',
+                      !worklogDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {worklogDate ? format(worklogDate, 'PPP') : 'Pick a date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={worklogDate}
+                    onSelect={onDateChange}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 

@@ -18,6 +18,9 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
 import { Project } from '@/features/projects/services/projectService';
 import { User } from '@/features/users/services/userService';
 import { format } from 'date-fns';
@@ -27,6 +30,7 @@ import { adminTaskService } from '../services/adminTaskService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+import { cn } from '@/lib/utils';
 
 interface AdminAddWorklogDialogProps {
   open: boolean;
@@ -53,6 +57,8 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
   const [taskId, setTaskId] = useState<string>('');
   const [hours, setHours] = useState<string>('');
   const [note, setNote] = useState<string>('');
+  const [worklogDate, setWorklogDate] = useState<Date>(selectedDate);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const createWorklogMutation = useCreateWorklogForUser();
 
@@ -155,8 +161,16 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
       setTaskId('');
       setHours('');
       setNote('');
+      setWorklogDate(selectedDate);
     }
-  }, [open, selectedUserId]);
+  }, [open, selectedUserId, selectedDate]);
+
+  // Sync worklogDate with selectedDate prop when dialog opens
+  useEffect(() => {
+    if (open) {
+      setWorklogDate(selectedDate);
+    }
+  }, [open, selectedDate]);
 
   // Reset dependent fields when user changes
   useEffect(() => {
@@ -220,9 +234,17 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
     }
 
     try {
-      // Set time to start of selected date
-      const worklogDate = new Date(selectedDate);
-      worklogDate.setHours(0, 0, 0, 0);
+      // Use current time with selected date, preserving timezone
+      const now = new Date();
+      const year = worklogDate.getFullYear();
+      const month = worklogDate.getMonth();
+      const day = worklogDate.getDate();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      
+      // Create date in local timezone with current time
+      const utcDate = new Date(year, month, day, hours, minutes, seconds, 0);
 
       await createWorklogMutation.mutateAsync({
         user_id: userId,
@@ -230,7 +252,7 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
         project_id: projectId,
         hours: normalizedHours, // Store in HH:MM format
         note: note || null,
-        created_at: worklogDate.toISOString(),
+        created_at: utcDate.toISOString(),
         added_by: profile.id,
       });
 
@@ -249,12 +271,43 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
         <DialogHeader>
           <DialogTitle>Add Worklog</DialogTitle>
           <DialogDescription>
-            {selectedDate && `Add worklog for ${format(selectedDate, 'dd/MM/yyyy')}`}
+            Add a new work log entry
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-4">
           {/* Left Column */}
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="date">Date *</Label>
+              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal rounded-[14px]',
+                      !worklogDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {worklogDate ? format(worklogDate, 'dd/MM/yyyy') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={worklogDate}
+                    onSelect={(date) => {
+                      if (date) {
+                        setWorklogDate(date);
+                        setIsDatePickerOpen(false);
+                      }
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="user">User *</Label>
               <Select value={userId} onValueChange={setUserId}>

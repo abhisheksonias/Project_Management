@@ -27,6 +27,10 @@ import { useQuery } from '@tanstack/react-query';
 import { adminTaskService } from '../services/adminTaskService';
 import { toast } from 'sonner';
 import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AdminEditWorklogDialogProps {
   open: boolean;
@@ -50,7 +54,7 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
   const [taskId, setTaskId] = useState<string>('');
   const [hours, setHours] = useState<string>('');
   const [note, setNote] = useState<string>('');
-  const [createdAt, setCreatedAt] = useState<string>('');
+  const [worklogDate, setWorklogDate] = useState<Date | null>(null);
 
   const updateWorklogMutation = useUpdateWorklog();
 
@@ -72,7 +76,8 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
       setTaskId(worklog.task?.id || '');
       setHours(normalizeHoursToHHMM(worklog.hours));
       setNote(worklog.note || '');
-      setCreatedAt(worklog.created_at);
+      const logDate = new Date(worklog.created_at);
+      setWorklogDate(logDate);
     }
   }, [worklog, open]);
 
@@ -84,7 +89,7 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
       setTaskId('');
       setHours('');
       setNote('');
-      setCreatedAt('');
+      setWorklogDate(null);
     }
   }, [open]);
 
@@ -191,7 +196,7 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
       return;
     }
 
-    if (!userId || !projectId || !taskId || !hours) {
+    if (!userId || !projectId || !taskId || !hours || !worklogDate) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -214,9 +219,17 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
     }
 
     try {
-      // Parse created_at date if it's provided as a string
-      const worklogDate = createdAt ? new Date(createdAt) : new Date(worklog.created_at);
-      worklogDate.setHours(0, 0, 0, 0);
+      // Use current time with selected date, preserving timezone
+      const now = new Date();
+      const year = worklogDate.getFullYear();
+      const month = worklogDate.getMonth();
+      const day = worklogDate.getDate();
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const seconds = now.getSeconds();
+      
+      // Create date in local timezone with current time
+      const utcDate = new Date(year, month, day, hours, minutes, seconds, 0);
 
       await updateWorklogMutation.mutateAsync({
         worklogId: worklog.id,
@@ -226,7 +239,7 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
           project_id: projectId,
           hours: normalizedHours,
           note: note || null,
-          created_at: worklogDate.toISOString(),
+          created_at: utcDate.toISOString(),
         },
       });
 
@@ -253,6 +266,31 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
         <div className="grid grid-cols-2 gap-4 py-4">
           {/* Left Column */}
           <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-date">Date *</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      'w-full justify-start text-left font-normal rounded-[14px]',
+                      !worklogDate && 'text-muted-foreground'
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {worklogDate ? format(worklogDate, 'dd/MM/yyyy') : 'Select date'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={worklogDate || undefined}
+                    onSelect={(date) => date && setWorklogDate(date)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
             <div className="space-y-2">
               <Label htmlFor="edit-user">User *</Label>
               <Select value={userId} onValueChange={setUserId}>
