@@ -43,15 +43,15 @@ export const EstimateVsLoggedTable: React.FC<EstimateVsLoggedTableProps> = ({ da
                 <tr key={index} className="border-b hover:bg-gray-50">
                   <td className="p-2 text-xs text-gray-900">{row.taskName}</td>
                   <td className="p-2 text-xs text-gray-600">{row.projectName}</td>
-                  <td className="p-2 text-xs text-gray-900">{row.estimate}h</td>
-                  <td className="p-2 text-xs text-gray-900">{row.logged}h</td>
+                  <td className="p-2 text-xs text-gray-900">{row.estimate.toFixed(1)}h</td>
+                  <td className="p-2 text-xs text-gray-900">{row.logged.toFixed(1)}h</td>
                   <td className={cn(
                     'p-2 text-xs font-medium',
                     row.variance > 0 && 'text-red-600',
                     row.variance < 0 && 'text-green-600',
                     row.variance === 0 && 'text-gray-600'
                   )}>
-                    {row.variance > 0 ? '+' : ''}{row.variance}h
+                    {row.variance > 0 ? '+' : ''}{row.variance.toFixed(1)}h
                   </td>
                 </tr>
               ))}

@@ -13,7 +13,7 @@ export const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => 
         <CardContent className="p-4">
           <div className="space-y-0.5">
             <p className="text-xs text-gray-600">Total Hours</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.totalHours}</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.totalHours.toFixed(1)}h</p>
           </div>
         </CardContent>
       </Card>
@@ -22,7 +22,8 @@ export const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => 
         <CardContent className="p-4">
           <div className="space-y-0.5">
             <p className="text-xs text-gray-600">Billable</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.billableHours}</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.billableHours.toFixed(1)}h</p>
+            <p className="text-xs text-gray-500 mt-1">{stats.billablePercentage.toFixed(1)}%</p>
           </div>
         </CardContent>
       </Card>
@@ -31,7 +32,7 @@ export const ReportStatsCards: React.FC<ReportStatsCardsProps> = ({ stats }) => 
         <CardContent className="p-4">
           <div className="space-y-0.5">
             <p className="text-xs text-gray-600">Non-Billable</p>
-            <p className="text-2xl font-bold text-gray-900">{stats.nonBillableHours}</p>
+            <p className="text-2xl font-bold text-gray-900">{stats.nonBillableHours.toFixed(1)}h</p>
           </div>
         </CardContent>
       </Card>

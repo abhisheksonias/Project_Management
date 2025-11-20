@@ -4,6 +4,7 @@ import { parseHours } from '@/shared/utils/formatHours';
 
 export interface AdminStats {
   activeProjects: number;
+  completedProjects: number;
   overdueProjects: number;
   openTasks: number;
   hoursLoggedThisWeek: number;
@@ -170,23 +171,29 @@ class AdminService {
     queryStartDate.setHours(0, 0, 0, 0);
     queryEndDate.setHours(23, 59, 59, 999);
 
-    // Build base query for projects
-    let projectsQuery = supabase
-      .from('projects')
-      .select('*', { count: 'exact', head: true });
+    // Helper to build base project query with shared filters
+    const buildProjectsQuery = () => {
+      let query = supabase
+        .from('projects')
+        .select('*', { count: 'exact', head: true });
 
-    // Apply project filter if specified
-    if (filters?.projectId) {
-      projectsQuery = projectsQuery.eq('id', filters.projectId);
-    }
+      if (filters?.projectId) {
+        query = query.eq('id', filters.projectId);
+      }
 
-    // Get active projects (status not 'completed' or 'cancelled')
-    const { count: activeProjectsCount } = await projectsQuery
-      .not('status', 'eq', 'completed')
-      .not('status', 'eq', 'cancelled');
+      return query;
+    };
+
+    // Get active projects (status explicitly marked as in progress)
+    const { count: activeProjectsCount } = await buildProjectsQuery()
+      .ilike('status', 'in progress');
+
+    // Get completed projects
+    const { count: completedProjectsCount } = await buildProjectsQuery()
+      .ilike('status', 'completed');
 
     // Get overdue projects (deadline passed and status not completed/cancelled)
-    const overdueProjectsQuery = projectsQuery
+    const overdueProjectsQuery = buildProjectsQuery()
       .not('status', 'eq', 'completed')
       .not('status', 'eq', 'cancelled')
       .not('deadline', 'is', null)
@@ -251,6 +258,7 @@ class AdminService {
 
     return {
       activeProjects: activeProjectsCount || 0,
+      completedProjects: completedProjectsCount || 0,
       overdueProjects: overdueProjectsCount || 0,
       openTasks: openTasksCount || 0,
       hoursLoggedThisWeek: Math.round(hoursLoggedThisWeek * 10) / 10,

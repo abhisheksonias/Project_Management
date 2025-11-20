@@ -25,7 +25,7 @@ export const UsersWithNoLogsCard: React.FC<UsersWithNoLogsCardProps> = ({
     return (
       <Card className="p-6 rounded-[14px] bg-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Users with No Logs Today</h3>
+          <h3 className="text-lg font-semibold">Users with No Logs</h3>
           <Skeleton className="h-4 w-16" />
         </div>
         <div className="space-y-3">
@@ -41,7 +41,7 @@ export const UsersWithNoLogsCard: React.FC<UsersWithNoLogsCardProps> = ({
     return (
       <Card className="p-6 rounded-[14px] bg-white">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Users with No Logs Today</h3>
+          <h3 className="text-lg font-semibold">Users with No Logs</h3>
           <span className="text-sm text-muted-foreground">0 users</span>
         </div>
         <div className="text-center py-8 text-muted-foreground">
@@ -55,7 +55,7 @@ export const UsersWithNoLogsCard: React.FC<UsersWithNoLogsCardProps> = ({
   return (
     <Card className="p-6 rounded-[14px] bg-white flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold">Users with No Logs Today</h3>
+        <h3 className="text-lg font-semibold">Users with No Logs</h3>
         <span className="text-sm text-muted-foreground">
           {users.length} {users.length === 1 ? 'user' : 'users'}
         </span>

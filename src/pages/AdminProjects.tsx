@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { useAdminProjects, useAdminProjectStats } from '@/features/admin/hooks/useAdminProjects';
 import { ProjectStatsCards } from '@/features/projects/ui/ProjectStatsCards';
@@ -21,12 +21,15 @@ import {
   NewProjectFormState,
   createDefaultNewProjectFormState,
 } from '@/features/admin/ui/CreateProjectDialog';
+import { PaginationControls } from '@/shared/ui/PaginationControls';
 
 const PROJECT_CATEGORY_OPTIONS = [
   { value: 'One-time', label: 'One-time' },
   { value: 'Maintenance', label: 'Maintenance' },
   { value: 'Hourly', label: 'Hourly' },
 ];
+
+const PROJECTS_PER_PAGE = 6;
 
 const AdminProjects: React.FC = () => {
   // View mode state
@@ -38,6 +41,7 @@ const AdminProjects: React.FC = () => {
   const [priority, setPriority] = useState<string>('All Priorities');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Selected project for side panel
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -122,6 +126,25 @@ const AdminProjects: React.FC = () => {
       return true;
     });
   }, [projects, searchQuery, status, priority, deadline]);
+
+  const filteredCount = filteredProjects.length;
+  const totalPages = Math.max(1, Math.ceil(filteredCount / PROJECTS_PER_PAGE));
+
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
+    return filteredProjects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
+  }, [filteredProjects, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, status, priority, deadline]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredCount / PROJECTS_PER_PAGE));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredCount, currentPage]);
 
   // Get tasks for selected project
   const selectedProjectTasks = useMemo(() => {
@@ -274,7 +297,7 @@ const AdminProjects: React.FC = () => {
               {/* Projects List */}
               {viewMode === 'card' ? (
                 <ProjectsGridView
-                  projects={filteredProjects}
+                  projects={paginatedProjects}
                   onProjectClick={handleProjectClick}
                   showCategory
                   onStatusChange={handleInlineStatusChange}
@@ -282,13 +305,19 @@ const AdminProjects: React.FC = () => {
                 />
               ) : (
                 <ProjectsTableView
-                  projects={filteredProjects}
+                  projects={paginatedProjects}
                   onProjectClick={handleProjectClick}
                   showCategory
                   onStatusChange={handleInlineStatusChange}
                   onPriorityChange={handleInlinePriorityChange}
                 />
               )}
+
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>

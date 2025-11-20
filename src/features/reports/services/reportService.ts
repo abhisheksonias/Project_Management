@@ -221,38 +221,41 @@ class ReportService {
     worklogs: WorklogWithDetails[],
     filters: ReportFilters
   ): HoursOverTime[] {
-    const days = eachDayOfInterval({
-      start: filters.startDate,
-      end: filters.endDate,
-    });
-
+    // First, sum hours by date from worklogs
     const hoursByDate = new Map<string, number>();
     
-    // Initialize all days with 0
-    days.forEach((day) => {
-      hoursByDate.set(format(day, 'yyyy-MM-dd'), 0);
-    });
-
-    // Sum hours by date
     worklogs.forEach((w) => {
-      const date = format(new Date(w.created_at), 'yyyy-MM-dd');
-      const current = hoursByDate.get(date) || 0;
-      hoursByDate.set(date, current + w.hours);
+      const worklogDate = new Date(w.created_at);
+      const dateKey = format(worklogDate, 'yyyy-MM-dd');
+      const current = hoursByDate.get(dateKey) || 0;
+      hoursByDate.set(dateKey, current + w.hours);
     });
 
-    // Group by month for display
+    // Group by month-year for accurate aggregation
     const monthlyData = new Map<string, number>();
-    days.forEach((day) => {
-      const monthKey = format(day, 'MMM');
-      const dateKey = format(day, 'yyyy-MM-dd');
+    
+    hoursByDate.forEach((hours, dateKey) => {
+      const date = new Date(dateKey);
+      // Use month-year as key to handle multiple years correctly
+      const monthKey = format(date, 'MMM yyyy');
       const current = monthlyData.get(monthKey) || 0;
-      monthlyData.set(monthKey, current + (hoursByDate.get(dateKey) || 0));
+      monthlyData.set(monthKey, current + hours);
     });
 
-    return Array.from(monthlyData.entries()).map(([date, hours]) => ({
-      date,
-      hours: Math.round(hours * 10) / 10,
-    }));
+    // Convert to array and sort by date
+    const result = Array.from(monthlyData.entries())
+      .map(([date, hours]) => ({
+        date,
+        hours: Math.round(hours * 10) / 10,
+      }))
+      .sort((a, b) => {
+        // Sort by date for proper timeline display
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        return dateA.getTime() - dateB.getTime();
+      });
+
+    return result;
   }
 
   private calculateHoursByProject(worklogs: WorklogWithDetails[]): HoursByProject[] {

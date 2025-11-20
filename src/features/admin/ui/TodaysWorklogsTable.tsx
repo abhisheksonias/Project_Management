@@ -74,7 +74,7 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
   if (isLoading) {
     return (
       <Card className="p-6 rounded-[14px] bg-white">
-        <h3 className="text-lg font-semibold mb-4">Today's Worklogs</h3>
+        <h3 className="text-lg font-semibold mb-4">Worklogs</h3>
         <div className="space-y-3">
           {Array.from({ length: 4 }).map((_, index) => (
             <Skeleton key={index} className="h-16 rounded-[14px]" />
@@ -87,7 +87,7 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
   return (
     <Card className="p-6 rounded-[14px] bg-white flex flex-col h-full">
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold">Today's Worklogs</h3>
+        <h3 className="text-lg font-semibold">Worklogs</h3>
         <span className="text-sm text-muted-foreground">
           Showing {worklogs.length} {worklogs.length === 1 ? 'log' : 'logs'}
         </span>
