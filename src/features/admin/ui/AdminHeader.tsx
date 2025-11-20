@@ -67,6 +67,11 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   const navigate = useNavigate();
   const currentMonth = new Date();
 
+  const sortedProjects = React.useMemo(
+    () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
+    [projects]
+  );
+
   const handleLogout = async () => {
     await signOut();
     navigate('/auth');
@@ -100,7 +105,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
     return dateRangeLabels[dateRange] || 'This Month';
   };
 
-  const selectedProject = projects.find(p => p.id === filters.projectId);
+  const selectedProject = sortedProjects.find(p => p.id === filters.projectId);
   const departmentLabel = filters.department 
     ? filters.department.charAt(0).toUpperCase() + filters.department.slice(1)
     : 'All Departments';
@@ -115,7 +120,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
               Admin Dashboard
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 hidden sm:block">
-              Agency Performance Overview
+              Your Agency Performance Overview
             </p>
           </div>
 
@@ -226,7 +231,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                     </SelectTrigger>
                     <SelectContent className="rounded-[14px]">
                       <SelectItem value="all">All Projects</SelectItem>
-                      {projects.map((project) => (
+                      {sortedProjects.map((project) => (
                         <SelectItem key={project.id} value={project.id}>
                           {project.name}
                         </SelectItem>
@@ -303,12 +308,12 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             </DropdownMenu>
 
             {/* Export Button */}
-            <Button
+            {/* <Button
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] h-9 sm:h-10 px-3 sm:px-4"
             >
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Export</span>
-            </Button>
+            </Button> */}
 
             {/* Logout Button */}
             <Button

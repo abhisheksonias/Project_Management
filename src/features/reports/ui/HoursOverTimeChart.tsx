@@ -53,9 +53,9 @@ const CustomTooltip = ({ active, payload, label }: TooltipProps<number, string>)
 export const HoursOverTimeChart: React.FC<HoursOverTimeChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <Card>
+      <Card className="rounded-[14px]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Hours Over Time</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Hours Over Time</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[240px]">
@@ -67,14 +67,14 @@ export const HoursOverTimeChart: React.FC<HoursOverTimeChartProps> = ({ data }) 
   }
 
   return (
-    <Card>
+    <Card className="rounded-[14px]">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Hours Over Time</CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground">Hours Over Time</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
           <AreaChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E7E7E7" />
             <XAxis 
               dataKey="date" 
               stroke="#6B7280"

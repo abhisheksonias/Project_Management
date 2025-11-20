@@ -13,17 +13,75 @@ import { useDashboardProjects } from '@/features/dashboard/hooks/useDashboardPro
 import { ReportFilters as ReportFiltersType } from '@/features/reports/services/reportService';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
 
+const normalizeFilterDates = (input: ReportFiltersType): ReportFiltersType => {
+  const now = new Date();
+
+  const toValidDate = (value?: Date | string | null): Date | null => {
+    if (!value) return null;
+    try {
+      const date = value instanceof Date ? new Date(value.getTime()) : new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      return date;
+    } catch {
+      return null;
+    }
+  };
+
+  let start = toValidDate(input.startDate);
+  let end = toValidDate(input.endDate);
+
+  // If we have one date but not the other, derive the missing one
+  if (!start && end) {
+    start = startOfMonth(end);
+  }
+  if (!end && start) {
+    end = endOfMonth(start);
+  }
+
+  // If both are missing, use current month
+  if (!start) {
+    start = startOfMonth(now);
+  }
+  if (!end) {
+    end = endOfMonth(now);
+  }
+
+  // Ensure start is before end
+  if (start.getTime() > end.getTime()) {
+    const temp = start;
+    start = end;
+    end = temp;
+  }
+
+  // Ensure dates are valid Date objects
+  const normalizedStart = new Date(start.getTime());
+  const normalizedEnd = new Date(end.getTime());
+
+  return {
+    ...input,
+    startDate: normalizedStart,
+    endDate: normalizedEnd,
+  };
+};
+
 const Reports: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  const [filters, setFilters] = useState<ReportFiltersType>(getDefaultFilters());
+  const [filters, setFilters] = useState<ReportFiltersType>(normalizeFilterDates(getDefaultFilters()));
   const [tempStartDate, setTempStartDate] = useState<Date | undefined>(undefined);
   const [tempEndDate, setTempEndDate] = useState<Date | undefined>(undefined);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [dateRangeOption, setDateRangeOption] = useState<'this-month' | 'last-month' | 'custom'>('this-month');
 
-  const { data: projects = [] } = useDashboardProjects(profile?.id || '');
-  const { data: reportData, isLoading } = useReportData(profile?.id || '', filters);
+  const userId = profile?.id || '';
+  const { data: projects = [] } = useDashboardProjects(userId);
+  const { data: reportData, isLoading, error } = useReportData(userId, filters);
+
+  // Sort projects in ascending order - MUST be called before any early returns
+  const sortedProjects = React.useMemo(
+    () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
+    [projects]
+  );
 
   const handleSidebarNavigation = (tab: string) => {
     if (tab === 'dashboard') {
@@ -43,21 +101,32 @@ const Reports: React.FC = () => {
     }
   };
 
+  const handleFiltersChange = (update: Partial<ReportFiltersType>) => {
+    setFilters((prev) => {
+      try {
+        const merged = { ...prev, ...update };
+        return normalizeFilterDates(merged);
+      } catch (error) {
+        console.error('Error updating filters:', error);
+        // Return previous filters if update fails
+        return prev;
+      }
+    });
+  };
+
   const handleDateRangeSelect = (range: 'this-month' | 'last-month' | 'custom') => {
     const now = new Date();
     setDateRangeOption(range);
     
     if (range === 'this-month') {
-      setFilters({
-        ...filters,
+      handleFiltersChange({
         startDate: startOfMonth(now),
         endDate: endOfMonth(now),
       });
       setIsDatePickerOpen(false);
     } else if (range === 'last-month') {
       const lastMonth = subMonths(now, 1);
-      setFilters({
-        ...filters,
+      handleFiltersChange({
         startDate: startOfMonth(lastMonth),
         endDate: endOfMonth(lastMonth),
       });
@@ -83,8 +152,7 @@ const Reports: React.FC = () => {
       const end = new Date(tempEndDate);
       end.setHours(23, 59, 59, 999);
       
-      setFilters({
-        ...filters,
+      handleFiltersChange({
         startDate: start,
         endDate: end,
       });
@@ -106,6 +174,19 @@ const Reports: React.FC = () => {
   };
 
 
+  if (!profile) {
+    return (
+      <div className="flex h-screen">
+        <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-muted-foreground">Please log in to view reports</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex h-screen">
@@ -120,19 +201,38 @@ const Reports: React.FC = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex h-screen">
+        <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-destructive mb-2">Error loading reports</p>
+            <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="flex h-screen bg-[#FAFAFA]">
+    <div className="flex h-screen" style={{ backgroundColor: '#FAFAFA' }}>
       <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
       
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 max-w-7xl mx-auto">
+        <div className="p-4 sm:p-6 lg:p-8 w-full">
           {/* Header */}
-          <div className="mb-4">
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">My Reports</h1>
+          <div className="mb-4 sm:mb-6">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-2 sm:mb-3">
+              My Reports
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 hidden sm:block">
+              Track your work hours and project performance
+            </p>
             <ReportFilters
               filters={filters}
-              onFiltersChange={setFilters}
-              projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+              onFiltersChange={handleFiltersChange}
+              projects={sortedProjects.map((p) => ({ id: p.id, name: p.name }))}
               onDateRangeSelect={handleDateRangeSelect}
               tempStartDate={tempStartDate}
               tempEndDate={tempEndDate}
@@ -150,13 +250,13 @@ const Reports: React.FC = () => {
 
           {/* Stats Cards */}
           {reportData?.stats && (
-            <div className="mb-4">
+            <div className="mb-4 sm:mb-6">
               <ReportStatsCards stats={reportData.stats} />
             </div>
           )}
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
             {reportData?.hoursOverTime && (
               <HoursOverTimeChart data={reportData.hoursOverTime} />
             )}
@@ -166,7 +266,7 @@ const Reports: React.FC = () => {
           </div>
 
           {/* Table and Insights Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
             {reportData?.estimateVsLogged && (
               <div className="lg:col-span-2">
                 <EstimateVsLoggedTable data={reportData.estimateVsLogged} />

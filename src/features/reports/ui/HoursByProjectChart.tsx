@@ -45,9 +45,9 @@ const CustomProjectTooltip = ({ active, payload }: TooltipProps<number, string>)
 export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }) => {
   if (!data || data.length === 0) {
     return (
-      <Card>
+      <Card className="rounded-[14px]">
         <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold">Hours by Project</CardTitle>
+          <CardTitle className="text-base font-semibold text-foreground">Hours by Project</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center h-[240px]">
@@ -59,14 +59,14 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }
   }
 
   return (
-    <Card>
+    <Card className="rounded-[14px]">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Hours by Project</CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground">Hours by Project</CardTitle>
       </CardHeader>
       <CardContent>
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={data}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#E7E7E7" />
             <XAxis 
               dataKey="projectName" 
               stroke="#6B7280"
@@ -85,10 +85,11 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }
             />
             <Bar 
               dataKey="hours" 
-              fill="#FCE7F3" 
+              fill="#E90E1D" 
+              fillOpacity={0.3}
               stroke="#E90E1D"
-              strokeWidth={1}
-              radius={[4, 4, 0, 0]}
+              strokeWidth={2}
+              radius={[14, 14, 0, 0]}
             />
           </BarChart>
         </ResponsiveContainer>

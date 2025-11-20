@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { startOfMonth, endOfMonth, subMonths, format, eachDayOfInterval } from 'date-fns';
+import { parseHours } from '@/shared/utils/formatHours';
 
 export interface ReportFilters {
   startDate: Date;
@@ -63,6 +64,26 @@ export interface Insights {
 
 class ReportService {
   async getWorklogsWithDetails(userId: string, filters: ReportFilters): Promise<WorklogWithDetails[]> {
+    if (!userId) {
+      throw new Error('User ID is required');
+    }
+    if (!filters.startDate || !filters.endDate) {
+      throw new Error('Date range is required');
+    }
+
+    // Set time boundaries for accurate date filtering
+    const startDate = new Date(filters.startDate);
+    if (isNaN(startDate.getTime())) {
+      throw new Error('Invalid start date');
+    }
+    startDate.setHours(0, 0, 0, 0);
+    
+    const endDate = new Date(filters.endDate);
+    if (isNaN(endDate.getTime())) {
+      throw new Error('Invalid end date');
+    }
+    endDate.setHours(23, 59, 59, 999);
+
     let query = supabase
       .from('work_logs')
       .select(`
@@ -70,6 +91,7 @@ class ReportService {
         hours,
         created_at,
         task_id,
+        project_id,
         tasks(
           name,
           type,
@@ -84,30 +106,36 @@ class ReportService {
         )
       `)
       .eq('user_id', userId)
-      .gte('created_at', filters.startDate.toISOString())
-      .lte('created_at', filters.endDate.toISOString())
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: true });
-
-    // Apply project filter
-    if (filters.projectId && filters.projectId !== 'all') {
-      query = query.eq('projects.id', filters.projectId);
-    }
 
     const { data, error } = await query;
     if (error) throw error;
 
-    // Apply billable type filter
+    // Apply filters in memory for better accuracy
     let worklogs = (data as any[]) || [];
+
+    // Apply project filter - check both direct project_id and through tasks
+    if (filters.projectId && filters.projectId !== 'all') {
+      worklogs = worklogs.filter((w) => 
+        w.project_id === filters.projectId || 
+        w.tasks?.project_id === filters.projectId ||
+        w.projects?.id === filters.projectId
+      );
+    }
+
+    // Apply billable type filter
     if (filters.billableType === 'billable') {
       worklogs = worklogs.filter((w) => w.tasks?.type === 'billable');
     } else if (filters.billableType === 'non-billable') {
       worklogs = worklogs.filter((w) => w.tasks?.type === 'non-billable');
     }
 
-    // Convert hours to numbers
+    // Convert hours to decimal numbers for accurate calculations
     return worklogs.map((w) => ({
       ...w,
-      hours: parseFloat(w.hours) || 0,
+      hours: parseHours(w.hours),
     })) as WorklogWithDetails[];
   }
 
@@ -188,17 +216,19 @@ class ReportService {
     const nonBillableHours = totalHours - billableHours;
     const billablePercentage = totalHours > 0 ? (billableHours / totalHours) * 100 : 0;
 
-    // Get unique completed tasks
-    const completedTaskIds = new Set(
-      tasks
-        .filter((t) => t.status === 'Completed')
-        .map((t) => t.id)
+    // Get unique completed tasks that have worklogs in the date range
+    const completedTaskIdsWithWorklogs = new Set(
+      worklogs
+        .filter((w) => {
+          const task = tasks.find((t) => t.id === w.task_id);
+          return task && task.status === 'Completed';
+        })
+        .map((w) => w.task_id)
+        .filter((id): id is string => id !== null)
     );
     
-    // Count completed tasks that have worklogs in the date range
-    const tasksCompleted = worklogs.filter(
-      (w) => w.task_id && completedTaskIds.has(w.task_id)
-    ).length;
+    // Count unique completed tasks
+    const tasksCompleted = completedTaskIdsWithWorklogs.size;
 
     // Get unique projects
     const projectsContributed = new Set(
@@ -221,7 +251,7 @@ class ReportService {
     worklogs: WorklogWithDetails[],
     filters: ReportFilters
   ): HoursOverTime[] {
-    // First, sum hours by date from worklogs
+    // Sum hours by date from worklogs
     const hoursByDate = new Map<string, number>();
     
     worklogs.forEach((w) => {
@@ -231,31 +261,50 @@ class ReportService {
       hoursByDate.set(dateKey, current + w.hours);
     });
 
-    // Group by month-year for accurate aggregation
-    const monthlyData = new Map<string, number>();
-    
-    hoursByDate.forEach((hours, dateKey) => {
-      const date = new Date(dateKey);
-      // Use month-year as key to handle multiple years correctly
-      const monthKey = format(date, 'MMM yyyy');
-      const current = monthlyData.get(monthKey) || 0;
-      monthlyData.set(monthKey, current + hours);
-    });
+    // Calculate date range difference in days
+    const daysDiff = Math.ceil(
+      (filters.endDate.getTime() - filters.startDate.getTime()) / (1000 * 60 * 60 * 24)
+    );
 
-    // Convert to array and sort by date
-    const result = Array.from(monthlyData.entries())
-      .map(([date, hours]) => ({
-        date,
-        hours: Math.round(hours * 10) / 10,
-      }))
-      .sort((a, b) => {
-        // Sort by date for proper timeline display
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        return dateA.getTime() - dateB.getTime();
+    // If range is more than 60 days, group by month; otherwise show daily
+    if (daysDiff > 60) {
+      // Group by month-year for better visualization
+      const monthlyData = new Map<string, number>();
+      
+      hoursByDate.forEach((hours, dateKey) => {
+        const date = new Date(dateKey);
+        const monthKey = format(date, 'MMM yyyy');
+        const current = monthlyData.get(monthKey) || 0;
+        monthlyData.set(monthKey, current + hours);
       });
 
-    return result;
+      // Convert to array and sort by date
+      return Array.from(monthlyData.entries())
+        .map(([date, hours]) => ({
+          date,
+          hours: Math.round(hours * 10) / 10,
+        }))
+        .sort((a, b) => {
+          const dateA = new Date(a.date);
+          const dateB = new Date(b.date);
+          return dateA.getTime() - dateB.getTime();
+        });
+    } else {
+      // Show daily data for shorter ranges
+      const allDates = eachDayOfInterval({
+        start: filters.startDate,
+        end: filters.endDate,
+      });
+
+      return allDates.map((date) => {
+        const dateKey = format(date, 'yyyy-MM-dd');
+        const hours = hoursByDate.get(dateKey) || 0;
+        return {
+          date: format(date, 'MMM dd'),
+          hours: Math.round(hours * 10) / 10,
+        };
+      });
+    }
   }
 
   private calculateHoursByProject(worklogs: WorklogWithDetails[]): HoursByProject[] {
