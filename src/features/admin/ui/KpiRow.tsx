@@ -77,13 +77,13 @@ export const KpiRow: React.FC<KpiRowProps> = ({ filters }) => {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <KpiCard 
-        title="Active Projects" 
+        title="In-Progress" 
         value={stats?.activeProjects ?? 0}
         isLoading={isLoading}
       />
       <KpiCard 
-        title="Overdue Projects" 
-        value={stats?.overdueProjects ?? 0}
+        title="Completed Projects" 
+        value={stats?.completedProjects ?? 0}
         isLoading={isLoading}
       />
       <KpiCard 
@@ -92,7 +92,7 @@ export const KpiRow: React.FC<KpiRowProps> = ({ filters }) => {
         isLoading={isLoading}
       />
       <KpiCard 
-        title="Hours Logged This Week" 
+        title="Hours Logged" 
         value={stats?.hoursLoggedThisWeek ? `${formatHoursToHHMM(stats.hoursLoggedThisWeek)}h` : '0:00h'}
         isLoading={isLoading}
       />

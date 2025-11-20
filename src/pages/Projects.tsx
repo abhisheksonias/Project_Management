@@ -12,6 +12,9 @@ import { ProjectsGridView } from '@/features/projects/ui/ProjectsGridView';
 import { ProjectsTableView } from '@/features/projects/ui/ProjectsTableView';
 import { ProjectDetailsPanel } from '@/features/projects/ui/ProjectDetailsPanel';
 import { Project } from '@/features/projects/services/projectService';
+import { PaginationControls } from '@/shared/ui/PaginationControls';
+
+const PROJECTS_PER_PAGE = 6;
 
 const Projects: React.FC = () => {
   const { profile } = useAuth();
@@ -25,6 +28,7 @@ const Projects: React.FC = () => {
   const [status, setStatus] = useState<string>('All Statuses');
   const [priority, setPriority] = useState<string>('All Priorities');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
   
   // Selected project for side panel
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -104,6 +108,25 @@ const Projects: React.FC = () => {
       return true;
     });
   }, [projects, searchQuery, status, priority, deadline]);
+
+  const filteredCount = filteredProjects.length;
+  const totalPages = Math.max(1, Math.ceil(filteredCount / PROJECTS_PER_PAGE));
+
+  const paginatedProjects = useMemo(() => {
+    const startIndex = (currentPage - 1) * PROJECTS_PER_PAGE;
+    return filteredProjects.slice(startIndex, startIndex + PROJECTS_PER_PAGE);
+  }, [filteredProjects, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, status, priority, deadline]);
+
+  useEffect(() => {
+    const maxPage = Math.max(1, Math.ceil(filteredCount / PROJECTS_PER_PAGE));
+    if (currentPage > maxPage) {
+      setCurrentPage(maxPage);
+    }
+  }, [filteredCount, currentPage]);
 
   // Get tasks for selected project
   const selectedProjectTasks = useMemo(() => {
@@ -201,15 +224,21 @@ const Projects: React.FC = () => {
           {/* Projects List */}
           {viewMode === 'card' ? (
             <ProjectsGridView
-              projects={filteredProjects}
+              projects={paginatedProjects}
               onProjectClick={handleProjectClick}
             />
           ) : (
             <ProjectsTableView
-              projects={filteredProjects}
+              projects={paginatedProjects}
               onProjectClick={handleProjectClick}
             />
           )}
+
+          <PaginationControls
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         </div>
       </div>
 
