@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { parseHours } from '@/shared/utils/formatHours';
 
 export interface Worklog {
   id: string;
@@ -65,10 +66,14 @@ class WorklogService {
   }
 
   async createWorklog(data: CreateWorklogData): Promise<void> {
+    // Convert hours string (HH:MM) to numeric decimal
+    const hoursNum = parseHours(data.hours);
+    
     const { error } = await supabase
       .from('work_logs')
       .insert({
         hours: data.hours,
+        hours_num: hoursNum,
         note: data.note,
         task_id: data.task_id,
         project_id: data.project_id,
@@ -81,13 +86,18 @@ class WorklogService {
   }
 
   async updateWorklog(id: string, data: UpdateWorklogData): Promise<void> {
+    // Convert hours string (HH:MM) to numeric decimal
+    const hoursNum = parseHours(data.hours);
+    
     const updatePayload: {
       hours: string;
+      hours_num: number;
       note?: string | null;
       task_id: string;
       created_at?: string;
     } = {
       hours: data.hours,
+      hours_num: hoursNum,
       note: data.note,
       task_id: data.task_id,
     };

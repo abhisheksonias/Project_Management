@@ -246,6 +246,7 @@ export type Database = {
           added_by: string | null
           created_at: string
           hours: string
+          hours_num: number | null
           id: string
           note: string | null
           project_id: string | null
@@ -257,6 +258,7 @@ export type Database = {
           added_by?: string | null
           created_at?: string
           hours: string
+          hours_num?: number | null
           id?: string
           note?: string | null
           project_id?: string | null
@@ -268,6 +270,7 @@ export type Database = {
           added_by?: string | null
           created_at?: string
           hours?: string
+          hours_num?: number | null
           id?: string
           note?: string | null
           project_id?: string | null

@@ -1,5 +1,6 @@
 import { supabase } from '@/integrations/supabase/client';
 import { startOfDay, endOfDay, subDays } from 'date-fns';
+import { parseHours } from '@/shared/utils/formatHours';
 
 export interface AdminWorklog {
   id: string;
@@ -442,6 +443,9 @@ class AdminWorklogService {
     created_at: string;
     added_by: string;
   }): Promise<void> {
+    // Convert hours string (HH:MM) to numeric decimal
+    const hoursNum = parseHours(data.hours);
+    
     const { error } = await supabase
       .from('work_logs')
       .insert({
@@ -449,6 +453,7 @@ class AdminWorklogService {
         task_id: data.task_id,
         project_id: data.project_id,
         hours: data.hours,
+        hours_num: hoursNum,
         note: data.note,
         created_at: data.created_at,
         added_by: data.added_by,
@@ -467,9 +472,17 @@ class AdminWorklogService {
     note?: string | null;
     created_at?: string;
   }): Promise<void> {
+    // If hours is being updated, also calculate and update hours_num
+    const updateData: typeof data & { hours_num?: number } = { ...data };
+    
+    if (data.hours !== undefined) {
+      // Convert hours string (HH:MM) to numeric decimal
+      updateData.hours_num = parseHours(data.hours);
+    }
+    
     const { error } = await supabase
       .from('work_logs')
-      .update(data)
+      .update(updateData)
       .eq('id', worklogId);
 
     if (error) {
