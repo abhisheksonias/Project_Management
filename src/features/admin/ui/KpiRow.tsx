@@ -87,8 +87,8 @@ export const KpiRow: React.FC<KpiRowProps> = ({ filters }) => {
         isLoading={isLoading}
       />
       <KpiCard 
-        title="Open Tasks" 
-        value={stats?.openTasks ?? 0}
+        title="Active Tasks (In Progress)" 
+        value={stats?.inProgressTasks ?? 0}
         isLoading={isLoading}
       />
       <KpiCard 

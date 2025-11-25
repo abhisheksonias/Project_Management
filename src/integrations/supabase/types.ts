@@ -17,7 +17,6 @@ export type Database = {
       projects: {
         Row: {
           admin_id: string | null
-          category: string | null
           comments: Json | null
           created_at: string | null
           deadline: string | null
@@ -25,13 +24,11 @@ export type Database = {
           id: string
           name: string
           priority: string | null
-          reference: string | null
           status: string | null
-          type: string
+          vendor_id: string | null
         }
         Insert: {
           admin_id?: string | null
-          category?: string | null
           comments?: Json | null
           created_at?: string | null
           deadline?: string | null
@@ -39,13 +36,11 @@ export type Database = {
           id?: string
           name: string
           priority?: string | null
-          reference?: string | null
           status?: string | null
-          type: string
+          vendor_id?: string | null
         }
         Update: {
           admin_id?: string | null
-          category?: string | null
           comments?: Json | null
           created_at?: string | null
           deadline?: string | null
@@ -53,9 +48,8 @@ export type Database = {
           id?: string
           name?: string
           priority?: string | null
-          reference?: string | null
           status?: string | null
-          type?: string
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -65,7 +59,44 @@ export type Database = {
             referencedRelation: "users"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "projects_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
         ]
+      }
+      vendors: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          updated_at: string | null
+          website: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          updated_at?: string | null
+          website?: string | null
+        }
+        Relationships: []
       }
       status_history: {
         Row: {

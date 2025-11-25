@@ -16,7 +16,7 @@ import { ReportFilters as ReportFiltersType } from '../services/reportService';
 
 interface ReportFiltersProps {
   filters: ReportFiltersType;
-  onFiltersChange: (filters: ReportFiltersType) => void;
+  onFiltersChange: (filters: Partial<ReportFiltersType>) => void;
   projects: Array<{ id: string; name: string }>;
   onDateRangeSelect: (range: 'this-month' | 'last-month' | 'custom') => void;
   tempStartDate?: Date;
@@ -43,31 +43,35 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
   onDatePickerOpenChange,
   dateRangeOption = 'this-month',
 }) => {
+  // Sort projects in ascending order
+  const sortedProjects = React.useMemo(
+    () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
+    [projects]
+  );
+
   const handleProjectChange = (projectId: string) => {
     onFiltersChange({
-      ...filters,
       projectId: projectId === 'all' ? 'all' : projectId,
     });
   };
 
   const handleBillableTypeChange = (type: string) => {
     onFiltersChange({
-      ...filters,
       billableType: type as 'all' | 'billable' | 'non-billable',
     });
   };
 
   return (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
       {/* Date Range Selector */}
       <Select
         value={dateRangeOption}
         onValueChange={onDateRangeSelect}
       >
-        <SelectTrigger className="w-[140px] bg-pink-50 border-pink-200">
+        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
           <SelectValue placeholder="Date range" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-[14px]">
           <SelectItem value="this-month">This Month</SelectItem>
           <SelectItem value="last-month">Last Month</SelectItem>
           <SelectItem value="custom">Custom</SelectItem>
@@ -81,7 +85,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
             <Button
               variant="outline"
               className={cn(
-                'w-[240px] justify-start text-left font-normal bg-pink-50 border-pink-200',
+                'w-full sm:w-[240px] justify-start text-left font-normal bg-secondary border-secondary rounded-[14px] h-9',
                 !tempStartDate && 'text-muted-foreground'
               )}
               onClick={() => {
@@ -100,7 +104,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
+          <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
             <Calendar
               initialFocus
               mode="range"
@@ -121,6 +125,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
               <Button
                 variant="outline"
                 size="sm"
+                className="rounded-[14px]"
                 onClick={() => {
                   onResetDateRange?.();
                   onDatePickerOpenChange?.(false);
@@ -130,6 +135,7 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
               </Button>
               <Button
                 size="sm"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
                 onClick={() => {
                   onConfirmDateRange?.();
                   onDatePickerOpenChange?.(false);
@@ -145,12 +151,12 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
 
       {/* Project Filter */}
       <Select value={filters.projectId || 'all'} onValueChange={handleProjectChange}>
-        <SelectTrigger className="w-[140px] bg-pink-50 border-pink-200">
+        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
           <SelectValue placeholder="Project" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-[14px]">
           <SelectItem value="all">All Projects</SelectItem>
-          {projects.map((project) => (
+          {sortedProjects.map((project) => (
             <SelectItem key={project.id} value={project.id}>
               {project.name}
             </SelectItem>
@@ -163,10 +169,10 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
         value={filters.billableType || 'all'}
         onValueChange={handleBillableTypeChange}
       >
-        <SelectTrigger className="w-[140px] bg-pink-50 border-pink-200">
+        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
           <SelectValue placeholder="Billable type" />
         </SelectTrigger>
-        <SelectContent>
+        <SelectContent className="rounded-[14px]">
           <SelectItem value="all">All Types</SelectItem>
           <SelectItem value="billable">Billable</SelectItem>
           <SelectItem value="non-billable">Non-Billable</SelectItem>

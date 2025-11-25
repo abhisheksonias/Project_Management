@@ -24,6 +24,19 @@ export interface HoursByUserData {
   hours: number;
 }
 
+export interface HoursByTaskContribution {
+  userId: string;
+  userName: string;
+  hours: number;
+}
+
+export interface HoursByTaskData {
+  taskId: string;
+  taskName: string;
+  hours: number;
+  contributions: HoursByTaskContribution[];
+}
+
 export interface ProjectRecentWorklog {
   id: string;
   date: string;
@@ -123,34 +136,24 @@ class ProjectEfficiencyService {
   }
 
   /**
-   * Calculate project efficiency stats
+   * Calculate project efficiency stats (all-time data)
    */
   async getProjectEfficiencyStats(
-    projectId: string,
-    dateRange: string = 'last-30-days',
-    customStart?: Date,
-    customEnd?: Date
+    projectId: string
   ): Promise<ProjectEfficiencyStats> {
-    const { start, end } = this.getDateRange(dateRange, customStart, customEnd);
-    const { start: prevStart, end: prevEnd } = this.getPreviousPeriod(dateRange, customStart, customEnd);
-
-    // Get worklogs for current period
-    const { data: worklogs, error: worklogsError } = await supabase
+    // Get all worklogs for this project (all-time)
+    let worklogsQuery = supabase
       .from('work_logs')
       .select('hours, created_at, user_id')
-      .eq('project_id', projectId)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString());
+      .eq('project_id', projectId);
+
+    const { data: worklogs, error: worklogsError } = await worklogsQuery;
 
     if (worklogsError) throw worklogsError;
 
-    // Get worklogs for previous period (for comparison)
-    const { data: prevWorklogs } = await supabase
-      .from('work_logs')
-      .select('hours, created_at, user_id')
-      .eq('project_id', projectId)
-      .gte('created_at', prevStart.toISOString())
-      .lte('created_at', prevEnd.toISOString());
+    // For all-time stats, we don't compare with previous period
+    // Set previous period data to empty for comparison
+    const prevWorklogs: any[] = [];
 
     // Calculate total hours
     const totalHours = (worklogs || []).reduce((sum, log) => sum + parseHours(log.hours), 0);
@@ -166,23 +169,15 @@ class ProjectEfficiencyService {
       ? ((activeDays - prevActiveDays) / prevActiveDays) * 100 
       : 0;
 
-    // Get tasks completed in current period for this project
+    // Get all completed tasks for this project (all-time)
     const { data: completedTasks } = await supabase
       .from('tasks')
       .select('id, status')
       .eq('project_id', projectId)
-      .eq('status', 'completed')
-      .gte('updated_at', start.toISOString())
-      .lte('updated_at', end.toISOString());
+      .ilike('status', 'completed%');
 
-    // Get tasks completed in previous period
-    const { data: prevCompletedTasks } = await supabase
-      .from('tasks')
-      .select('id, status')
-      .eq('project_id', projectId)
-      .eq('status', 'completed')
-      .gte('updated_at', prevStart.toISOString())
-      .lte('updated_at', prevEnd.toISOString());
+    // For all-time stats, no previous period comparison
+    const prevCompletedTasks: any[] = [];
 
     const tasksCompleted = completedTasks?.length || 0;
     const prevTasksCompleted = prevCompletedTasks?.length || 0;
@@ -210,22 +205,15 @@ class ProjectEfficiencyService {
   }
 
   /**
-   * Get daily hours data for selected project
+   * Get daily hours data for selected project (all-time)
    */
   async getProjectDailyHours(
-    projectId: string,
-    dateRange: string = 'last-30-days',
-    customStart?: Date,
-    customEnd?: Date
+    projectId: string
   ): Promise<ProjectDailyHoursData[]> {
-    const { start, end } = this.getDateRange(dateRange, customStart, customEnd);
-
     const { data: worklogs, error } = await supabase
       .from('work_logs')
       .select('hours, created_at')
       .eq('project_id', projectId)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString())
       .order('created_at', { ascending: true });
 
     if (error) throw error;
@@ -239,39 +227,27 @@ class ProjectEfficiencyService {
       dailyHoursMap.set(dateKey, currentHours + parseHours(log.hours));
     });
 
-    // Convert to array and fill missing dates with 0
-    const result: ProjectDailyHoursData[] = [];
-    const currentDate = new Date(start);
-    
-    while (currentDate <= end) {
-      const dateKey = format(currentDate, 'yyyy-MM-dd');
-      result.push({
-        date: format(currentDate, 'MMM dd'),
-        hours: dailyHoursMap.get(dateKey) || 0,
-      });
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
+    // Convert to array, sorted by date
+    const result: ProjectDailyHoursData[] = Array.from(dailyHoursMap.entries())
+      .map(([dateKey, hours]) => ({
+        date: format(new Date(dateKey), 'MMM dd'),
+        hours,
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
     return result;
   }
 
   /**
-   * Get hours by user for selected project
+   * Get hours by user for selected project (all-time)
    */
   async getHoursByUser(
-    projectId: string,
-    dateRange: string = 'last-30-days',
-    customStart?: Date,
-    customEnd?: Date
+    projectId: string
   ): Promise<HoursByUserData[]> {
-    const { start, end } = this.getDateRange(dateRange, customStart, customEnd);
-
     const { data: worklogs, error } = await supabase
       .from('work_logs')
       .select('hours, user_id, users!inner(id, name)')
-      .eq('project_id', projectId)
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString());
+      .eq('project_id', projectId);
 
     if (error) throw error;
 
@@ -295,6 +271,70 @@ class ProjectEfficiencyService {
         userId,
         userName: data.name,
         hours: data.hours,
+      }))
+      .sort((a, b) => b.hours - a.hours);
+  }
+
+  /**
+   * Get hours by task for selected project (all-time)
+   */
+  async getHoursByTask(
+    projectId: string
+  ): Promise<HoursByTaskData[]> {
+    const { data: worklogs, error } = await supabase
+      .from('work_logs')
+      .select('hours, task_id, user_id, users!inner(id, name), tasks!inner(id, name)')
+      .eq('project_id', projectId);
+
+    if (error) throw error;
+
+    const taskHoursMap = new Map<
+      string,
+      { name: string; hours: number; contributions: Map<string, { name: string; hours: number }> }
+    >();
+
+    (worklogs || []).forEach((log) => {
+      const taskId = log.task_id;
+      if (!taskId) {
+        return;
+      }
+
+      const taskName = (log.tasks as any)?.name || 'Untitled Task';
+      const userId = log.user_id;
+      const userName = (log.users as any)?.name || 'Unknown User';
+      const parsedHours = parseHours(log.hours);
+
+      if (!taskHoursMap.has(taskId)) {
+        taskHoursMap.set(taskId, {
+          name: taskName,
+          hours: 0,
+          contributions: new Map(),
+        });
+      }
+
+      const taskEntry = taskHoursMap.get(taskId)!;
+      taskEntry.hours += parsedHours;
+
+      if (userId) {
+        const contributionMap = taskEntry.contributions;
+        const current = contributionMap.get(userId) || { name: userName, hours: 0 };
+        current.hours += parsedHours;
+        contributionMap.set(userId, current);
+      }
+    });
+
+    return Array.from(taskHoursMap.entries())
+      .map(([taskId, data]) => ({
+        taskId,
+        taskName: data.name,
+        hours: data.hours,
+        contributions: Array.from(data.contributions.entries())
+          .map(([userId, contribution]) => ({
+            userId,
+            userName: contribution.name,
+            hours: contribution.hours,
+          }))
+          .sort((a, b) => b.hours - a.hours),
       }))
       .sort((a, b) => b.hours - a.hours);
   }

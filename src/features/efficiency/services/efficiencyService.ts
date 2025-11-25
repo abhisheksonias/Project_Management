@@ -7,8 +7,8 @@ export interface EfficiencyStats {
   totalHoursChange: number; // percentage change
   activeDays: number;
   activeDaysChange: number;
-  tasksCompleted: number;
-  tasksCompletedChange: number;
+  projectsContributed: number;
+  projectsContributedChange: number;
   efficiencyPercent: number;
   efficiencyPercentChange: number;
 }
@@ -148,7 +148,7 @@ class EfficiencyService {
     // Get worklogs for current period
     let worklogsQuery = supabase
       .from('work_logs')
-      .select('hours, created_at, user_id')
+      .select('hours, created_at, user_id, project_id')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString());
 
@@ -168,7 +168,7 @@ class EfficiencyService {
     // Get worklogs for previous period (for comparison)
     let prevWorklogsQuery = supabase
       .from('work_logs')
-      .select('hours, created_at, user_id')
+      .select('hours, created_at, user_id, project_id')
       .gte('created_at', prevStart.toISOString())
       .lte('created_at', prevEnd.toISOString());
 
@@ -197,38 +197,17 @@ class EfficiencyService {
       ? ((activeDays - prevActiveDays) / prevActiveDays) * 100 
       : 0;
 
-    // Get tasks completed in current period
-    let tasksQuery = supabase
-      .from('tasks')
-      .select('id, status')
-      .eq('status', 'completed')
-      .gte('updated_at', start.toISOString())
-      .lte('updated_at', end.toISOString());
+    const projectContributionCount = new Set(
+      (worklogs || []).map((log) => log.project_id).filter(Boolean)
+    ).size;
 
-    if (userId) {
-      tasksQuery = tasksQuery.eq('assigned_to', userId);
-    }
+    const prevProjectContributionCount = new Set(
+      (prevWorklogs || []).map((log) => log.project_id).filter(Boolean)
+    ).size;
 
-    const { data: completedTasks } = await tasksQuery;
-
-    // Get tasks completed in previous period
-    let prevTasksQuery = supabase
-      .from('tasks')
-      .select('id, status')
-      .eq('status', 'completed')
-      .gte('updated_at', prevStart.toISOString())
-      .lte('updated_at', prevEnd.toISOString());
-
-    if (userId) {
-      prevTasksQuery = prevTasksQuery.eq('assigned_to', userId);
-    }
-
-    const { data: prevCompletedTasks } = await prevTasksQuery;
-
-    const tasksCompleted = completedTasks?.length || 0;
-    const prevTasksCompleted = prevCompletedTasks?.length || 0;
-    const tasksCompletedChange = prevTasksCompleted > 0 
-      ? ((tasksCompleted - prevTasksCompleted) / prevTasksCompleted) * 100 
+    const projectsContributed = projectContributionCount;
+    const projectsContributedChange = prevProjectContributionCount > 0 
+      ? ((projectsContributed - prevProjectContributionCount) / prevProjectContributionCount) * 100 
       : 0;
 
     // Calculate efficiency percentage
@@ -255,8 +234,8 @@ class EfficiencyService {
       totalHoursChange,
       activeDays,
       activeDaysChange,
-      tasksCompleted,
-      tasksCompletedChange,
+      projectsContributed,
+      projectsContributedChange,
       efficiencyPercent,
       efficiencyPercentChange,
     };

@@ -13,7 +13,6 @@ export interface Worklog {
   };
   projects?: {
     name: string;
-    type: string;
   };
 }
 
@@ -44,7 +43,7 @@ class WorklogService {
         note,
         created_at,
         task_id,
-        projects(name, type),
+        projects(name),
         tasks(name, type, status)
       `)
       .eq('user_id', userId);
@@ -141,7 +140,7 @@ class WorklogService {
         note,
         created_at,
         task_id,
-        projects(name, type),
+        projects(name),
         tasks(name, type)
       `)
       .eq('user_id', userId)

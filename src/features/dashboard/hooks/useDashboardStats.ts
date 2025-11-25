@@ -41,9 +41,8 @@ export const useDashboardStats = (
 
       // Check if billable based on task or project type
       const taskType = log.tasks?.type?.toLowerCase();
-      const projectType = log.projects?.type?.toLowerCase();
 
-      if (taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable')) {
+      if (taskType === 'billable') {
         billableHours += hours;
       } else {
         nonBillableHours += hours;

@@ -22,12 +22,7 @@ import {
   createDefaultNewProjectFormState,
 } from '@/features/admin/ui/CreateProjectDialog';
 import { PaginationControls } from '@/shared/ui/PaginationControls';
-
-const PROJECT_CATEGORY_OPTIONS = [
-  { value: 'One-time', label: 'One-time' },
-  { value: 'Maintenance', label: 'Maintenance' },
-  { value: 'Hourly', label: 'Hourly' },
-];
+import { useVendors } from '@/features/vendors/hooks/useVendors';
 
 const PROJECTS_PER_PAGE = 6;
 
@@ -52,6 +47,7 @@ const AdminProjects: React.FC = () => {
   const { data: projects = [], isLoading } = useAdminProjects();
   const { data: stats } = useAdminProjectStats();
   const { data: allTasks = [] } = useAdminTasks();
+  const { data: vendors = [], isLoading: isLoadingVendors } = useVendors();
   const updateProjectMutation = useUpdateProject();
   const createProjectMutation = useCreateProject();
 
@@ -178,9 +174,8 @@ const AdminProjects: React.FC = () => {
 
   const handleCreateProject = () => {
     const trimmedName = newProjectData.name.trim();
-    const trimmedType = newProjectData.type.trim();
 
-    if (!trimmedName || !trimmedType) {
+    if (!trimmedName) {
       return;
     }
 
@@ -189,12 +184,10 @@ const AdminProjects: React.FC = () => {
         name: trimmedName,
         description: newProjectData.description.trim() || null,
         status: newProjectData.status || null,
-        type: trimmedType,
         priority: newProjectData.priority || null,
         deadline: newProjectData.deadline ? newProjectData.deadline.toISOString() : null,
-        category: newProjectData.category || null,
-        reference: newProjectData.reference || null,
         admin_id: profile?.id || null,
+        vendor_id: newProjectData.vendor_id || null,
       },
       {
         onSuccess: () => {
@@ -299,7 +292,7 @@ const AdminProjects: React.FC = () => {
                 <ProjectsGridView
                   projects={paginatedProjects}
                   onProjectClick={handleProjectClick}
-                  showCategory
+                  showVendor
                   onStatusChange={handleInlineStatusChange}
                   onPriorityChange={handleInlinePriorityChange}
                 />
@@ -307,7 +300,7 @@ const AdminProjects: React.FC = () => {
                 <ProjectsTableView
                   projects={paginatedProjects}
                   onProjectClick={handleProjectClick}
-                  showCategory
+                  showVendor
                   onStatusChange={handleInlineStatusChange}
                   onPriorityChange={handleInlinePriorityChange}
                 />
@@ -336,8 +329,9 @@ const AdminProjects: React.FC = () => {
         <CreateProjectDialog
           open={isCreateDialogOpen}
           data={newProjectData}
-          categoryOptions={PROJECT_CATEGORY_OPTIONS}
           isSubmitting={createProjectMutation.isPending}
+          vendors={vendors}
+          isVendorsLoading={isLoadingVendors}
           onOpenChange={(open) => {
             if (open) {
               handleOpenCreateDialog();

@@ -5,31 +5,27 @@ export interface CreateProjectData {
   name: string;
   description?: string | null;
   status?: string | null;
-  type: string;
   priority?: string | null;
   deadline?: string | null;
-  category?: string | null;
-  reference?: string | null;
   admin_id?: string | null;
+  vendor_id?: string | null;
 }
 
 export interface UpdateProjectData {
   name?: string;
   description?: string | null;
   status?: string | null;
-  type?: string;
   priority?: string | null;
   deadline?: string | null;
-  category?: string | null;
-  reference?: string | null;
   admin_id?: string | null;
+  vendor_id?: string | null;
 }
 
 class AdminProjectService {
   async getAllProjects(): Promise<Project[]> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, vendors(id, name, email, phone, website)')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -69,7 +65,7 @@ class AdminProjectService {
   async getProjectById(projectId: string): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, vendors(id, name, email, phone, website)')
       .eq('id', projectId)
       .single();
 
@@ -109,7 +105,7 @@ class AdminProjectService {
         ...data,
         created_at: new Date().toISOString(),
       })
-      .select()
+      .select('*, vendors(id, name, email, phone, website)')
       .single();
 
     if (error) throw error;
@@ -141,7 +137,7 @@ class AdminProjectService {
       .from('projects')
       .update(data)
       .eq('id', projectId)
-      .select()
+      .select('*, vendors(id, name, email, phone, website)')
       .single();
 
     if (error) throw error;
@@ -373,14 +369,27 @@ class AdminProjectService {
         ? adminMap.get(project.admin_id)!.name
         : undefined;
 
+      const vendor = project.vendors
+        ? {
+            id: project.vendors.id,
+            name: project.vendors.name,
+            email: project.vendors.email,
+            phone: project.vendors.phone,
+            website: project.vendors.website,
+          }
+        : project.vendor || null;
+
+      const { vendors, ...rest } = project;
+
       return {
-        ...project,
+        ...rest,
         openTasks: stats.open,
         overdueTasks: stats.overdue,
         totalTasks: stats.total,
         progress,
         comments: comments as ProjectComment[],
         adminName,
+        vendor,
       } as Project;
     });
   }

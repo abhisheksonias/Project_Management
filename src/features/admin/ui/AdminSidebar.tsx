@@ -12,7 +12,8 @@ import {
   HelpCircle,
   Menu,
   X,
-  TrendingUp
+  TrendingUp,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -35,8 +36,7 @@ const navItems: NavItem[] = [
   { id: 'worklogs', label: 'Worklogs', icon: Clock, path: '/admin/worklogs' },
   { id: 'team-efficiency', label: 'Team Efficiency', icon: Users, path: '/admin/team-efficiency' },
   { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
-  { id: 'reports', label: 'Reports', icon: FileText, path: '/admin/reports' },
-  { id: 'history', label: 'History', icon: History, path: '/admin/history' },
+  { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
 ];
 
 const SidebarContentInternal: React.FC<{

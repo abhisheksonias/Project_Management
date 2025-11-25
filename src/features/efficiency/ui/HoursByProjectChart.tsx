@@ -10,10 +10,14 @@ interface HoursByProjectChartProps {
   isLoading: boolean;
 }
 
+const BRAND_PRIMARY = '#E90E1D';
+const AXIS_COLOR = '#6B7280';
+const GRID_COLOR = '#E7E7E7';
+
 const chartConfig = {
   hours: {
     label: 'Hours',
-    color: '#14B8A6',
+    color: BRAND_PRIMARY,
   },
 } as const;
 
@@ -23,12 +27,12 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-teal-50">
+      <Card className="rounded-[14px] border border-secondary/50 bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Hours by Project</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[240px] w-full bg-teal-100/50" />
+          <Skeleton className="h-[240px] w-full rounded-[12px] bg-secondary/60" />
         </CardContent>
       </Card>
     );
@@ -38,7 +42,7 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({
   const displayData = (data || []).slice(0, 10);
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-teal-50">
+    <Card className="rounded-[14px] border border-secondary/50 bg-card shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Hours by Project</CardTitle>
       </CardHeader>
@@ -46,28 +50,30 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({
         <ChartContainer config={chartConfig} className="h-[240px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={displayData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis type="number" stroke="#6B7280" tick={{ fill: '#6B7280', fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
+              <XAxis
+                type="number"
+                stroke={AXIS_COLOR}
+                tick={{ fill: AXIS_COLOR, fontSize: 12 }}
+              />
               <YAxis
                 type="category"
                 dataKey="projectName"
-                stroke="#6B7280"
-                tick={{ fill: '#6B7280', fontSize: 12 }}
+                stroke={AXIS_COLOR}
+                tick={{ fill: AXIS_COLOR, fontSize: 12 }}
                 width={120}
               />
               <ChartTooltip
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
-                    const data = payload[0].payload as HoursByProjectData;
+                    const entry = payload[0].payload as HoursByProjectData;
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
-                        <div className="grid gap-2">
-                          <div className="font-medium">{data.projectName}</div>
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-[#14B8A6]" />
-                            <span className="text-sm text-muted-foreground">
-                              Hours: {payload[0].value?.toFixed(1) || 0}
-                            </span>
+                        <div className="grid gap-2 text-sm">
+                          <div className="font-medium text-foreground">{entry.projectName}</div>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: BRAND_PRIMARY }} />
+                            <span>Hours: {payload[0].value?.toFixed(1) || 0}</span>
                           </div>
                         </div>
                       </div>
@@ -76,7 +82,7 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({
                   return null;
                 }}
               />
-              <Bar dataKey="hours" fill="#14B8A6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="hours" fill={BRAND_PRIMARY} radius={[0, 6, 6, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

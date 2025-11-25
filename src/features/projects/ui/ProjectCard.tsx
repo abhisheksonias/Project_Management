@@ -12,21 +12,22 @@ import {
 import { Project } from '@/features/projects/services/projectService';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { Building2 } from 'lucide-react';
 
 interface ProjectCardProps {
   project: Project;
   onClick: () => void;
-  showCategory?: boolean;
   onStatusChange?: (status: string) => void;
   onPriorityChange?: (priority: string) => void;
+  showVendor?: boolean;
 }
 
 export const ProjectCard: React.FC<ProjectCardProps> = ({
   project,
   onClick,
-  showCategory,
   onStatusChange,
   onPriorityChange,
+  showVendor = false,
 }) => {
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
@@ -41,30 +42,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
         return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type?.toLowerCase()) {
-      case 'webflow':
-        return 'bg-blue-100 text-blue-800';
-      case 'shopify':
-        return 'bg-purple-100 text-purple-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getCategoryColor = (category: string | null) => {
-    switch (category?.toLowerCase()) {
-      case 'one-time':
-        return 'bg-primary/10 text-primary';
-      case 'maintenance':
-        return 'bg-emerald-100 text-emerald-700';
-      case 'hourly':
-        return 'bg-blue-100 text-blue-800';
-      default:
-        return 'bg-secondary text-foreground';
     }
   };
 
@@ -104,13 +81,14 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             </Badge>
           )}
         </div>
+        {showVendor && project.vendor?.name && (
+          <div className="mb-3 text-xs text-muted-foreground flex items-center gap-1.5">
+            <Building2 className="h-3.5 w-3.5 text-primary" />
+            <span>{project.vendor.name}</span>
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-2 mb-3">
-          {project.type && (
-            <Badge className={cn('text-xs', getTypeColor(project.type))}>
-              {project.type}
-            </Badge>
-          )}
           {onPriorityChange ? (
             <Select
               value={project.priority ?? 'none'}
@@ -135,11 +113,6 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
                 {project.priority} Priority
               </Badge>
             )
-          )}
-          {showCategory && project.category && (
-            <Badge className={cn('text-xs', getCategoryColor(project.category))}>
-              {project.category}
-            </Badge>
           )}
         </div>
 

@@ -84,14 +84,14 @@ const SidebarContentInternal: React.FC<{
         })}
       </nav>
 
-      {/* New Project Button */}
+      {/* Add Worklog Button */}
       {!isCollapsed && (
         <div className="px-2 pb-2">
           <Button
             className="w-full bg-primary text-white hover:bg-primary/90"
-            onClick={() => onTabChange('projects')}
+            onClick={() => onTabChange('worklog-history')}
           >
-            New Project
+            Add Worklog
           </Button>
         </div>
       )}

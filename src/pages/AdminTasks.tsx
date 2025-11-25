@@ -25,6 +25,7 @@ import { Plus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/features/users/services/userService';
 import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjects';
+import { useAllMilestones } from '@/features/milestones/hooks/useMilestones';
 
 const CATEGORY_OPTIONS = [
   { value: 'design', label: 'Design' },
@@ -59,6 +60,7 @@ const AdminTasks: React.FC = () => {
     queryFn: () => userService.getAllUsers(),
     staleTime: 300000,
   });
+  const { data: allMilestones = [] } = useAllMilestones();
 
   const createTaskMutation = useCreateTask();
   const updateStatusMutation = useUpdateTaskStatusAdmin();
@@ -80,15 +82,26 @@ const AdminTasks: React.FC = () => {
   };
 
   const projectsForSelect = useMemo(
-    () => projectFilterOptions.map((project) => ({ id: project.id, name: project.name })),
-    [projectFilterOptions]
+    () => adminProjects
+      .filter((project) => project.status?.toLowerCase() !== 'completed')
+      .map((project) => ({ id: project.id, name: project.name })),
+    [adminProjects]
   );
 
   const usersForSelect = useMemo(
     () => users
       .filter((user) => user.role !== 'Admin')
-      .map((user) => ({ id: user.id, name: user.name })),
+      .map((user) => ({ id: user.id, name: user.name, department: user.department })),
     [users]
+  );
+  
+  const milestonesForSelect = useMemo(
+    () => allMilestones.map((m) => ({
+      id: m.id,
+      name: m.name,
+      project_id: m.project_id,
+    })),
+    [allMilestones]
   );
 
   const filteredTasks = useMemo(() => {
@@ -200,7 +213,7 @@ const AdminTasks: React.FC = () => {
     const trimmedName = newTaskData.name.trim();
     const trimmedType = newTaskData.type.trim();
 
-    if (!trimmedName || !trimmedType) {
+    if (!trimmedName || !trimmedType || !newTaskData.project_id || newTaskData.project_id === 'none') {
       return;
     }
 
@@ -212,10 +225,7 @@ const AdminTasks: React.FC = () => {
         type: trimmedType,
         priority: newTaskData.priority || null,
         deadline: newTaskData.deadline ? newTaskData.deadline.toISOString() : null,
-        project_id:
-          newTaskData.project_id && newTaskData.project_id !== 'none'
-            ? newTaskData.project_id
-            : null,
+        project_id: newTaskData.project_id || null,
         category:
           newTaskData.category && newTaskData.category !== 'none'
             ? newTaskData.category
@@ -224,6 +234,10 @@ const AdminTasks: React.FC = () => {
           ? Number(newTaskData.estimate_hours)
           : null,
         assigned_user_ids: newTaskData.assigned_user_ids || [],
+        milestone_id:
+          newTaskData.milestone_id && newTaskData.milestone_id !== 'none'
+            ? newTaskData.milestone_id
+            : null,
       },
       {
         onSuccess: () => {
@@ -397,6 +411,7 @@ const AdminTasks: React.FC = () => {
           projects={projectsForSelect}
           users={usersForSelect}
           categoryOptions={CATEGORY_OPTIONS}
+          milestones={milestonesForSelect}
           isSubmitting={createTaskMutation.isPending}
           onOpenChange={(open) => {
             if (open) {

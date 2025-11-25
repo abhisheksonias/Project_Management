@@ -13,26 +13,26 @@ interface ProjectDailyHoursChartProps {
 const chartConfig = {
   hours: {
     label: 'Hours',
-    color: '#FFB800',
+    color: '#E90E1D',
   },
 } as const;
 
 export const ProjectDailyHoursChart: React.FC<ProjectDailyHoursChartProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+      <Card className="rounded-[14px] shadow-md bg-card">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Daily Hours (Selected Project)</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[240px] w-full bg-gray-700/50" />
+          <Skeleton className="h-[240px] w-full bg-muted" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <Card className="rounded-[14px] shadow-md bg-card">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Daily Hours (Selected Project)</CardTitle>
       </CardHeader>
@@ -40,16 +40,16 @@ export const ProjectDailyHoursChart: React.FC<ProjectDailyHoursChartProps> = ({ 
         <ChartContainer config={chartConfig} className="h-[240px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
               <XAxis
                 dataKey="date"
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                 interval="preserveStartEnd"
               />
               <YAxis
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                 domain={[0, 'dataMax']}
               />
               <ChartTooltip
@@ -59,7 +59,7 @@ export const ProjectDailyHoursChart: React.FC<ProjectDailyHoursChartProps> = ({ 
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="grid gap-2">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-[#FFB800]" />
+                            <div className="h-2 w-2 rounded-full bg-[#E90E1D]" />
                             <span className="text-sm font-medium text-muted-foreground">
                               Hours: {payload[0].value?.toFixed(1) || 0}
                             </span>
@@ -74,9 +74,9 @@ export const ProjectDailyHoursChart: React.FC<ProjectDailyHoursChartProps> = ({ 
               <Line
                 type="monotone"
                 dataKey="hours"
-                stroke="#FFB800"
+                stroke="#E90E1D"
                 strokeWidth={3}
-                dot={{ fill: '#FFB800', r: 4 }}
+                dot={{ fill: '#E90E1D', r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>

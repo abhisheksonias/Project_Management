@@ -11,7 +11,7 @@ export const exportWorklogsToCSV = (worklogs: Worklog[]): void => {
   
   // Prepare CSV rows
   const rows = worklogs.map((log) => {
-    const logType = log.tasks?.type || log.projects?.type || '';
+    const logType = log.tasks?.type || '';
     return [
       format(new Date(log.created_at), 'yyyy-MM-dd'),
       log.projects?.name || '-',

@@ -71,6 +71,8 @@ import {
 } from '@/components/ui/tabs';
 import { StatusHistory } from '@/components/ui/status-history';
 import { useAdminTaskDetails } from '@/features/admin/hooks/useAdminTaskDetails';
+import { useAllMilestones } from '@/features/milestones/hooks/useMilestones';
+import { useTaskWorklogs } from '@/features/admin/hooks/useTaskWorklogs';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High'];
@@ -84,7 +86,7 @@ interface AdminTaskDetailsPanelProps {
   open: boolean;
   onClose: () => void;
   projects: Array<{ id: string; name: string }>;
-  users: Array<{ id: string; name: string }>;
+  users: Array<{ id: string; name: string; department?: string | null }>;
 }
 
 export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
@@ -103,13 +105,22 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
   const deleteTaskMutation = useDeleteTask();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'details' | 'status'>('details');
+  type TaskPanelTab = 'details' | 'status' | 'logs';
+  const [activeTab, setActiveTab] = useState<TaskPanelTab>('details');
+  const [logsUserFilter, setLogsUserFilter] = useState<'all' | string>('all');
   const taskId = task?.id;
   const {
     data: hydratedTask,
     isFetching: isTaskRefreshing,
   } = useAdminTaskDetails(taskId, { enabled: open, initialData: task });
   const activeTask = hydratedTask ?? task;
+  const {
+    data: taskWorklogs = [],
+    isLoading: taskWorklogsLoading,
+  } = useTaskWorklogs(activeTask?.id ?? null);
+  useEffect(() => {
+    setLogsUserFilter('all');
+  }, [activeTask?.id]);
   const handleCloseEditDialog = () => {
     if (activeTask) {
       setEditForm(buildFormStateFromTask(activeTask));
@@ -136,6 +147,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
       estimate_hours: currentTask.estimate_hours ? String(currentTask.estimate_hours) : '',
       deadline: currentTask.deadline ? new Date(currentTask.deadline) : null,
       assigned_user_ids: assignedUserIds,
+      milestone_id: (currentTask as any).milestone_id || 'none',
     };
   };
 
@@ -148,6 +160,34 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
     queryKey: ['all-users'],
     queryFn: () => userService.getAllUsers(),
   });
+  
+  // Fetch all milestones for milestone dropdown
+  const { data: allMilestones = [] } = useAllMilestones();
+  const milestonesForSelect = useMemo(
+    () => allMilestones.map((m) => ({
+      id: m.id,
+      name: m.name,
+      project_id: m.project_id,
+    })),
+    [allMilestones]
+  );
+
+  const logUserOptions = useMemo(() => {
+    const unique = new Map<string, string>();
+    (taskWorklogs || []).forEach((log) => {
+      if (log.user?.id) {
+        unique.set(log.user.id, log.user.name || 'Unknown User');
+      }
+    });
+    return Array.from(unique.entries()).map(([id, name]) => ({ id, name }));
+  }, [taskWorklogs]);
+
+  const filteredLogs = useMemo(() => {
+    if (logsUserFilter === 'all') {
+      return taskWorklogs || [];
+    }
+    return (taskWorklogs || []).filter((log) => log.user?.id === logsUserFilter);
+  }, [taskWorklogs, logsUserFilter]);
 
   const comments = useMemo(() => {
     if (!activeTask?.comment) return [];
@@ -283,6 +323,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
         : null,
       deadline: editForm.deadline ? editForm.deadline.toISOString() : null,
       assigned_user_ids: editForm.assigned_user_ids || [],
+      milestone_id: editForm.milestone_id && editForm.milestone_id !== 'none' ? editForm.milestone_id : null,
     };
 
     if (!payload.name || !payload.type) {
@@ -347,7 +388,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
 
           <Tabs
             value={activeTab}
-            onValueChange={(value) => setActiveTab(value as 'details' | 'status')}
+            onValueChange={(value) => setActiveTab(value as TaskPanelTab)}
             className="mt-6 flex h-full flex-col"
           >
             <TabsList className="w-full justify-start rounded-[12px] bg-muted/60 p-1">
@@ -356,6 +397,9 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
               </TabsTrigger>
               <TabsTrigger value="status" className="rounded-[10px]">
                 Status Timeline
+              </TabsTrigger>
+              <TabsTrigger value="logs" className="rounded-[10px]">
+                Logs
               </TabsTrigger>
             </TabsList>
 
@@ -533,7 +577,78 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
               value="status"
               className="mt-4 flex-1 overflow-y-auto pr-1"
             >
-              <StatusHistory entityId={activeTask.id} entityType="task" title="Status Timeline" />
+              <div className="space-y-4">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Status updates for this task</span>
+                  {isTaskRefreshing && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                </div>
+                <StatusHistory entityId={activeTask.id} entityType="task" title="Status Timeline" />
+              </div>
+            </TabsContent>
+
+            <TabsContent
+              value="logs"
+              className="mt-4 flex-1 overflow-y-auto pr-1"
+            >
+              <div className="space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-lg font-semibold">Worklogs</h3>
+                    <p className="text-sm text-muted-foreground">
+                      All-time worklogs recorded for this task
+                    </p>
+                  </div>
+                  <Select
+                    value={logsUserFilter}
+                    onValueChange={(value) => setLogsUserFilter(value as typeof logsUserFilter)}
+                  >
+                    <SelectTrigger className="w-[200px] rounded-[14px]">
+                      <SelectValue placeholder="Filter by user" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-[14px]">
+                      <SelectItem value="all">All users</SelectItem>
+                      {logUserOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {taskWorklogsLoading ? (
+                  <div className="flex items-center gap-2 rounded-[14px] border p-4 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading logs...
+                  </div>
+                ) : filteredLogs.length === 0 ? (
+                  <div className="rounded-[14px] border border-dashed p-6 text-center text-muted-foreground">
+                    No logs found for this task.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {filteredLogs.map((log) => (
+                      <div key={log.id} className="rounded-[14px] border bg-card p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold">{log.user?.name || 'Unknown user'}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {format(new Date(log.created_at), 'dd MMM yyyy, HH:mm')}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="rounded-full px-3 py-1 text-xs">
+                            {log.hours}
+                          </Badge>
+                        </div>
+                        
+                        {log.note && (
+                          <p className="mt-2 text-sm text-muted-foreground">{log.note}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </TabsContent>
           </Tabs>
         </SheetContent>
@@ -545,6 +660,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
         projects={projects}
         users={users}
         categoryOptions={CATEGORY_OPTIONS}
+        milestones={milestonesForSelect}
         isSubmitting={updateTaskMutation.isPending}
         onChange={(changes) =>
           setEditForm((prev) => ({

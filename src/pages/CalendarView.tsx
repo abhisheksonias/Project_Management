@@ -80,9 +80,8 @@ const CalendarView: React.FC = () => {
       const hours = parseInt(hoursStr) + parseInt(minutesStr) / 60;
 
       const taskType = log.tasks?.type?.toLowerCase();
-      const projectType = log.projects?.type?.toLowerCase();
 
-      if (taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable')) {
+      if (taskType === 'billable') {
         billableHours += hours;
       } else {
         nonBillableHours += hours;
@@ -106,9 +105,8 @@ const CalendarView: React.FC = () => {
       const hours = parseInt(hoursStr) + parseInt(minutesStr) / 60;
 
       const taskType = log.tasks?.type?.toLowerCase();
-      const projectType = log.projects?.type?.toLowerCase();
 
-      const isBillable = taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable');
+      const isBillable = taskType === 'billable';
 
       if (!grouped.has(dateStr)) {
         grouped.set(dateStr, { billable: 0, nonBillable: 0 });

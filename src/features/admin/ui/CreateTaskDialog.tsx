@@ -35,6 +35,7 @@ export interface NewTaskFormState {
   estimate_hours: string;
   deadline: Date | null;
   assigned_user_ids: string[]; // Multiple user assignments via task_assignees table
+  milestone_id: string; // Milestone association
 }
 
 export const createDefaultNewTaskFormState = (): NewTaskFormState => ({
@@ -43,19 +44,21 @@ export const createDefaultNewTaskFormState = (): NewTaskFormState => ({
   status: 'To Do',
   type: 'billable',
   priority: '',
-  project_id: 'none',
+  project_id: '',
   category: '',
   estimate_hours: '',
   deadline: null,
   assigned_user_ids: [],
+  milestone_id: 'none',
 });
 
 interface CreateTaskDialogProps {
   open: boolean;
   data: NewTaskFormState;
   projects: Array<{ id: string; name: string }>;
-  users: Array<{ id: string; name: string }>;
+  users: Array<{ id: string; name: string; department?: string | null }>;
   categoryOptions: Array<{ value: string; label: string }>;
+  milestones?: Array<{ id: string; name: string; project_id: string; sort_order?: number | null }>;
   isSubmitting: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (changes: Partial<NewTaskFormState>) => void;
@@ -78,6 +81,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   projects,
   users,
   categoryOptions,
+  milestones = [],
   isSubmitting,
   onOpenChange,
   onChange,
@@ -86,6 +90,78 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   description = 'Add a new task to the system. Fields marked with * are required.',
   submitLabel = 'Create Task',
 }) => {
+  // Filter milestones for the selected project and sort by sort_order
+  const projectMilestones = React.useMemo(() => {
+    if (!Array.isArray(milestones) || milestones.length === 0) {
+      return [];
+    }
+    return milestones
+      .filter(
+        (m) =>
+          !!m.project_id &&
+          m.project_id === data.project_id &&
+          data.project_id !== 'none' &&
+          data.project_id !== ''
+      )
+        .sort((a, b) => {
+        const aOrder = a.sort_order ?? null;
+        const bOrder = b.sort_order ?? null;
+
+        if (aOrder !== null && bOrder !== null) {
+          return aOrder - bOrder;
+          }
+        if (aOrder !== null) return -1;
+        if (bOrder !== null) return 1;
+          return a.name.localeCompare(b.name);
+      });
+  }, [milestones, data.project_id]);
+
+  // Get department from first selected user
+  const selectedDepartment = React.useMemo(() => {
+    if (data.assigned_user_ids && data.assigned_user_ids.length > 0) {
+      const firstUserId = data.assigned_user_ids[0];
+      const firstUser = users.find((u) => u.id === firstUserId);
+      return firstUser?.department?.toLowerCase() || null;
+    }
+    return null;
+  }, [data.assigned_user_ids, users]);
+
+  // Auto-set category based on first selected user's department
+  React.useEffect(() => {
+    if (selectedDepartment) {
+      let categoryToSet = '';
+      if (selectedDepartment.includes('design')) {
+        categoryToSet = 'design';
+      } else if (selectedDepartment.includes('development') || selectedDepartment.includes('dev')) {
+        categoryToSet = 'development';
+      }
+      
+      if (categoryToSet && data.category !== categoryToSet) {
+        onChange({ category: categoryToSet });
+      }
+    }
+  }, [selectedDepartment, data.category, onChange]);
+
+  // Filter users by department - only show users from same department as first selected user
+  const availableUsers = React.useMemo(() => {
+    if (!selectedDepartment || data.assigned_user_ids.length === 0) {
+      return users;
+    }
+    
+    // Include already selected users and users from same department
+    return users.filter((user) => {
+      const isSelected = data.assigned_user_ids.includes(user.id);
+      if (isSelected) return true;
+      
+      const userDept = user.department?.toLowerCase() || '';
+      if (selectedDepartment.includes('design')) {
+        return userDept.includes('design');
+      } else if (selectedDepartment.includes('development') || selectedDepartment.includes('dev')) {
+        return userDept.includes('development') || userDept.includes('dev');
+      }
+      return false;
+    });
+  }, [users, selectedDepartment, data.assigned_user_ids]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[720px]">
@@ -187,19 +263,22 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
 
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Project
+                Project *
               </label>
               <Select
-                value={data.project_id || 'none'}
-                onValueChange={(value) =>
-                  onChange({ project_id: value === 'none' ? '' : value })
-                }
+                value={data.project_id || ''}
+                onValueChange={(value) => {
+                  onChange({ 
+                    project_id: value,
+                    // Reset milestone when project changes
+                    milestone_id: 'none'
+                  });
+                }}
               >
                 <SelectTrigger className="rounded-[14px]">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Unassigned</SelectItem>
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -208,6 +287,40 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 </SelectContent>
               </Select>
             </div>
+
+            {data.project_id && data.project_id !== 'none' && data.project_id !== '' && (
+              <div>
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                  Milestone
+                </label>
+                <Select
+                  value={data.milestone_id || 'none'}
+                  onValueChange={(value) => {
+                    onChange({ milestone_id: value === 'none' ? 'none' : value });
+                  }}
+                >
+                  <SelectTrigger className="rounded-[14px]">
+                    <SelectValue placeholder="Select milestone" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-[14px]">
+                    <SelectItem value="none">No Milestone</SelectItem>
+                    {projectMilestones.length > 0 ? (
+                      projectMilestones
+                        .filter((milestone) => !!milestone.id)
+                        .map((milestone) => (
+                          <SelectItem key={milestone.id} value={String(milestone.id)}>
+                          {milestone.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="__no-milestones-info" disabled>
+                        No milestones available for this project
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div>
               <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -237,13 +350,18 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 </PopoverTrigger>
                 <PopoverContent className="w-[300px] p-0 rounded-[14px]" align="start">
                   <div className="p-2">
+                    {selectedDepartment && data.assigned_user_ids.length > 0 && (
+                      <div className="mb-2 p-2 bg-secondary rounded-md text-xs text-muted-foreground">
+                        Only showing users from {selectedDepartment.includes('design') ? 'Design' : 'Development'} department
+                      </div>
+                    )}
                     <div className="max-h-[300px] overflow-y-auto space-y-2">
-                      {users.length === 0 ? (
+                      {availableUsers.length === 0 ? (
                         <div className="p-2 text-sm text-muted-foreground text-center">
                           No users available
                         </div>
                       ) : (
-                        users.map((user) => {
+                        availableUsers.map((user) => {
                           const isSelected =
                             data.assigned_user_ids?.includes(user.id) || false;
                           return (
@@ -285,7 +403,9 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                           variant="ghost"
                           size="sm"
                           className="w-full text-xs"
-                          onClick={() => onChange({ assigned_user_ids: [] })}
+                          onClick={() => {
+                            onChange({ assigned_user_ids: [], category: '' });
+                          }}
                         >
                           Clear selection
                         </Button>
@@ -330,6 +450,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 onValueChange={(value) =>
                   onChange({ category: value === 'none' ? '' : value })
                 }
+                disabled={!!selectedDepartment}
               >
                 <SelectTrigger className="rounded-[14px]">
                   <SelectValue placeholder="Select category" />
@@ -343,6 +464,11 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   ))}
                 </SelectContent>
               </Select>
+              {selectedDepartment && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  Auto-selected based on assigned user's department
+                </p>
+              )}
             </div>
 
             <div>
@@ -386,7 +512,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           </Button>
           <Button
             onClick={onSubmit}
-            disabled={isSubmitting || !data.name.trim() || !data.type.trim()}
+            disabled={isSubmitting || !data.name.trim() || !data.type.trim() || !data.project_id || data.project_id === 'none'}
             className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
           >
             {isSubmitting ? 'Saving...' : submitLabel}

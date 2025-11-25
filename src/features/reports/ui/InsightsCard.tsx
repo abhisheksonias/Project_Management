@@ -9,35 +9,35 @@ interface InsightsCardProps {
 
 export const InsightsCard: React.FC<InsightsCardProps> = ({ insights }) => {
   return (
-    <Card>
+    <Card className="rounded-[14px]">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold">Insights</CardTitle>
+        <CardTitle className="text-base font-semibold text-foreground">Insights</CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Top Focus Project</p>
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">
+          <p className="text-xs text-muted-foreground">Top Focus Project</p>
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs rounded-md">
             {insights.topFocusProject}
           </Badge>
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Biggest Over-Estimate</p>
-          <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-xs">
+          <p className="text-xs text-muted-foreground">Biggest Over-Estimate</p>
+          <Badge className="bg-primary/10 text-primary hover:bg-primary/20 text-xs rounded-md">
             {insights.biggestOverEstimate}
           </Badge>
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Biggest Under-Estimate</p>
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-xs">
+          <p className="text-xs text-muted-foreground">Biggest Under-Estimate</p>
+          <Badge className="bg-green-100 text-green-800 hover:bg-green-200 text-xs rounded-md">
             {insights.biggestUnderEstimate}
           </Badge>
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-xs text-gray-600">Active Days</p>
-          <p className="text-base font-semibold text-red-600">{insights.activeDays}</p>
+          <p className="text-xs text-muted-foreground">Active Days</p>
+          <p className="text-base font-semibold text-primary">{insights.activeDays}</p>
         </div>
       </CardContent>
     </Card>

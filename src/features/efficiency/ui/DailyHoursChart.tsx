@@ -10,29 +10,33 @@ interface DailyHoursChartProps {
   isLoading: boolean;
 }
 
+const BRAND_PRIMARY = '#E90E1D';
+const AXIS_COLOR = '#6B7280';
+const GRID_COLOR = '#E7E7E7';
+
 const chartConfig = {
   hours: {
     label: 'Hours',
-    color: '#FFB800',
+    color: BRAND_PRIMARY,
   },
 } as const;
 
 export const DailyHoursChart: React.FC<DailyHoursChartProps> = ({ data, isLoading }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+      <Card className="rounded-[14px] border border-secondary/50 bg-card shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Daily Hours (Selected User)</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[240px] w-full bg-gray-700/50" />
+          <Skeleton className="h-[240px] w-full rounded-[12px] bg-secondary/60" />
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-gradient-to-br from-gray-900 to-gray-800 text-white">
+    <Card className="rounded-[14px] border border-secondary/50 bg-card text-card-foreground shadow-sm">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Daily Hours (Selected User)</CardTitle>
       </CardHeader>
@@ -40,16 +44,16 @@ export const DailyHoursChart: React.FC<DailyHoursChartProps> = ({ data, isLoadin
         <ChartContainer config={chartConfig} className="h-[240px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data || []}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+              <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
               <XAxis
                 dataKey="date"
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                stroke={AXIS_COLOR}
+                tick={{ fill: AXIS_COLOR, fontSize: 12 }}
                 interval="preserveStartEnd"
               />
               <YAxis
-                stroke="#9CA3AF"
-                tick={{ fill: '#9CA3AF', fontSize: 12 }}
+                stroke={AXIS_COLOR}
+                tick={{ fill: AXIS_COLOR, fontSize: 12 }}
                 domain={[0, 'dataMax']}
               />
               <ChartTooltip
@@ -59,7 +63,7 @@ export const DailyHoursChart: React.FC<DailyHoursChartProps> = ({ data, isLoadin
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="grid gap-2">
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-[#FFB800]" />
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: BRAND_PRIMARY }} />
                             <span className="text-sm font-medium text-muted-foreground">
                               Hours: {payload[0].value?.toFixed(1) || 0}
                             </span>
@@ -74,9 +78,9 @@ export const DailyHoursChart: React.FC<DailyHoursChartProps> = ({ data, isLoadin
               <Line
                 type="monotone"
                 dataKey="hours"
-                stroke="#FFB800"
+                stroke={BRAND_PRIMARY}
                 strokeWidth={3}
-                dot={{ fill: '#FFB800', r: 4 }}
+                dot={{ fill: BRAND_PRIMARY, r: 4 }}
                 activeDot={{ r: 6 }}
               />
             </LineChart>

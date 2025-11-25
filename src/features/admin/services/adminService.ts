@@ -6,7 +6,7 @@ export interface AdminStats {
   activeProjects: number;
   completedProjects: number;
   overdueProjects: number;
-  openTasks: number;
+  inProgressTasks: number;
   hoursLoggedThisWeek: number;
 }
 
@@ -201,25 +201,26 @@ class AdminService {
     
     const { count: overdueProjectsCount } = await overdueProjectsQuery;
 
-    // Build tasks query with filters
-    let tasksQuery = supabase
+    const buildTasksQuery = () => {
+      let query = supabase
       .from('tasks')
       .select('*', { count: 'exact', head: true });
 
-    // Apply project filter to tasks
     if (filters?.projectId) {
-      tasksQuery = tasksQuery.eq('project_id', filters.projectId);
+        query = query.eq('project_id', filters.projectId);
     }
 
-    // Apply department filter to tasks (filter by assigned user's department)
     if (filters?.department && filters.department !== 'all') {
-      tasksQuery = tasksQuery.eq('category', filters.department === 'design' ? 'design' : 'development');
+        const category = filters.department === 'design' ? 'design' : 'development';
+        query = query.eq('category', category);
     }
 
-    // Get open tasks (status not 'completed' or 'closed')
-    const { count: openTasksCount } = await tasksQuery
-      .not('status', 'eq', 'completed')
-      .not('status', 'eq', 'closed');
+      return query;
+    };
+
+    // Get active tasks explicitly marked as in progress
+    const { count: inProgressTasksCount } = await buildTasksQuery()
+      .ilike('status', 'in progress');
 
     // Get hours logged for the selected period
     let worklogsQuery = supabase
@@ -260,7 +261,7 @@ class AdminService {
       activeProjects: activeProjectsCount || 0,
       completedProjects: completedProjectsCount || 0,
       overdueProjects: overdueProjectsCount || 0,
-      openTasks: openTasksCount || 0,
+      inProgressTasks: inProgressTasksCount || 0,
       hoursLoggedThisWeek: Math.round(hoursLoggedThisWeek * 10) / 10,
     };
   }

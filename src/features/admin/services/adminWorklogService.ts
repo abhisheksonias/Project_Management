@@ -17,7 +17,6 @@ export interface AdminWorklog {
   project: {
     id: string | null;
     name: string | null;
-    type: string | null;
   } | null;
   user: {
     id: string | null;
@@ -52,7 +51,6 @@ type SupabaseAdminWorklogRow = {
   projects: {
     id: string | null;
     name: string | null;
-    type: string | null;
   } | null;
   users: {
     id: string | null;
@@ -84,8 +82,7 @@ class AdminWorklogService {
         ),
         projects (
           id,
-          name,
-          type
+          name
         ),
         users (
           id,
@@ -122,7 +119,82 @@ class AdminWorklogService {
         ? {
             id: row.projects.id,
             name: row.projects.name,
-            type: row.projects.type,
+          }
+        : null,
+      user: row.users
+        ? {
+            id: row.users.id,
+            name: row.users.name,
+            email: row.users.email,
+            department: row.users.department,
+            role: row.users.role,
+          }
+        : null,
+    }));
+  }
+
+  async getWorklogsByTask(taskId: string): Promise<AdminWorklog[]> {
+    if (!taskId) {
+      return [];
+    }
+
+    const { data, error } = await supabase
+      .from('work_logs')
+      .select(`
+        id,
+        created_at,
+        hours,
+        note,
+        user_id,
+        added_by,
+        task_id,
+        project_id,
+        tasks (
+          id,
+          name,
+          status,
+          category
+        ),
+        projects (
+          id,
+          name
+        ),
+        users (
+          id,
+          name,
+          email,
+          department,
+          role
+        )
+      `)
+      .eq('task_id', taskId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      throw error;
+    }
+
+    const rows = (data || []) as unknown as SupabaseAdminWorklogRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      created_at: row.created_at,
+      hours: row.hours,
+      note: row.note,
+      user_id: row.user_id,
+      added_by: row.added_by ?? null,
+      task: row.tasks
+        ? {
+            id: row.tasks.id,
+            name: row.tasks.name,
+            status: row.tasks.status,
+            category: row.tasks.category,
+          }
+        : null,
+      project: row.projects
+        ? {
+            id: row.projects.id,
+            name: row.projects.name,
           }
         : null,
       user: row.users
@@ -160,8 +232,7 @@ class AdminWorklogService {
         ),
         projects (
           id,
-          name,
-          type
+          name
         ),
         users (
           id,
@@ -212,7 +283,6 @@ class AdminWorklogService {
           ? {
               id: row.projects.id,
               name: row.projects.name,
-              type: row.projects.type,
             }
           : null,
         user: row.users
@@ -261,8 +331,7 @@ class AdminWorklogService {
         ),
         projects (
           id,
-          name,
-          type
+          name
         ),
         users (
           id,
@@ -313,7 +382,6 @@ class AdminWorklogService {
           ? {
               id: row.projects.id,
               name: row.projects.name,
-              type: row.projects.type,
             }
           : null,
         user: row.users
