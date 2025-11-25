@@ -13,7 +13,7 @@ interface HoursByUserChartProps {
 const chartConfig = {
   hours: {
     label: 'Hours',
-    color: '#14B8A6',
+    color: '#E90E1D',
   },
 } as const;
 
@@ -23,12 +23,12 @@ export const HoursByUserChart: React.FC<HoursByUserChartProps> = ({
 }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-teal-50">
+      <Card className="rounded-[14px] shadow-md bg-card">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Hours by Team Member</CardTitle>
         </CardHeader>
         <CardContent>
-          <Skeleton className="h-[240px] w-full bg-teal-100/50" />
+          <Skeleton className="h-[240px] w-full bg-muted" />
         </CardContent>
       </Card>
     );
@@ -38,7 +38,7 @@ export const HoursByUserChart: React.FC<HoursByUserChartProps> = ({
   const displayData = (data || []).slice(0, 10);
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-teal-50">
+    <Card className="rounded-[14px] shadow-md bg-card">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Hours by Team Member</CardTitle>
       </CardHeader>
@@ -46,13 +46,13 @@ export const HoursByUserChart: React.FC<HoursByUserChartProps> = ({
         <ChartContainer config={chartConfig} className="h-[240px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={displayData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis type="number" stroke="#6B7280" tick={{ fill: '#6B7280', fontSize: 12 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis type="number" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }} />
               <YAxis
                 type="category"
                 dataKey="userName"
-                stroke="#6B7280"
-                tick={{ fill: '#6B7280', fontSize: 12 }}
+                stroke="hsl(var(--muted-foreground))"
+                tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
                 width={120}
               />
               <ChartTooltip
@@ -64,7 +64,7 @@ export const HoursByUserChart: React.FC<HoursByUserChartProps> = ({
                         <div className="grid gap-2">
                           <div className="font-medium">{data.userName}</div>
                           <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-[#14B8A6]" />
+                            <div className="h-2 w-2 rounded-full bg-[#E90E1D]" />
                             <span className="text-sm text-muted-foreground">
                               Hours: {payload[0].value?.toFixed(1) || 0}
                             </span>
@@ -76,7 +76,7 @@ export const HoursByUserChart: React.FC<HoursByUserChartProps> = ({
                   return null;
                 }}
               />
-              <Bar dataKey="hours" fill="#14B8A6" radius={[0, 4, 4, 0]} />
+              <Bar dataKey="hours" fill="#E90E1D" radius={[0, 4, 4, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </ChartContainer>

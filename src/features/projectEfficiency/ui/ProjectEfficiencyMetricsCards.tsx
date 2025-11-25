@@ -19,7 +19,7 @@ export const ProjectEfficiencyMetricsCards: React.FC<ProjectEfficiencyMetricsCar
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[1, 2, 3, 4].map((i) => (
-          <Card key={i} className="rounded-[14px] shadow-md bg-white">
+          <Card key={i} className="rounded-[14px] shadow-md bg-card">
             <CardContent className="p-6">
               <div className="space-y-2">
                 <Skeleton className="h-4 w-24" />
@@ -70,7 +70,7 @@ export const ProjectEfficiencyMetricsCards: React.FC<ProjectEfficiencyMetricsCar
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       {metrics.map((metric, index) => (
-        <Card key={index} className="rounded-[14px] shadow-md bg-white">
+        <Card key={index} className="rounded-[14px] shadow-md bg-card">
           <CardContent className="p-6">
             <div className="space-y-2">
               <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>

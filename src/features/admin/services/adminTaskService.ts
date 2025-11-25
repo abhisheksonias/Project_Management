@@ -12,6 +12,7 @@ export interface CreateTaskData {
   category?: string | null;
   estimate_hours?: number | null;
   assigned_user_ids?: string[]; // Multiple user assignments via task_assignees table
+  milestone_id?: string | null; // Milestone association
 }
 
 export interface UpdateTaskData {
@@ -25,6 +26,7 @@ export interface UpdateTaskData {
   category?: string | null;
   estimate_hours?: number | null;
   assigned_user_ids?: string[]; // Multiple user assignments via task_assignees table
+  milestone_id?: string | null; // Milestone association
 }
 
 class AdminTaskService {
@@ -43,10 +45,12 @@ class AdminTaskService {
           category,
           estimate_hours,
           type,
+          milestone_id,
           created_at,
           updated_at,
           comment,
           projects:projects!tasks_project_id_fkey (name),
+          milestones:milestones!tasks_milestone_id_fkey (id, name),
           task_assignees:task_assignees (
             task_id,
             user_id,
@@ -86,10 +90,12 @@ class AdminTaskService {
           category,
           estimate_hours,
           type,
+          milestone_id,
           created_at,
           updated_at,
           comment,
           projects:projects!tasks_project_id_fkey (name),
+          milestones:milestones!tasks_milestone_id_fkey (id, name),
           task_assignees:task_assignees (
             task_id,
             user_id,
@@ -127,6 +133,7 @@ class AdminTaskService {
       project_id: data.project_id ?? null,
       category: data.category ?? null,
       estimate_hours: data.estimate_hours ?? null,
+      milestone_id: data.milestone_id && data.milestone_id !== 'none' ? data.milestone_id : null,
     };
 
     const { data: inserted, error } = await supabase
@@ -203,6 +210,9 @@ class AdminTaskService {
     if (data.category !== undefined) updatePayload.category = data.category ?? null;
     if (data.estimate_hours !== undefined)
       updatePayload.estimate_hours = data.estimate_hours ?? null;
+    if (data.milestone_id !== undefined) {
+      updatePayload.milestone_id = data.milestone_id && data.milestone_id !== 'none' ? data.milestone_id : null;
+    }
 
     const { data: updatedTask, error } = await supabase
       .from('tasks')

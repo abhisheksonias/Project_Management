@@ -54,10 +54,10 @@ export const EfficiencyMetricsCards: React.FC<EfficiencyMetricsCardsProps> = ({
       positive: (stats?.activeDaysChange || 0) >= 0,
     },
     {
-      title: 'Tasks Completed',
-      value: stats?.tasksCompleted ?? 0,
-      change: stats?.tasksCompletedChange,
-      positive: (stats?.tasksCompletedChange || 0) >= 0,
+      title: 'Projects Contributed',
+      value: stats?.projectsContributed ?? 0,
+      change: stats?.projectsContributedChange,
+      positive: (stats?.projectsContributedChange || 0) >= 0,
     },
     {
       title: 'Efficiency %',

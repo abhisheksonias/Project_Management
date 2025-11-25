@@ -5,17 +5,17 @@ import { Project } from '@/features/projects/services/projectService';
 interface ProjectsGridViewProps {
   projects: Project[];
   onProjectClick: (project: Project) => void;
-  showCategory?: boolean;
   onStatusChange?: (projectId: string, status: string) => void;
   onPriorityChange?: (projectId: string, priority: string) => void;
+  showVendor?: boolean;
 }
 
 export const ProjectsGridView: React.FC<ProjectsGridViewProps> = ({
   projects,
   onProjectClick,
-  showCategory = false,
   onStatusChange,
   onPriorityChange,
+  showVendor = false,
 }) => {
   if (projects.length === 0) {
     return (
@@ -32,7 +32,7 @@ export const ProjectsGridView: React.FC<ProjectsGridViewProps> = ({
           key={project.id}
           project={project}
           onClick={() => onProjectClick(project)}
-          showCategory={showCategory}
+          showVendor={showVendor}
           onStatusChange={onStatusChange ? (status) => onStatusChange(project.id, status) : undefined}
           onPriorityChange={
             onPriorityChange ? (priority) => onPriorityChange(project.id, priority) : undefined

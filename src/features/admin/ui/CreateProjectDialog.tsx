@@ -22,34 +22,32 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { Vendor } from '@/features/vendors/services/vendorService';
 
 export interface NewProjectFormState {
   name: string;
   description: string;
   status: string;
-  type: string;
   priority: string;
   deadline: Date | null;
-  category: string;
-  reference: string;
+  vendor_id: string | null;
 }
 
 export const createDefaultNewProjectFormState = (): NewProjectFormState => ({
   name: '',
   description: '',
   status: 'Open',
-  type: '',
   priority: '',
   deadline: null,
-  category: '',
-  reference: '',
+  vendor_id: null,
 });
 
 interface CreateProjectDialogProps {
   open: boolean;
   data: NewProjectFormState;
-  categoryOptions: Array<{ value: string; label: string }>;
   isSubmitting: boolean;
+  vendors: Vendor[];
+  isVendorsLoading?: boolean;
   onOpenChange: (open: boolean) => void;
   onChange: (changes: Partial<NewProjectFormState>) => void;
   onSubmit: () => void;
@@ -58,8 +56,9 @@ interface CreateProjectDialogProps {
 export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
   open,
   data,
-  categoryOptions,
   isSubmitting,
+  vendors,
+  isVendorsLoading = false,
   onOpenChange,
   onChange,
   onSubmit,
@@ -84,6 +83,29 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
               onChange={(e) => onChange({ name: e.target.value })}
               placeholder="Project Name"
             />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              Vendor
+            </label>
+            <Select
+              value={data.vendor_id ?? 'none'}
+              onValueChange={(value) => onChange({ vendor_id: value === 'none' ? null : value })}
+              disabled={isVendorsLoading}
+            >
+              <SelectTrigger className="rounded-[14px]">
+                <SelectValue placeholder="Select vendor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No vendor</SelectItem>
+                {vendors.map((vendor) => (
+                  <SelectItem key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           <div>
@@ -119,17 +141,6 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
                   <SelectItem value="Client Approval">Client Approval</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Type *
-              </label>
-              <Input
-                value={data.type}
-                onChange={(e) => onChange({ type: e.target.value })}
-                placeholder="Enter project type"
-              />
             </div>
 
             <div>
@@ -179,39 +190,6 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
                 </PopoverContent>
               </Popover>
             </div>
-
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Category
-              </label>
-              <Select
-                value={data.category || 'none'}
-                onValueChange={(value) => onChange({ category: value === 'none' ? '' : value })}
-              >
-                <SelectTrigger className="rounded-[14px]">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">None</SelectItem>
-                  {categoryOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                Reference
-              </label>
-              <Input
-                value={data.reference}
-                onChange={(e) => onChange({ reference: e.target.value })}
-                placeholder="Direct, B2B (Client Name)"
-              />
-            </div>
           </div>
         </div>
 
@@ -228,8 +206,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
             onClick={onSubmit}
             disabled={
               isSubmitting ||
-              !data.name.trim() ||
-              !data.type.trim()
+              !data.name.trim()
             }
             className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
           >

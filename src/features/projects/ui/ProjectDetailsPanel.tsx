@@ -156,18 +156,11 @@ export const ProjectDetailsPanel: React.FC<ProjectDetailsPanelProps> = ({
               </Badge>
             </div>
             <Separator orientation="vertical" className="h-4" />
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Type:</span>
-              <span className="font-medium">{project.type}</span>
-            </div>
             {project.priority && (
-              <>
-                <Separator orientation="vertical" className="h-4" />
-                <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">Priority:</span>
-                  <span className="font-medium">{project.priority}</span>
-                </div>
-              </>
+              <div className="flex items-center gap-2">
+                <span className="text-muted-foreground">Priority:</span>
+                <span className="font-medium">{project.priority}</span>
+              </div>
             )}
             {project.deadline && (
               <>

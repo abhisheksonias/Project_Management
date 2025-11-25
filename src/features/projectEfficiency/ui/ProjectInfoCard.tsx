@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Project } from '@/features/projects/services/projectService';
-import { FolderOpen, Calendar, Target } from 'lucide-react';
+import { FolderOpen, Calendar, Target, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 interface ProjectInfoCardProps {
@@ -13,7 +13,7 @@ interface ProjectInfoCardProps {
 export const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, isLoading }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-white">
+      <Card className="rounded-[14px] shadow-md bg-card">
         <CardContent className="p-6">
           <div className="flex items-center gap-4">
             <Skeleton className="h-16 w-16 rounded-full" />
@@ -33,7 +33,7 @@ export const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, isLoa
   }
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-white">
+    <Card className="rounded-[14px] shadow-md bg-card">
       <CardContent className="p-6">
         <div className="flex items-center gap-4">
           <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center">
@@ -43,6 +43,12 @@ export const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, isLoa
             <h3 className="text-lg font-semibold text-foreground">{project.name}</h3>
             {project.description && (
               <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+            )}
+            {project.vendor && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">
+                <Building2 className="h-4 w-4 text-primary" />
+                <span>{project.vendor.name}</span>
+              </div>
             )}
             <div className="flex flex-wrap items-center gap-4 mt-2">
               {project.deadline && (

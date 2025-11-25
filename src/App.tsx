@@ -23,6 +23,7 @@ import NotFound from "./pages/NotFound";
 import AdminWorklogs from "./pages/AdminWorklogs";
 import AdminEfficiency from "./pages/AdminEfficiency";
 import AdminProjectEfficiency from "./pages/AdminProjectEfficiency";
+import AdminVendors from "./pages/AdminVendors";
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminProjectEfficiency />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/vendors" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminVendors />
               </ProtectedRoute>
             } 
           />

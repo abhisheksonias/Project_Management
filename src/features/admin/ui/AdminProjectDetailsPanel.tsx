@@ -42,7 +42,7 @@ import {
 } from '@/features/admin/hooks/useAdminProjectMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle } from 'lucide-react';
+import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle, Building2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
 import { useQuery } from '@tanstack/react-query';
@@ -62,12 +62,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useStatusHistory } from '@/features/statusHistory/hooks/useStatusHistory';
 import { Skeleton } from '@/components/ui/skeleton';
-
-const PROJECT_CATEGORY_OPTIONS = [
-  { value: 'One-time', label: 'One-time' },
-  { value: 'Maintenance', label: 'Maintenance' },
-  { value: 'Hourly', label: 'Hourly' },
-];
+import { MilestonesTabContent } from './MilestonesTabContent';
+import { useVendors } from '@/features/vendors/hooks/useVendors';
 
 interface AdminProjectDetailsPanelProps {
   project: Project | null;
@@ -96,18 +92,17 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const updateCommentMutation = useUpdateProjectComment();
   const updateProjectMutation = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
+  const { data: vendors = [] } = useVendors();
 
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     description: '',
     status: '',
-    type: '',
     priority: '',
     deadline: null as Date | null,
-    category: '',
-    reference: '',
     admin_id: '',
+    vendor_id: '',
   });
 
   // Fetch all users for mention autocomplete and admin selection
@@ -146,12 +141,10 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
         name: project.name || '',
         description: project.description || '',
         status: project.status || '',
-        type: project.type || '',
         priority: project.priority || '',
         deadline: deadlineDate,
-        category: project.category || '',
-        reference: project.reference || '',
         admin_id: project.admin_id || '',
+        vendor_id: project.vendor_id || '',
       });
       setIsEditDialogOpen(false);
     }
@@ -181,12 +174,10 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
       name: project.name || '',
       description: project.description || '',
       status: project.status || '',
-      type: project.type || '',
       priority: project.priority || '',
       deadline: deadlineDate,
-      category: project.category || '',
-      reference: project.reference || '',
       admin_id: project.admin_id || '',
+      vendor_id: project.vendor_id || '',
     });
   };
 
@@ -217,12 +208,10 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
           name: formData.name,
           description: formData.description || null,
           status: formData.status || null,
-          type: formData.type,
           priority: formData.priority || null,
           deadline: deadlineString,
-          category: formData.category || null,
-          reference: formData.reference || null,
           admin_id: formData.admin_id || null,
+          vendor_id: formData.vendor_id || null,
         },
       },
       {
@@ -412,9 +401,12 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
           <div className="mt-6">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 rounded-[14px]">
+              <TabsList className="grid w-full grid-cols-3 rounded-[14px]">
                 <TabsTrigger value="overview" className="rounded-[14px]">
                   Overview
+                </TabsTrigger>
+                <TabsTrigger value="milestones" className="rounded-[14px]">
+                  Milestones
                 </TabsTrigger>
                 <TabsTrigger value="status-history" className="rounded-[14px]">
                   Status History
@@ -432,14 +424,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
               <Badge className={cn('text-xs', getStatusColor(project.status))}>
                 {project.status || 'N/A'}
               </Badge>
-              </div>
-
-              {/* Type */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Type *
-                </label>
-              <span className="font-medium">{project.type}</span>
               </div>
 
               {/* Priority */}
@@ -473,29 +457,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
               </div>
 
               {/* Category */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Category
-                </label>
-              <span className="font-medium">
-                {(() => {
-                  if (!project.category) return 'N/A';
-                  const option = PROJECT_CATEGORY_OPTIONS.find(
-                    (opt) => opt.value === project.category
-                  );
-                  return option?.label || project.category;
-                })()}
-              </span>
-              </div>
-
-              {/* Reference */}
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Reference
-                </label>
-              <span className="font-medium">{project.reference || 'N/A'}</span>
-              </div>
-
               {/* Admin */}
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
@@ -503,6 +464,42 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 </label>
               <span className="font-medium">{project.adminName || 'N/A'}</span>
               </div>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                Vendor
+              </label>
+              {project.vendor ? (
+                <div className="rounded-[14px] border border-border p-3 flex flex-col gap-1 text-sm">
+                  <div className="flex items-center gap-2 font-semibold text-foreground">
+                    <Building2 className="h-4 w-4 text-primary" />
+                    {project.vendor.name}
+                  </div>
+                  {project.vendor.email && (
+                    <span className="text-muted-foreground">Email: {project.vendor.email}</span>
+                  )}
+                  {project.vendor.phone && (
+                    <span className="text-muted-foreground">Phone: {project.vendor.phone}</span>
+                  )}
+                  {project.vendor.website && (
+                    <a
+                      href={
+                        project.vendor.website.startsWith('http')
+                          ? project.vendor.website
+                          : `https://${project.vendor.website}`
+                      }
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline text-sm"
+                    >
+                      {project.vendor.website}
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No vendor linked</p>
+              )}
             </div>
 
             <Separator />
@@ -675,6 +672,10 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             </div>
               </TabsContent>
 
+              <TabsContent value="milestones" className="mt-4">
+                <MilestonesTabContent projectId={project.id} />
+              </TabsContent>
+
               <TabsContent value="status-history" className="mt-4">
                 {statusHistoryLoading ? (
                   <Card>
@@ -820,17 +821,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Type *
-                </label>
-                <Input
-                  value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                  placeholder="Enter project type"
-                />
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Priority
                 </label>
                 <Select
@@ -878,42 +868,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                   </PopoverContent>
                 </Popover>
               </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Category
-                </label>
-                <Select
-                  value={formData.category || 'none'}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, category: value === 'none' ? '' : value })
-                  }
-                >
-                  <SelectTrigger className="rounded-[14px]">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">None</SelectItem>
-                    {PROJECT_CATEGORY_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
-                  Reference
-                </label>
-                <Input
-                  value={formData.reference}
-                  onChange={(e) => setFormData({ ...formData, reference: e.target.value })}
-                  placeholder="Direct, B2B (Client Name)"
-                />
-              </div>
-
               <div>
                 <label className="text-sm font-medium text-muted-foreground mb-1 block">
                   Admin
@@ -939,6 +893,29 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                   </SelectContent>
                 </Select>
               </div>
+              <div className="sm:col-span-2">
+                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                  Vendor
+                </label>
+                <Select
+                  value={formData.vendor_id || 'none'}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, vendor_id: value === 'none' ? '' : value })
+                  }
+                >
+                  <SelectTrigger className="rounded-[14px]">
+                    <SelectValue placeholder="Select vendor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No vendor</SelectItem>
+                    {vendors.map((vendor) => (
+                      <SelectItem key={vendor.id} value={vendor.id}>
+                        {vendor.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -948,7 +925,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             </Button>
             <Button
               onClick={handleSave}
-              disabled={updateProjectMutation.isPending || !formData.name.trim() || !formData.type}
+              disabled={updateProjectMutation.isPending || !formData.name.trim()}
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
             >
               {updateProjectMutation.isPending ? 'Saving...' : 'Save changes'}

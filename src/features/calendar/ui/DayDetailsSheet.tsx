@@ -41,8 +41,7 @@ export const DayDetailsSheet: React.FC<DayDetailsSheetProps> = ({
 
   const isBillable = (log: Worklog) => {
     const taskType = log.tasks?.type?.toLowerCase();
-    const projectType = log.projects?.type?.toLowerCase();
-    return taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable');
+    return taskType === 'billable';
   };
 
   return (

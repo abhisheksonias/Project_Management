@@ -59,7 +59,7 @@ export const WorklogTable: React.FC<WorklogTableProps> = ({
             ) : (
               worklogs.map((log) => {
                 const isSelected = selectedIds.has(log.id);
-                const logType = log.tasks?.type || log.projects?.type || '';
+                const logType = log.tasks?.type || '';
                 const isBillable = logType.toLowerCase() === 'billable';
 
                 return (

@@ -16,7 +16,7 @@ export const ProjectRecentWorklogsTable: React.FC<ProjectRecentWorklogsTableProp
 }) => {
   if (isLoading) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-white">
+      <Card className="rounded-[14px] shadow-md bg-card">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Recent Worklogs (Selected Project)</CardTitle>
         </CardHeader>
@@ -33,7 +33,7 @@ export const ProjectRecentWorklogsTable: React.FC<ProjectRecentWorklogsTableProp
 
   if (!worklogs || worklogs.length === 0) {
     return (
-      <Card className="rounded-[14px] shadow-md bg-white">
+      <Card className="rounded-[14px] shadow-md bg-card">
         <CardHeader>
           <CardTitle className="text-lg font-semibold">Recent Worklogs (Selected Project)</CardTitle>
         </CardHeader>
@@ -47,7 +47,7 @@ export const ProjectRecentWorklogsTable: React.FC<ProjectRecentWorklogsTableProp
   }
 
   return (
-    <Card className="rounded-[14px] shadow-md bg-white">
+    <Card className="rounded-[14px] shadow-md bg-card">
       <CardHeader>
         <CardTitle className="text-lg font-semibold">Recent Worklogs (Selected Project)</CardTitle>
       </CardHeader>

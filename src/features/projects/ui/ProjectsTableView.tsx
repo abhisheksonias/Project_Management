@@ -15,17 +15,17 @@ import { cn } from '@/lib/utils';
 interface ProjectsTableViewProps {
   projects: Project[];
   onProjectClick: (project: Project) => void;
-  showCategory?: boolean;
   onStatusChange?: (projectId: string, status: string) => void;
   onPriorityChange?: (projectId: string, priority: string) => void;
+  showVendor?: boolean;
 }
 
 export const ProjectsTableView: React.FC<ProjectsTableViewProps> = ({
   projects,
   onProjectClick,
-  showCategory = false,
   onStatusChange,
   onPriorityChange,
+  showVendor = false,
 }) => {
   const getStatusColor = (status: string | null) => {
     switch (status?.toLowerCase()) {
@@ -60,10 +60,7 @@ export const ProjectsTableView: React.FC<ProjectsTableViewProps> = ({
           <thead className="bg-secondary">
             <tr>
               <th className="text-left p-4 font-semibold">Project Name</th>
-              <th className="text-left p-4 font-semibold">Type</th>
-              {showCategory && (
-                <th className="text-left p-4 font-semibold">Category</th>
-              )}
+              {showVendor && <th className="text-left p-4 font-semibold">Vendor</th>}
               <th className="text-left p-4 font-semibold">Status</th>
               <th className="text-left p-4 font-semibold">Priority</th>
               <th className="text-left p-4 font-semibold">Progress</th>
@@ -82,9 +79,10 @@ export const ProjectsTableView: React.FC<ProjectsTableViewProps> = ({
                   onClick={() => onProjectClick(project)}
                 >
                   <td className="p-4 font-medium">{project.name}</td>
-                  <td className="p-4">{project.type || '-'}</td>
-                  {showCategory && (
-                    <td className="p-4">{project.category || '-'}</td>
+                  {showVendor && (
+                    <td className="p-4 text-sm text-muted-foreground">
+                      {project.vendor?.name ?? '—'}
+                    </td>
                   )}
                   <td className="p-4">
                     {onStatusChange ? (

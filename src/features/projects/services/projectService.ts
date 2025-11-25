@@ -1,4 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
+import { Vendor } from '@/features/vendors/services/vendorService';
 
 export interface ProjectComment {
   id: string;
@@ -12,19 +13,20 @@ export interface ProjectComment {
   mentions?: string[]; // Array of user IDs mentioned in this comment
 }
 
+export type ProjectVendorInfo = Pick<Vendor, 'id' | 'name' | 'email' | 'phone' | 'website'>;
+
 export interface Project {
   id: string;
   name: string;
   description: string | null;
   status: string | null;
-  type: string;
   priority: string | null;
   deadline: string | null;
-  category: string | null;
-  reference: string | null;
   created_at: string | null;
   comments: ProjectComment[] | null;
   admin_id: string | null;
+  vendor_id: string | null;
+  vendor?: ProjectVendorInfo | null;
   // Computed/task-related fields
   openTasks?: number;
   overdueTasks?: number;
@@ -80,7 +82,7 @@ class ProjectService {
     // Fetch full project details with task counts
     const { data: projectsData, error: projectsError } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, vendors(id, name, email, phone, website)')
       .in('id', projectIds);
 
     if (projectsError) throw projectsError;
@@ -117,19 +119,31 @@ class ProjectService {
     const projects = projectsData.map((project: any) => {
       const stats = taskStats.get(project.id) || { total: 0, open: 0, overdue: 0 };
       const comments = project.comments ? (Array.isArray(project.comments) ? project.comments : []) : [];
+      const vendor = project.vendors
+        ? {
+            id: project.vendors.id,
+            name: project.vendors.name,
+            email: project.vendors.email,
+            phone: project.vendors.phone,
+            website: project.vendors.website,
+          }
+        : null;
       
       // Calculate progress (simplified - based on completed tasks)
       const projectTasks = allTasks?.filter(t => t.project_id === project.id) || [];
       const completedCount = projectTasks.filter(t => t.status === 'Completed').length;
       const progress = projectTasks.length > 0 ? Math.round((completedCount / projectTasks.length) * 100) : 0;
 
+      const { vendors, ...rest } = project;
+
       return {
-        ...project,
+        ...rest,
         openTasks: stats.open,
         overdueTasks: stats.overdue,
         totalTasks: stats.total,
         progress,
         comments: comments as ProjectComment[],
+        vendor,
       } as Project;
     });
 
@@ -139,12 +153,31 @@ class ProjectService {
   async getProjectById(projectId: string): Promise<Project | null> {
     const { data, error } = await supabase
       .from('projects')
-      .select('*')
+      .select('*, vendors(id, name, email, phone, website)')
       .eq('id', projectId)
       .single();
 
     if (error) throw error;
-    return data as Project | null;
+    if (!data) return null;
+
+    const comments = data.comments ? (Array.isArray(data.comments) ? data.comments : []) : [];
+    const vendor = data.vendors
+      ? {
+          id: data.vendors.id,
+          name: data.vendors.name,
+          email: data.vendors.email,
+          phone: data.vendors.phone,
+          website: data.vendors.website,
+        }
+      : null;
+
+    const { vendors, ...rest } = data;
+
+    return {
+      ...rest,
+      comments: comments as ProjectComment[],
+      vendor,
+    } as Project;
   }
 
   async addComment(data: AddCommentData): Promise<void> {

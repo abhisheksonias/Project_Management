@@ -5,6 +5,7 @@ export interface User {
   name: string;
   email: string;
   role?: string;
+  department?: string | null;
 }
 
 export interface UpdateProfileData {
@@ -18,7 +19,7 @@ export const userService = {
   async getAllUsers(): Promise<User[]> {
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, email, role')
+      .select('id, name, email, role, department')
       .order('name', { ascending: true });
 
     if (error) throw error;
@@ -30,7 +31,7 @@ export const userService = {
     
     const { data, error } = await supabase
       .from('users')
-      .select('id, name, email, role')
+      .select('id, name, email, role, department')
       .in('id', userIds);
 
     if (error) throw error;

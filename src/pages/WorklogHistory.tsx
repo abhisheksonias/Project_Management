@@ -136,7 +136,7 @@ const WorklogHistory: React.FC = () => {
       
       // Type filter
       if (selectedType !== 'All Types') {
-        const logType = log.tasks?.type || log.projects?.type || '';
+        const logType = log.tasks?.type || '';
         if (selectedType === 'Billable' && logType.toLowerCase() !== 'billable') return false;
         if (selectedType === 'Non-billable' && logType.toLowerCase() !== 'non-billable') return false;
       }
@@ -179,9 +179,8 @@ const WorklogHistory: React.FC = () => {
       totalHours += hours;
 
       const taskType = log.tasks?.type?.toLowerCase();
-      const projectType = log.projects?.type?.toLowerCase();
 
-      if (taskType === 'billable' || (taskType !== 'non-billable' && projectType === 'billable')) {
+      if (taskType === 'billable') {
         billableHours += hours;
       } else {
         nonBillableHours += hours;
