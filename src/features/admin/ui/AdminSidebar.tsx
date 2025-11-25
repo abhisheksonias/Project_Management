@@ -100,7 +100,7 @@ const SidebarContentInternal: React.FC<{
       {/* Bottom Section */}
       <div className={cn("p-3 border-t border-sidebar-border space-y-2", isCollapsed && "px-2")}>
         <div className="space-y-1">
-          <button
+          {/* <button
             onClick={() => handleNavClick('/admin/settings')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
@@ -110,8 +110,8 @@ const SidebarContentInternal: React.FC<{
           >
             <Settings className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             {!isCollapsed && <span>Settings</span>}
-          </button>
-          <button
+          </button> */}
+          {/* <button
             onClick={() => handleNavClick('/admin/help')}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
@@ -121,7 +121,7 @@ const SidebarContentInternal: React.FC<{
           >
             <HelpCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
             {!isCollapsed && <span>Help</span>}
-          </button>
+          </button> */}
         </div>
       </div>
     </>
