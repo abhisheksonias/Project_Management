@@ -24,6 +24,7 @@ import AdminWorklogs from "./pages/AdminWorklogs";
 import AdminEfficiency from "./pages/AdminEfficiency";
 import AdminProjectEfficiency from "./pages/AdminProjectEfficiency";
 import AdminVendors from "./pages/AdminVendors";
+import UserManagement from "./pages/UserManagement";
 
 const queryClient = new QueryClient();
 
@@ -69,6 +70,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminWorklogs />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/users" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <UserManagement />
               </ProtectedRoute>
             } 
           />

@@ -14,6 +14,7 @@ import {
   X,
   TrendingUp,
   Building2,
+  UserCog,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { id: 'projects', label: 'Projects', icon: Briefcase, path: '/admin/projects' },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare, path: '/admin/tasks' },
   { id: 'worklogs', label: 'Worklogs', icon: Clock, path: '/admin/worklogs' },
+  { id: 'users', label: 'User Management', icon: UserCog, path: '/admin/users' },
   { id: 'team-efficiency', label: 'Team Efficiency', icon: Users, path: '/admin/team-efficiency' },
   { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
   { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
