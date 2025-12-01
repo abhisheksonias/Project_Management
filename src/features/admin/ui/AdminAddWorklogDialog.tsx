@@ -20,7 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Calendar as CalendarIcon } from 'lucide-react';
+import { Calendar as CalendarIcon, AlertTriangle } from 'lucide-react';
 import { Project } from '@/features/projects/services/projectService';
 import { User } from '@/features/users/services/userService';
 import { format } from 'date-fns';
@@ -29,8 +29,10 @@ import { useQuery } from '@tanstack/react-query';
 import { adminTaskService } from '../services/adminTaskService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+import { normalizeHoursToHHMM, parseHours } from '@/shared/utils/formatHours';
 import { cn } from '@/lib/utils';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useSingleMilestoneHoursSummary } from '@/features/milestones/hooks/useMilestones';
 
 interface AdminAddWorklogDialogProps {
   open: boolean;
@@ -140,6 +142,34 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
     // Only show tasks when both user and project are selected
     return userAssignedTasks.filter((task) => task.project_id === projectId);
   }, [userId, userAssignedTasks, projectId]);
+
+  const selectedTask = React.useMemo(
+    () => allTasks.find((t) => t.id === taskId),
+    [allTasks, taskId]
+  );
+  const selectedMilestoneId = selectedTask?.milestone_id || null;
+  const { data: milestoneHoursSummary } = useSingleMilestoneHoursSummary(
+    selectedMilestoneId,
+    { enabled: open && !!selectedMilestoneId }
+  );
+  const pendingDecimalHours = parseHours(hours);
+  const currentLoggedHours = milestoneHoursSummary?.logged_hours ?? 0;
+  const projectedHours = currentLoggedHours + pendingDecimalHours;
+  const allotted = milestoneHoursSummary?.allotted_hours ?? null;
+  const alreadyExceeded =
+    !!milestoneHoursSummary &&
+    milestoneHoursSummary.is_hourly &&
+    allotted !== null &&
+    currentLoggedHours > allotted;
+  const willExceed =
+    !!milestoneHoursSummary &&
+    milestoneHoursSummary.is_hourly &&
+    allotted !== null &&
+    pendingDecimalHours > 0 &&
+    projectedHours > allotted;
+  const shouldWarn = alreadyExceeded || willExceed;
+  const overage =
+    allotted !== null ? Math.max(projectedHours - allotted, 0) : null;
 
   useEffect(() => {
     if (selectedUserId) {
@@ -431,6 +461,28 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
                   </Button>
                 ))}
               </div>
+              {selectedMilestoneId && milestoneHoursSummary?.is_hourly && (
+                <div className="mt-3 rounded-[12px] border border-secondary/70 bg-secondary/30 px-3 py-2 text-xs text-muted-foreground">
+                  Logged {milestoneHoursSummary.logged_hours.toFixed(1)}h
+                  {allotted !== null && ` / ${allotted.toFixed(1)}h`}
+                  {milestoneHoursSummary.remaining_hours !== null &&
+                    ` • ${milestoneHoursSummary.remaining_hours.toFixed(1)}h remaining`}
+                </div>
+              )}
+              {shouldWarn && (
+                <Alert className="mt-3 rounded-[12px] border-amber-300 bg-amber-50 text-amber-900">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Hourly cap warning</AlertTitle>
+                  <AlertDescription className="text-xs">
+                    {alreadyExceeded
+                      ? 'This milestone has already exceeded its allotted hours.'
+                      : `This log will exceed the allotted hours by ${
+                          overage?.toFixed(1) ?? '0.0'
+                        }h.`}
+                    {' '}You can continue, but please review with the client.
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
 
             <div className="space-y-2">

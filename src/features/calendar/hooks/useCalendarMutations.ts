@@ -10,6 +10,7 @@ export const useCreateWorklog = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog added successfully');
     },
     onError: (error) => {
@@ -28,6 +29,7 @@ export const useUpdateWorklog = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog updated successfully');
     },
     onError: (error) => {
@@ -45,6 +47,7 @@ export const useDeleteWorklog = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog deleted successfully');
     },
     onError: (error) => {

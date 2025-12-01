@@ -74,6 +74,7 @@ export const useCreateWorklogForUser = () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'no-logs'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs', 'date-range'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
     },
   });
 };
@@ -96,6 +97,7 @@ export const useUpdateWorklog = () => {
     onSuccess: () => {
       // Invalidate all worklog queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
     },
   });
 };
@@ -108,6 +110,7 @@ export const useDeleteWorklog = () => {
     onSuccess: () => {
       // Invalidate all worklog queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['admin', 'worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
     },
   });
 };

@@ -5,6 +5,7 @@ import {
   UserMonthHours,
   UserUnpaidLeaves,
   UserLeave,
+  UserMonthlyActivity,
   HourlyCostResult,
   CreateUserData,
   UpdateUserData,
@@ -162,13 +163,28 @@ export const useUserLeaves = (userId: string | null, monthDate: Date) => {
 };
 
 /**
+ * Get monthly activity (leaves + worklogs) for a user
+ */
+export const useUserMonthlyActivity = (userId: string | null, monthDate: Date) => {
+  return useQuery<UserMonthlyActivity>({
+    queryKey: ['admin', 'users', 'monthly-activity', userId, monthDate.toISOString()],
+    queryFn: () => {
+      if (!userId) throw new Error('User ID is required');
+      return adminUserManagementService.getUserMonthlyActivity(userId, monthDate);
+    },
+    enabled: !!userId,
+    staleTime: 30000,
+  });
+};
+
+/**
  * Add user leave mutation
  */
 export const useAddUserLeave = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (data: { user_id: string; leave_date: string; is_paid: boolean }) =>
+    mutationFn: (data: { user_id: string; leave_date: string; is_paid: boolean; leave_type?: 'full' | 'half' }) =>
       adminUserManagementService.addUserLeave(data),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'users', 'leaves', variables.user_id] });

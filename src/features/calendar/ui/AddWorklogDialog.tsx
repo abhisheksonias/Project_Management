@@ -74,20 +74,32 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
       setInternalDate(selectedDate || new Date());
     }
   }, [open, selectedDate]);
-  // Filter out completed and on hold projects
-  const availableProjects = projects.filter((project) => {
-    const projectStatus = (project.status || '').toLowerCase();
-    return projectStatus !== 'completed' && projectStatus !== 'on hold';
-  });
 
-  // Filter out completed and on hold tasks, then filter by project
-  const filteredTasks = (selectedProjectId
-    ? tasks.filter((task) => task.project_id === selectedProjectId)
-    : tasks
-  ).filter((task) => {
+  // Filter out completed and on hold tasks first
+  const activeTasks = tasks.filter((task) => {
     const taskStatus = (task.status || '').toLowerCase();
     return taskStatus !== 'completed' && taskStatus !== 'on hold';
   });
+
+  // Get unique project IDs from active tasks
+  const projectIdsWithActiveTasks = new Set(
+    activeTasks
+      .map((task) => task.project_id)
+      .filter((id): id is string => id !== null && id !== undefined)
+  );
+
+  // Filter projects to only show those with active tasks
+  const availableProjects = projects.filter((project) => {
+    const projectStatus = (project.status || '').toLowerCase();
+    const isNotCompletedOrOnHold = projectStatus !== 'completed' && projectStatus !== 'on hold';
+    const hasActiveTasks = projectIdsWithActiveTasks.has(project.id);
+    return isNotCompletedOrOnHold && hasActiveTasks;
+  });
+
+  // Filter tasks by selected project
+  const filteredTasks = selectedProjectId
+    ? activeTasks.filter((task) => task.project_id === selectedProjectId)
+    : activeTasks;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

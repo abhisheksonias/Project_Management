@@ -34,6 +34,7 @@ export interface UserWithNoLog {
   email: string;
   role: string | null;
   department: string | null;
+  totalHours: number;
 }
 
 type SupabaseAdminWorklogRow = {
@@ -398,6 +399,7 @@ class AdminWorklogService {
   }
 
   async getUsersWithNoLogs(date: Date): Promise<UserWithNoLog[]> {
+    const MINIMUM_HOURS_PER_DAY = 8;
     const startOfDate = startOfDay(date);
     const endOfDate = endOfDay(date);
 
@@ -415,7 +417,7 @@ class AdminWorklogService {
     // Get users who have logged work on this date
     const { data: usersWithLogs, error: logsError } = await supabase
       .from('work_logs')
-      .select('user_id')
+      .select('user_id, hours, hours_num')
       .gte('created_at', startOfDate.toISOString())
       .lte('created_at', endOfDate.toISOString())
       .not('user_id', 'is', null);
@@ -424,14 +426,28 @@ class AdminWorklogService {
       throw logsError;
     }
 
-    const userIdsWithLogs = new Set((usersWithLogs || []).map((log) => log.user_id).filter(Boolean));
+    const userHoursMap = new Map<string, number>();
 
-    // Filter out users who have logs and exclude admin users
-    const usersWithNoLogs = (allUsers || []).filter(
-      (user) => !userIdsWithLogs.has(user.id) && user.role !== 'Admin'
-    ) as UserWithNoLog[];
+    (usersWithLogs || []).forEach((log) => {
+      if (!log.user_id) return;
+      const numericHours =
+        typeof log.hours_num === 'number' && !Number.isNaN(log.hours_num)
+          ? log.hours_num
+          : parseHours(log.hours);
+      const current = userHoursMap.get(log.user_id) || 0;
+      userHoursMap.set(log.user_id, current + (numericHours || 0));
+    });
 
-    return usersWithNoLogs;
+    // Filter out admin users and include those who are below minimum hours
+    const usersBelowTarget: UserWithNoLog[] = (allUsers || [])
+      .filter((user) => user.role !== 'Admin')
+      .map((user) => {
+        const totalHours = userHoursMap.get(user.id) || 0;
+        return { ...user, totalHours } as UserWithNoLog;
+      })
+      .filter((user) => user.totalHours < MINIMUM_HOURS_PER_DAY);
+
+    return usersBelowTarget;
   }
 
   async createWorklogForUser(data: {

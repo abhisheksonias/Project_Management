@@ -103,7 +103,7 @@ const AdminEfficiency: React.FC = () => {
           end.setHours(23, 59, 59, 999);
       }
     }
-
+ 
     setStartDate(start);
     setEndDate(end);
   }, [dateRange, tempStartDate, tempEndDate]);
@@ -335,14 +335,6 @@ const AdminEfficiency: React.FC = () => {
                   isLoading={isLoadingHoursByProject}
                 />
               </div>
-
-              {/* Recent Worklogs Table (only when user selected) */}
-              {selectedUserId && (
-                <RecentWorklogsTable
-                  worklogs={recentWorklogs}
-                  isLoading={isLoadingRecentWorklogs}
-                />
-              )}
             </div>
           </div>
         </div>

@@ -391,14 +391,14 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
             onValueChange={(value) => setActiveTab(value as TaskPanelTab)}
             className="mt-6 flex h-full flex-col"
           >
-            <TabsList className="w-full justify-start rounded-[12px] bg-muted/60 p-1">
-              <TabsTrigger value="details" className="rounded-[10px]">
+            <TabsList className="grid w-full grid-cols-3 rounded-[14px]">
+              <TabsTrigger value="details" className="rounded-[14px]">
                 Details
               </TabsTrigger>
-              <TabsTrigger value="status" className="rounded-[10px]">
+              <TabsTrigger value="status" className="rounded-[14px]">
                 Status Timeline
               </TabsTrigger>
-              <TabsTrigger value="logs" className="rounded-[10px]">
+              <TabsTrigger value="logs" className="rounded-[14px]">
                 Logs
               </TabsTrigger>
             </TabsList>

@@ -10,6 +10,7 @@ export const useCreateWorklogHistory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog added successfully');
     },
     onError: (error) => {
@@ -28,6 +29,7 @@ export const useUpdateWorklogHistory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog updated successfully');
     },
     onError: (error) => {
@@ -45,6 +47,7 @@ export const useDeleteWorklogHistory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success('Worklog deleted successfully');
     },
     onError: (error) => {
@@ -62,6 +65,7 @@ export const useDeleteMultipleWorklogs = () => {
     onSuccess: (deletedCount) => {
       queryClient.invalidateQueries({ queryKey: ['worklog-history'] });
       queryClient.invalidateQueries({ queryKey: ['worklogs'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       toast.success(`${deletedCount} worklog(s) deleted successfully`);
     },
     onError: (error) => {

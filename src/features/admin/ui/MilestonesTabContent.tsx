@@ -1,7 +1,10 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { useMilestonesByProject } from '@/features/milestones/hooks/useMilestones';
+import {
+  useMilestonesByProject,
+  useMilestoneHoursSummary,
+} from '@/features/milestones/hooks/useMilestones';
 import { CreateMilestoneDialog } from '@/features/milestones/ui/CreateMilestoneDialog';
 import { MilestoneList } from '@/features/milestones/ui/MilestoneList';
 import { Milestone } from '@/features/milestones/services/milestoneService';
@@ -22,6 +25,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 
 const CURRENCY_OPTIONS = [
   { value: 'INR', label: 'INR (₹)' },
@@ -41,8 +46,16 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
   const [editAmount, setEditAmount] = useState('');
   const [editCurrency, setEditCurrency] = useState('INR');
   const [editSortOrder, setEditSortOrder] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editBillingType, setEditBillingType] = useState<'fixed' | 'hourly'>('fixed');
+  const [editAllottedHours, setEditAllottedHours] = useState('');
+  const [editHourlyRate, setEditHourlyRate] = useState('');
 
   const { data: milestones = [], isLoading } = useMilestonesByProject(projectId);
+  const milestoneIds = useMemo(() => milestones.map((m) => m.id), [milestones]);
+  const { data: milestoneHoursSummary = {} } = useMilestoneHoursSummary(milestoneIds, {
+    enabled: milestoneIds.length > 0,
+  });
   const updateMilestone = useUpdateMilestone();
   const deleteMilestone = useDeleteMilestone();
 
@@ -52,31 +65,56 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
     setEditAmount(milestone.amount.toString());
     setEditCurrency(milestone.currency);
     setEditSortOrder(milestone.sort_order?.toString() || '');
+    setEditDescription(milestone.description || '');
+    setEditBillingType(milestone.is_hourly ? 'hourly' : 'fixed');
+    setEditAllottedHours(milestone.allotted_hours?.toString() || '');
+    setEditHourlyRate(milestone.hourly_rate?.toString() || '');
   };
 
   const handleSaveEdit = async () => {
-    if (!editingMilestone || !editName.trim() || !editAmount.trim()) return;
+    if (!editingMilestone || !editName.trim()) return;
 
-    const amountValue = parseFloat(editAmount);
-    if (isNaN(amountValue) || amountValue < 0) {
-      return;
+    const isHourly = editBillingType === 'hourly';
+    const payload: Record<string, any> = {
+      name: editName.trim(),
+      currency: editCurrency,
+      sort_order: editSortOrder ? parseInt(editSortOrder, 10) : null,
+      description: editDescription ? editDescription.trim() : null,
+      is_hourly: isHourly,
+    };
+
+    if (isHourly) {
+      if (!editAllottedHours.trim() || !editHourlyRate.trim()) return;
+      const allottedValue = parseFloat(editAllottedHours);
+      const hourlyValue = parseFloat(editHourlyRate);
+      if (isNaN(allottedValue) || allottedValue <= 0) return;
+      if (isNaN(hourlyValue) || hourlyValue <= 0) return;
+      payload.allotted_hours = allottedValue;
+      payload.hourly_rate = hourlyValue;
+      payload.amount = allottedValue * hourlyValue;
+    } else {
+      if (!editAmount.trim()) return;
+      const amountValue = parseFloat(editAmount);
+      if (isNaN(amountValue) || amountValue < 0) return;
+      payload.amount = amountValue;
+      payload.allotted_hours = null;
+      payload.hourly_rate = null;
     }
 
     try {
       await updateMilestone.mutateAsync({
         id: editingMilestone.id,
-        data: {
-          name: editName.trim(),
-          amount: amountValue,
-          currency: editCurrency,
-          sort_order: editSortOrder ? parseInt(editSortOrder, 10) : null,
-        },
+        data: payload,
       });
       setEditingMilestone(null);
       setEditName('');
       setEditAmount('');
       setEditCurrency('INR');
       setEditSortOrder('');
+      setEditDescription('');
+      setEditBillingType('fixed');
+      setEditAllottedHours('');
+      setEditHourlyRate('');
     } catch (error) {
       // Error is handled by the mutation hook
     }
@@ -88,7 +126,18 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
     setEditAmount('');
     setEditCurrency('INR');
     setEditSortOrder('');
+    setEditDescription('');
+    setEditBillingType('fixed');
+    setEditAllottedHours('');
+    setEditHourlyRate('');
   };
+
+  const isEditDisabled =
+    !editName.trim() ||
+    updateMilestone.isPending ||
+    (editBillingType === 'fixed'
+      ? !editAmount.trim()
+      : !editAllottedHours.trim() || !editHourlyRate.trim());
 
   if (isLoading) {
     return (
@@ -118,6 +167,7 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
         milestones={milestones}
         projectId={projectId}
         onEdit={handleEdit}
+        hourlySummary={milestoneHoursSummary}
       />
 
       <CreateMilestoneDialog
@@ -149,21 +199,63 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
               />
             </div>
 
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground mb-1 block">
+                Billing Type
+              </label>
+              <ToggleGroup
+                type="single"
+                value={editBillingType}
+                onValueChange={(value) => value && setEditBillingType(value as 'fixed' | 'hourly')}
+                className="w-fit rounded-[14px] bg-secondary/50 p-1"
+              >
+                <ToggleGroupItem
+                  value="fixed"
+                  className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                >
+                  Fixed
+                </ToggleGroupItem>
+                <ToggleGroupItem
+                  value="hourly"
+                  className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                >
+                  Hourly
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
-                  Amount *
-                </label>
-                <Input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  placeholder="0.00"
-                  className="rounded-[14px]"
-                />
-              </div>
+              {editBillingType === 'fixed' ? (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    Amount *
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="rounded-[14px]"
+                  />
+                </div>
+              ) : (
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    Allotted Hours *
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={editAllottedHours}
+                    onChange={(e) => setEditAllottedHours(e.target.value)}
+                    placeholder="0"
+                    className="rounded-[14px]"
+                  />
+                </div>
+              )}
 
               <div>
                 <label className="text-sm font-medium text-foreground mb-1 block">
@@ -184,6 +276,41 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
               </div>
             </div>
 
+            {editBillingType === 'hourly' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    Hourly Rate *
+                  </label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editHourlyRate}
+                    onChange={(e) => setEditHourlyRate(e.target.value)}
+                    placeholder="0.00"
+                    className="rounded-[14px]"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1 block">
+                    Estimated Cost
+                  </label>
+                  <div className="rounded-[14px] border border-dashed border-secondary/60 px-3 py-2 text-sm text-muted-foreground">
+                    {editAllottedHours && editHourlyRate
+                      ? new Intl.NumberFormat('en-IN', {
+                          style: 'currency',
+                          currency: editCurrency,
+                          minimumFractionDigits: 2,
+                        }).format(
+                          (parseFloat(editAllottedHours) || 0) * (parseFloat(editHourlyRate) || 0)
+                        )
+                      : '—'}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="text-sm font-medium text-foreground mb-1 block">
                 Sort Order
@@ -200,6 +327,19 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
                 Lower numbers appear first. Leave empty to add at the end.
               </p>
             </div>
+
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1 block">
+                Description
+              </label>
+              <Textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Additional details"
+                className="rounded-[14px]"
+                rows={3}
+              />
+            </div>
           </div>
 
           <DialogFooter>
@@ -213,7 +353,7 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
             </Button>
             <Button
               onClick={handleSaveEdit}
-              disabled={!editName.trim() || !editAmount.trim() || updateMilestone.isPending}
+              disabled={isEditDisabled}
               className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
             >
               {updateMilestone.isPending ? 'Saving...' : 'Save Changes'}

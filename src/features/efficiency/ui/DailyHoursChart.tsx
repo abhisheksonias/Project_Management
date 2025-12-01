@@ -59,13 +59,17 @@ export const DailyHoursChart: React.FC<DailyHoursChartProps> = ({ data, isLoadin
               <ChartTooltip
                 content={({ active, payload }) => {
                   if (active && payload && payload.length) {
+                    const rawValue = payload[0].value;
+                    const numericValue =
+                      typeof rawValue === 'number' ? rawValue : Number(rawValue);
+
                     return (
                       <div className="rounded-lg border bg-background p-2 shadow-sm">
                         <div className="grid gap-2">
                           <div className="flex items-center gap-2">
                             <div className="h-2 w-2 rounded-full" style={{ backgroundColor: BRAND_PRIMARY }} />
                             <span className="text-sm font-medium text-muted-foreground">
-                              Hours: {payload[0].value?.toFixed(1) || 0}
+                              Hours: {Number.isFinite(numericValue) ? numericValue.toFixed(1) : '0.0'}
                             </span>
                           </div>
                         </div>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Milestone } from '../services/milestoneService';
+import { Milestone, MilestoneHoursSummary } from '../services/milestoneService';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Trash2, Edit2 } from 'lucide-react';
@@ -19,12 +19,14 @@ interface MilestoneListProps {
   milestones: Milestone[];
   projectId: string;
   onEdit?: (milestone: Milestone) => void;
+  hourlySummary?: Record<string, MilestoneHoursSummary>;
 }
 
 export const MilestoneList: React.FC<MilestoneListProps> = ({
   milestones,
   projectId,
   onEdit,
+  hourlySummary,
 }) => {
   const deleteMilestone = useDeleteMilestone();
 
@@ -66,10 +68,23 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
                       #{milestone.sort_order}
                     </span>
                   )}
+                  <span className="text-xs px-2 py-0.5 rounded-md bg-secondary/70 text-foreground">
+                    {milestone.is_hourly ? 'Hourly' : 'Fixed'}
+                  </span>
                 </div>
-                <p className="text-lg font-bold text-primary mt-2">
-                  {formatCurrency(milestone.amount, milestone.currency)}
-                </p>
+                {milestone.is_hourly ? (
+                  <HourlySummary
+                    milestone={milestone}
+                    summary={hourlySummary?.[milestone.id]}
+                  />
+                ) : (
+                  <p className="text-lg font-bold text-primary mt-2">
+                    {formatCurrency(milestone.amount, milestone.currency)}
+                  </p>
+                )}
+                {milestone.description && (
+                  <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
+                )}
               </div>
               <div className="flex items-center gap-2 ml-4">
                 {onEdit && (
@@ -96,6 +111,49 @@ export const MilestoneList: React.FC<MilestoneListProps> = ({
           </CardHeader>
         </Card>
       ))}
+    </div>
+  );
+};
+
+const HourlySummary: React.FC<{
+  milestone: Milestone;
+  summary?: MilestoneHoursSummary;
+}> = ({ milestone, summary }) => {
+  const loggedHours = summary?.logged_hours ?? 0;
+  const allotted = milestone.allotted_hours ?? summary?.allotted_hours;
+  const hourlyRate = milestone.hourly_rate ?? summary?.hourly_rate;
+  const remaining = summary?.remaining_hours ?? null;
+  const overage = allotted !== null ? Math.max(loggedHours - allotted, 0) : null;
+  const costSoFar = summary?.cost_so_far ?? null;
+
+  return (
+    <div className="mt-2 space-y-1 text-sm">
+      <p className="font-semibold text-primary flex items-center gap-2">
+        {allotted !== null
+          ? `${loggedHours.toFixed(1)} / ${allotted.toFixed(1)} hrs`
+          : `${loggedHours.toFixed(1)} hrs logged`}
+        {hourlyRate !== null && (
+          <span className="text-xs font-normal text-muted-foreground">
+            • {formatCurrency(hourlyRate, milestone.currency)}/hr
+          </span>
+        )}
+      </p>
+      {remaining !== null && (
+        <p
+          className={`text-xs ${
+            overage && overage > 0 ? 'text-destructive font-semibold' : 'text-muted-foreground'
+          }`}
+        >
+          {overage && overage > 0
+            ? `Exceeded by ${overage.toFixed(1)}h`
+            : `${remaining.toFixed(1)}h remaining`}
+        </p>
+      )}
+      {costSoFar !== null && (
+        <p className="text-xs text-muted-foreground">
+          Cost so far: {formatCurrency(costSoFar, milestone.currency)}
+        </p>
+      )}
     </div>
   );
 };

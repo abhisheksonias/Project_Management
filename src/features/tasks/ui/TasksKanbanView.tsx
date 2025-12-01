@@ -149,12 +149,20 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                           }}
                         >
                           <CardContent className="p-2.5">
+                            <div className="flex justify-between items-center">
                             <h4 className="mb-1.5 line-clamp-2 text-sm font-medium">{task.name}</h4>
+                            {task.milestones && (
+                                <span className="text-xs bg-primary px-1.5 py-0 rounded-md text-white">
+                                    # {task.milestones.sort_order !== null ? task.milestones.sort_order : task.milestones.name}
+                                  </span>
+                                )}
+                            </div>
                             {task.projects?.name && (
                               <p className="mb-1.5 line-clamp-1 text-xs text-muted-foreground">
                                 {task.projects.name}
                               </p>
                             )}
+                            
                             <div className="flex flex-wrap items-center gap-1.5">
                               {task.priority && (
                                 <Badge
@@ -168,6 +176,7 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                                   {format(new Date(task.deadline), 'dd MMM')}
                                 </span>
                               )}
+                              
                             </div>
                           </CardContent>
                         </Card>

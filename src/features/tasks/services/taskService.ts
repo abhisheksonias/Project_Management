@@ -34,6 +34,7 @@ export interface Task {
   priority: string;
   deadline: string | null;
   project_id: string | null;
+  milestone_id?: string | null;
   category?: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -44,6 +45,11 @@ export interface Task {
   assignees?: TaskAssignee[];
   projects?: {
     name: string;
+  };
+  milestones?: {
+    id: string;
+    name: string;
+    sort_order: number | null;
   };
 }
 
@@ -86,6 +92,7 @@ class TaskService {
         priority,
         deadline,
         project_id,
+        milestone_id,
         category,
         created_at,
         updated_at,
@@ -93,6 +100,7 @@ class TaskService {
         type,
         comment,
         projects(name),
+        milestones:milestones!tasks_milestone_id_fkey (id, name, sort_order),
         task_assignees:task_assignees (
           task_id,
           user_id,
@@ -168,11 +176,13 @@ class TaskService {
         priority,
         deadline,
         project_id,
+        milestone_id,
         category,
         created_at,
         updated_at,
         comment,
         projects(name),
+        milestones:milestones!tasks_milestone_id_fkey (id, name, sort_order),
         task_assignees:task_assignees (
           task_id,
           user_id,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { AdminWorklog } from '../services/adminWorklogService';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,6 +50,19 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const deleteWorklogMutation = useDeleteWorklog();
 
+  const sortedWorklogs = useMemo(() => {
+    return [...worklogs].sort((a, b) => {
+      const nameA = (a.user?.name || '').toLowerCase();
+      const nameB = (b.user?.name || '').toLowerCase();
+      if (nameA && nameB) {
+        return nameA.localeCompare(nameB);
+      }
+      if (nameA) return -1;
+      if (nameB) return 1;
+      return 0;
+    });
+  }, [worklogs]);
+
   // Update tooltip position when hovering
   useEffect(() => {
     if (hoveredRowId && !clickedRowId && containerRef.current) {
@@ -89,7 +102,7 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
       <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <h3 className="text-lg font-semibold">Worklogs</h3>
         <span className="text-sm text-muted-foreground">
-          Showing {worklogs.length} {worklogs.length === 1 ? 'log' : 'logs'}
+          Showing {sortedWorklogs.length} {sortedWorklogs.length === 1 ? 'log' : 'logs'}
         </span>
       </div>
       {worklogs.length === 0 ? (
@@ -117,7 +130,7 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
               </tr>
             </thead>
             <tbody>
-              {worklogs.map((log) => {
+              {sortedWorklogs.map((log) => {
                 const hasNote = log.note && log.note.trim().length > 0;
                 
                 return (
@@ -205,7 +218,7 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
           </table>
           {/* Custom tooltip overlay - appears on hover */}
           {hoveredRowId && tooltipPosition && !clickedRowId && (() => {
-            const log = worklogs.find((l) => l.id === hoveredRowId);
+            const log = sortedWorklogs.find((l) => l.id === hoveredRowId);
             if (!log) return null;
             const hasNote = log.note && log.note.trim().length > 0;
             

@@ -25,12 +25,38 @@ export interface UserLeave {
   user_id: string;
   leave_date: string;
   is_paid: boolean;
+  leave_type: 'full' | 'half';
   created_at: string;
 }
 
 export interface UserUnpaidLeaves {
   user_id: string;
   unpaid_leaves_count: number;
+}
+
+export interface UserWorklogEntry {
+  id: string;
+  user_id: string;
+  task_id: string | null;
+  project_id: string | null;
+  created_at: string;
+  hours: string;
+  hours_num: number;
+  note: string | null;
+  task?: {
+    id: string | null;
+    name: string | null;
+    status?: string | null;
+  } | null;
+  project?: {
+    id: string | null;
+    name: string | null;
+  } | null;
+}
+
+export interface UserMonthlyActivity {
+  leaves: UserLeave[];
+  worklogs: UserWorklogEntry[];
 }
 
 export interface HourlyCostResult {
@@ -62,6 +88,7 @@ export interface UpdateUserData {
   salary_currency?: string;
   is_active?: boolean | null;
   rank?: string | null;
+  periodMonth?: Date | null; // Optional: month for which salary period should be created
 }
 
 class AdminUserManagementService {
@@ -235,7 +262,7 @@ class AdminUserManagementService {
 
     const { data, error } = await supabase
       .from('user_leaves')
-      .select('user_id, leave_date, is_paid')
+      .select('user_id, leave_date, is_paid, leave_type')
       .in('user_id', userIds)
       .eq('is_paid', false)
       .gte('leave_date', monthStart.toISOString().split('T')[0])
@@ -247,7 +274,8 @@ class AdminUserManagementService {
     const counts = new Map<string, number>();
     (data || []).forEach((leave) => {
       const current = counts.get(leave.user_id) || 0;
-      counts.set(leave.user_id, current + 1);
+      const weight = leave.leave_type === 'half' ? 0.5 : 1;
+      counts.set(leave.user_id, current + weight);
     });
 
     return Array.from(counts.entries()).map(([user_id, unpaid_leaves_count]) => ({
@@ -327,11 +355,75 @@ class AdminUserManagementService {
 
   /**
    * Update user
+   * If monthly_salary is updated and periodMonth is provided, creates/updates entry in user_salary_periods
    */
   async updateUser(userId: string, data: UpdateUserData): Promise<void> {
+    const { periodMonth, monthly_salary, ...userUpdateData } = data;
+
+    // If salary is being updated and periodMonth is provided, create/update/delete salary period
+    if (monthly_salary !== undefined && periodMonth) {
+      const monthStart = startOfMonth(periodMonth);
+      const periodMonthStr = format(monthStart, 'yyyy-MM-dd');
+
+      // Check if entry already exists for this user and month
+      const { data: existingPeriod, error: checkError } = await supabase
+        .from('user_salary_periods')
+        .select('id')
+        .eq('user_id', userId)
+        .eq('period_month', periodMonthStr)
+        .single();
+
+      if (checkError && checkError.code !== 'PGRST116') {
+        // PGRST116 is "not found" which is fine, other errors should be thrown
+        throw checkError;
+      }
+
+      if (monthly_salary === null || monthly_salary === 0) {
+        // If salary is set to null or 0, delete the period entry if it exists
+        if (existingPeriod) {
+          const { error: deleteError } = await supabase
+            .from('user_salary_periods')
+            .delete()
+            .eq('id', existingPeriod.id);
+
+          if (deleteError) throw deleteError;
+        }
+      } else {
+        // Salary is not null, create or update period entry
+        if (existingPeriod) {
+          // Update existing period
+          const { error: updatePeriodError } = await supabase
+            .from('user_salary_periods')
+            .update({
+              monthly_salary: monthly_salary,
+              note: `Updated on ${format(new Date(), 'yyyy-MM-dd')}`,
+            })
+            .eq('id', existingPeriod.id);
+
+          if (updatePeriodError) throw updatePeriodError;
+        } else {
+          // Create new period entry
+          const { error: insertPeriodError } = await supabase
+            .from('user_salary_periods')
+            .insert({
+              user_id: userId,
+              period_month: periodMonthStr,
+              monthly_salary: monthly_salary,
+              note: `Created on ${format(new Date(), 'yyyy-MM-dd')}`,
+            });
+
+          if (insertPeriodError) throw insertPeriodError;
+        }
+      }
+    }
+
+    // Update users table (always include monthly_salary in update to keep it in sync)
     const { error } = await supabase
       .from('users')
-      .update(data)
+      .update({
+        ...userUpdateData,
+        monthly_salary: monthly_salary !== undefined ? monthly_salary : undefined,
+      })
       .eq('id', userId);
 
     if (error) throw error;
@@ -359,6 +451,80 @@ class AdminUserManagementService {
   }
 
   /**
+   * Get worklogs for a user within a month
+   */
+  async getUserWorklogsForMonth(userId: string, monthDate: Date): Promise<UserWorklogEntry[]> {
+    const start = startOfMonth(monthDate).toISOString();
+    const end = endOfMonth(monthDate).toISOString();
+
+    const { data, error } = await supabase
+      .from('work_logs')
+      .select(
+        `
+        id,
+        user_id,
+        task_id,
+        project_id,
+        created_at,
+        hours,
+        hours_num,
+        note,
+        tasks (
+          id,
+          name,
+          status
+        ),
+        projects (
+          id,
+          name
+        )
+      `
+      )
+      .eq('user_id', userId)
+      .gte('created_at', start)
+      .lte('created_at', end)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((item) => ({
+      id: item.id,
+      user_id: item.user_id,
+      task_id: item.task_id,
+      project_id: item.project_id,
+      created_at: item.created_at,
+      hours: item.hours,
+      hours_num: typeof item.hours_num === 'number' ? item.hours_num : Number(item.hours_num) || 0,
+      note: item.note,
+      task: item.tasks
+        ? {
+            id: item.tasks.id,
+            name: item.tasks.name,
+            status: item.tasks.status,
+          }
+        : null,
+      project: item.projects
+        ? {
+            id: item.projects.id,
+            name: item.projects.name,
+          }
+        : null,
+    })) as UserWorklogEntry[];
+  }
+
+  /**
+   * Get combined monthly activity (leaves + worklogs)
+   */
+  async getUserMonthlyActivity(userId: string, monthDate: Date): Promise<UserMonthlyActivity> {
+    const [leaves, worklogs] = await Promise.all([
+      this.getUserLeaves(userId, monthDate),
+      this.getUserWorklogsForMonth(userId, monthDate),
+    ]);
+
+    return { leaves, worklogs };
+  }
+
+  /**
    * Get user leaves for a month
    */
   async getUserLeaves(userId: string, monthDate: Date): Promise<UserLeave[]> {
@@ -367,7 +533,7 @@ class AdminUserManagementService {
 
     const { data, error } = await supabase
       .from('user_leaves')
-      .select('id, user_id, leave_date, is_paid, created_at')
+      .select('id, user_id, leave_date, is_paid, leave_type, created_at')
       .eq('user_id', userId)
       .gte('leave_date', monthStart.toISOString().split('T')[0])
       .lte('leave_date', monthEnd.toISOString().split('T')[0])
@@ -384,6 +550,7 @@ class AdminUserManagementService {
     user_id: string;
     leave_date: string;
     is_paid: boolean;
+    leave_type?: 'full' | 'half';
   }): Promise<UserLeave> {
     const { data: leave, error } = await supabase
       .from('user_leaves')
@@ -391,6 +558,7 @@ class AdminUserManagementService {
         user_id: data.user_id,
         leave_date: data.leave_date,
         is_paid: data.is_paid,
+        leave_type: data.leave_type || 'full',
       })
       .select()
       .single();

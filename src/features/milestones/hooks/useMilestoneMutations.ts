@@ -11,6 +11,7 @@ export const useCreateMilestone = () => {
       // Invalidate milestones queries
       queryClient.invalidateQueries({ queryKey: ['milestones', 'project', data.project_id] });
       queryClient.invalidateQueries({ queryKey: ['milestones', 'all'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       // Invalidate project details if needed
       queryClient.invalidateQueries({ queryKey: ['projects', data.project_id] });
       toast.success('Milestone created successfully');
@@ -32,6 +33,7 @@ export const useUpdateMilestone = () => {
       queryClient.invalidateQueries({ queryKey: ['milestones', 'project', data.project_id] });
       queryClient.invalidateQueries({ queryKey: ['milestones', 'all'] });
       queryClient.invalidateQueries({ queryKey: ['milestones', data.id] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       // Invalidate tasks that might be linked to this milestone
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Milestone updated successfully');
@@ -50,6 +52,7 @@ export const useDeleteMilestone = () => {
     onSuccess: (_, deletedId) => {
       // Invalidate all milestone queries
       queryClient.invalidateQueries({ queryKey: ['milestones'] });
+      queryClient.invalidateQueries({ queryKey: ['milestones', 'hours-summary'] });
       // Invalidate tasks that might be linked to this milestone
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Milestone deleted successfully');
