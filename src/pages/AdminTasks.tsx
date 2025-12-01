@@ -83,7 +83,6 @@ const AdminTasks: React.FC = () => {
 
   const projectsForSelect = useMemo(
     () => adminProjects
-      .filter((project) => project.status?.toLowerCase() !== 'completed')
       .map((project) => ({ id: project.id, name: project.name })),
     [adminProjects]
   );

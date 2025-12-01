@@ -1,5 +1,10 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { milestoneService, Milestone } from '../services/milestoneService';
+import {
+  milestoneService,
+  Milestone,
+  MilestoneHoursSummary,
+} from '../services/milestoneService';
 
 export const useMilestonesByProject = (projectId: string | null) => {
   return useQuery<Milestone[]>({
@@ -32,5 +37,34 @@ export const useMilestone = (id: string | null) => {
     },
     enabled: !!id,
   });
+};
+
+export const useMilestoneHoursSummary = (
+  milestoneIds: string[],
+  options?: { enabled?: boolean }
+) => {
+  const uniqueIds = useMemo(() => Array.from(new Set(milestoneIds)).sort(), [milestoneIds]);
+  const idsKey = uniqueIds.join(',');
+
+  return useQuery<Record<string, MilestoneHoursSummary>>({
+    queryKey: ['milestones', 'hours-summary', idsKey],
+    queryFn: () => milestoneService.getMilestonesHoursSummary(uniqueIds),
+    enabled: (options?.enabled ?? true) && uniqueIds.length > 0,
+  });
+};
+
+export const useSingleMilestoneHoursSummary = (
+  milestoneId: string | null,
+  options?: { enabled?: boolean }
+) => {
+  const { data, ...rest } = useMilestoneHoursSummary(
+    milestoneId ? [milestoneId] : [],
+    options
+  );
+
+  return {
+    data: milestoneId ? data?.[milestoneId] : undefined,
+    ...rest,
+  };
 };
 

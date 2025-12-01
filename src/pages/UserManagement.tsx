@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Edit, Trash2, MoreVertical, Download, UserCheck, UserX, DollarSign, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, MoreVertical, Download, UserCheck, UserX, DollarSign, Calendar as CalendarIcon, CalendarDays } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -58,6 +59,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const UserManagement: React.FC = () => {
+  const navigate = useNavigate();
   const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
@@ -72,6 +74,7 @@ const UserManagement: React.FC = () => {
   const [userForHourlyCost, setUserForHourlyCost] = useState<{ id: string; name: string } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserWithDetails | null>(null);
+  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [editingSalary, setEditingSalary] = useState<{ userId: string; value: string } | null>(null);
 
   // Queries
@@ -146,6 +149,20 @@ const UserManagement: React.FC = () => {
     );
   };
 
+  const daysInSelectedMonth = useMemo(
+    () => new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate(),
+    [selectedMonth]
+  );
+
+  const calculateNetSalary = (user: UserWithDetails, unpaidLeavesCount: number): number | null => {
+    if (!user.monthly_salary) return null;
+
+    const dailySalary = user.monthly_salary / daysInSelectedMonth;
+    const net = user.monthly_salary - dailySalary * unpaidLeavesCount;
+
+    return Math.max(0, Number(net.toFixed(2)));
+  };
+
   const handleCreateUser = () => {
     setEditingUser(null);
     setIsUserFormOpen(true);
@@ -167,7 +184,14 @@ const UserManagement: React.FC = () => {
   const handleSaveUser = async (data: any) => {
     try {
       if (editingUser) {
-        await updateUserMutation.mutateAsync({ userId: editingUser.id, data });
+        // If salary is being updated, include periodMonth for salary period creation
+        const updateData = {
+          ...data,
+          ...(data.monthly_salary !== undefined && {
+            periodMonth: selectedMonth,
+          }),
+        };
+        await updateUserMutation.mutateAsync({ userId: editingUser.id, data: updateData });
         toast.success('User updated successfully');
       } else {
         await createUserMutation.mutateAsync(data);
@@ -240,7 +264,32 @@ const UserManagement: React.FC = () => {
     setIsLeavesModalOpen(true);
   };
 
-  const handleAddLeave = async (data: { leave_date: string; is_paid: boolean }) => {
+  const handleOpenCalendarPage = (user: UserWithDetails) => {
+    const monthParam = format(selectedMonth, 'yyyy-MM');
+    navigate(`/admin/users/${user.id}/calendar?month=${monthParam}`);
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    setIsBulkDeleteDialogOpen(true);
+  };
+
+  const confirmBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      await Promise.all(
+        Array.from(selectedIds).map((id) => deleteUserMutation.mutateAsync(id))
+      );
+      toast.success(`${selectedIds.size} user(s) deleted successfully`);
+      setSelectedIds(new Set());
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to delete selected users');
+    } finally {
+      setIsBulkDeleteDialogOpen(false);
+    }
+  };
+
+  const handleAddLeave = async (data: { leave_date: string; is_paid: boolean; leave_type: 'full' | 'half' }) => {
     if (!selectedUserForLeaves) return;
     await addLeaveMutation.mutateAsync({
       user_id: selectedUserForLeaves.id,
@@ -283,27 +332,31 @@ const UserManagement: React.FC = () => {
     try {
       await updateUserMutation.mutateAsync({
         userId,
-        data: { monthly_salary: numValue },
+        data: { 
+          monthly_salary: numValue,
+          periodMonth: selectedMonth, // Pass selected month for salary period creation
+        },
       });
       setEditingSalary(null);
-      toast.success('Salary updated successfully');
+      toast.success(`Salary updated successfully for ${format(selectedMonth, 'MMMM yyyy')}`);
     } catch (error: any) {
       toast.error(error?.message || 'Failed to update salary');
     }
   };
 
   const handleExportCSV = () => {
-    const headers = ['Name', 'Email', 'Role', 'Department', 'Monthly Salary', 'Currency', 'Active', 'Total Hours', 'Unpaid Leaves', 'Hourly Cost'];
+    const headers = ['Name', 'Role', 'Department', 'Monthly Salary', 'Net Salary', 'Currency', 'Active', 'Total Hours', 'Unpaid Leaves', 'Hourly Cost'];
     const rows = users.map((user) => {
       const totalHours = hoursMap.get(user.id) || 0;
       const unpaid = unpaidLeavesMap.get(user.id) || 0;
+      const netSalary = calculateNetSalary(user, unpaid);
       const hourlyCost = calculateHourlyCost(user);
       return [
         user.name,
-        user.email,
         user.role || '',
         user.department || '',
         user.monthly_salary?.toString() || '',
+        netSalary?.toString() || '',
         user.salary_currency,
         user.is_active ? 'Yes' : 'No',
         totalHours.toFixed(2),
@@ -487,6 +540,16 @@ const UserManagement: React.FC = () => {
                     <Download className="mr-2 h-4 w-4" />
                     Export CSV
                   </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleBulkDelete}
+                    disabled={selectedIds.size === 0 || deleteUserMutation.isPending}
+                    className="rounded-[14px] disabled:opacity-60"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete Selected
+                  </Button>
                 </div>
               </div>
 
@@ -507,35 +570,72 @@ const UserManagement: React.FC = () => {
                           />
                         </TableHead>
                         <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Department</TableHead>
                         <TableHead>Monthly Salary</TableHead>
+                        <TableHead>Net Salary</TableHead>
                         <TableHead>Active</TableHead>
                         <TableHead>Total Hours</TableHead>
                         <TableHead>Unpaid Leaves</TableHead>
                         <TableHead>Hourly Cost</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead>Calendar</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {users.map((user) => {
                         const totalHours = hoursMap.get(user.id) ?? 0;
                         const unpaid = unpaidLeavesMap.get(user.id) || 0;
+                        const netSalary = calculateNetSalary(user, unpaid);
                         const hourlyCost = calculateHourlyCost(user);
                         const isSelected = selectedIds.has(user.id);
                         const isEditingSalary = editingSalary?.userId === user.id;
 
                         return (
-                          <TableRow key={user.id}>
+                          <TableRow key={user.id} className="group">
                             <TableCell>
                               <Checkbox
                                 checked={isSelected}
                                 onCheckedChange={() => handleToggleSelection(user.id)}
                               />
                             </TableCell>
-                            <TableCell className="font-medium">{user.name}</TableCell>
-                            <TableCell>{user.email}</TableCell>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center justify-between gap-2">
+                                <span>{user.name}</span>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                    >
+                                      <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end" className="rounded-[14px]">
+                                    <DropdownMenuItem
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleEditUser(user);
+                                      }}
+                                      className="rounded-[14px]"
+                                    >
+                                      <Edit className="mr-2 h-4 w-4" />
+                                      Edit
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onSelect={(e) => {
+                                        e.preventDefault();
+                                        handleOpenLeavesModal(user);
+                                      }}
+                                      className="rounded-[14px]"
+                                    >
+                                      <CalendarIcon className="mr-2 h-4 w-4" />
+                                      Leaves
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
+                            </TableCell>
                             <TableCell>{user.role || '—'}</TableCell>
                             <TableCell>{user.department || '—'}</TableCell>
                             <TableCell>
@@ -575,6 +675,11 @@ const UserManagement: React.FC = () => {
                               )}
                             </TableCell>
                             <TableCell>
+                              {netSalary !== null
+                                ? `${netSalary.toLocaleString()} ${user.salary_currency}`
+                                : '—'}
+                            </TableCell>
+                            <TableCell>
                               <span
                                 className={cn(
                                   'px-2 py-1 rounded-full text-xs font-medium',
@@ -606,46 +711,15 @@ const UserManagement: React.FC = () => {
                                 </Button>
                               )}
                             </TableCell>
-                            <TableCell className="text-right">
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="rounded-[14px]">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-[14px]">
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      handleEditUser(user);
-                                    }}
-                                    className="rounded-[14px]"
-                                  >
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    Edit
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      handleOpenLeavesModal(user);
-                                    }}
-                                    className="rounded-[14px]"
-                                  >
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    Leaves
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onSelect={(e) => {
-                                      e.preventDefault();
-                                      handleDeleteUser(user);
-                                    }}
-                                    className="text-red-600 rounded-[14px]"
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="rounded-[14px]"
+                                onClick={() => handleOpenCalendarPage(user)}
+                              >
+                                <CalendarDays className="mr-2 h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         );
@@ -754,6 +828,27 @@ const UserManagement: React.FC = () => {
             <AlertDialogAction
               onClick={confirmDeleteUser}
               className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-[14px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Selected Users</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete {selectedIds.size} selected user(s)? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+              disabled={deleteUserMutation.isPending}
             >
               Delete
             </AlertDialogAction>

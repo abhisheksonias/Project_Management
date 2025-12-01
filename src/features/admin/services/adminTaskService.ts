@@ -50,7 +50,7 @@ class AdminTaskService {
           updated_at,
           comment,
           projects:projects!tasks_project_id_fkey (name),
-          milestones:milestones!tasks_milestone_id_fkey (id, name),
+          milestones:milestones!tasks_milestone_id_fkey (id, name, sort_order),
           task_assignees:task_assignees (
             task_id,
             user_id,
@@ -95,7 +95,7 @@ class AdminTaskService {
           updated_at,
           comment,
           projects:projects!tasks_project_id_fkey (name),
-          milestones:milestones!tasks_milestone_id_fkey (id, name),
+          milestones:milestones!tasks_milestone_id_fkey (id, name, sort_order),
           task_assignees:task_assignees (
             task_id,
             user_id,

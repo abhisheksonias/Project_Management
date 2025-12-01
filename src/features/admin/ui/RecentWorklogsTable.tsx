@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { AdminWorklog } from '../services/adminWorklogService';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -60,6 +60,42 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
   const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
   const [clickedRowId, setClickedRowId] = useState<string | null>(null);
   const deleteWorklogMutation = useDeleteWorklog();
+
+  const groupedWorklogs = useMemo(() => {
+    const sortedLogs = [...worklogs].sort((a, b) => {
+      const dateDiff =
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      const nameA = (a.user?.name || '').toLowerCase();
+      const nameB = (b.user?.name || '').toLowerCase();
+      if (nameA && nameB) return nameA.localeCompare(nameB);
+      if (nameA) return -1;
+      if (nameB) return 1;
+      return 0;
+    });
+
+    const groups = new Map<
+      string,
+      { date: Date; label: string; items: AdminWorklog[] }
+    >();
+
+    sortedLogs.forEach((log) => {
+      const date = startOfDay(new Date(log.created_at));
+      const key = format(date, 'yyyy-MM-dd');
+      if (!groups.has(key)) {
+        groups.set(key, {
+          date,
+          label: format(date, 'EEEE, dd MMM yyyy'),
+          items: [],
+        });
+      }
+      groups.get(key)!.items.push(log);
+    });
+
+    return Array.from(groups.values()).sort(
+      (a, b) => b.date.getTime() - a.date.getTime()
+    );
+  }, [worklogs]);
 
   // Initialize with default date range on mount (only if callback is provided)
   useEffect(() => {
@@ -203,80 +239,95 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
               </tr>
             </thead>
             <tbody>
-              {worklogs.map((log) => (
-                <Popover key={log.id} open={clickedRowId === log.id} onOpenChange={(open) => {
-                  if (!open) setClickedRowId(null);
-                }}>
-                  <PopoverTrigger asChild>
-                    <tr
-                      className={cn(
-                        "border-b border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer",
-                        clickedRowId === log.id && "bg-secondary/50"
-                      )}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setClickedRowId(log.id);
+              {groupedWorklogs.map((group) => (
+                <React.Fragment key={group.label}>
+                  <tr className="bg-secondary/40">
+                    <td colSpan={6} className="p-2 text-xs font-bold text-muted-foreground uppercase items-center tracking-wide">
+                      <div className="flex items-center justify-center">
+                        {group.label}
+                      </div>
+                    </td>
+                  </tr>
+                  {group.items.map((log) => (
+                    <Popover
+                      key={log.id}
+                      open={clickedRowId === log.id}
+                      onOpenChange={(open) => {
+                        if (!open) setClickedRowId(null);
                       }}
                     >
-                  <td className="p-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                        <User className="h-4 w-4 text-primary" />
-                      </div>
-                      <span className="font-medium">{log.user?.name || '—'}</span>
-                    </div>
-                  </td>
-                  <td className="p-3 text-sm">{log.project?.name || '—'}</td>
-                  <td className="p-3 text-sm">{log.task?.name || '—'}</td>
-                  <td className="p-3 text-sm text-muted-foreground">
-                    {format(new Date(log.created_at), 'dd/MM/yyyy')}
-                  </td>
-                  <td className="p-3 text-sm max-w-xs">
-                    {log.note ? (
-                      <span className="line-clamp-2">{log.note}</span>
-                    ) : (
-                      <span className="text-muted-foreground">{log.task?.name || '—'}</span>
-                    )}
-                  </td>
-                  <td className="p-3 text-sm font-semibold text-primary">
-                    {formatHours(log.hours)}
-                  </td>
-                    </tr>
-                  </PopoverTrigger>
-                  <PopoverContent
-                    className="w-48 p-1 rounded-[14px]"
-                    align="start"
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                  >
-                    <div className="space-y-1">
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start rounded-[14px]"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedWorklog(log);
-                          setIsEditDialogOpen(true);
-                          setClickedRowId(null);
-                        }}
+                      <PopoverTrigger asChild>
+                        <tr
+                          className={cn(
+                            'border-b border-secondary/30 hover:bg-secondary/30 transition-colors cursor-pointer',
+                            clickedRowId === log.id && 'bg-secondary/50'
+                          )}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setClickedRowId(log.id);
+                          }}
+                        >
+                          <td className="p-3 text-sm">
+                            <div className="flex items-center gap-2">
+                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                <User className="h-4 w-4 text-primary" />
+                              </div>
+                              <span className="font-medium">{log.user?.name || '—'}</span>
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm">{log.project?.name || '—'}</td>
+                          <td className="p-3 text-sm">{log.task?.name || '—'}</td>
+                          <td className="p-3 text-sm text-muted-foreground">
+                            {format(new Date(log.created_at), 'dd/MM/yyyy')}
+                          </td>
+                          <td className="p-3 text-sm max-w-xs">
+                            {log.note ? (
+                              <span className="line-clamp-2">{log.note}</span>
+                            ) : (
+                              <span className="text-muted-foreground">{log.task?.name || '—'}</span>
+                            )}
+                          </td>
+                          <td className="p-3 text-sm font-semibold text-primary">
+                            {formatHours(log.hours)}
+                          </td>
+                        </tr>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        className="w-48 p-1 rounded-[14px]"
+                        align="start"
+                        onOpenAutoFocus={(e) => e.preventDefault()}
                       >
-                        <Edit2 className="mr-2 h-4 w-4" />
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start rounded-[14px] text-destructive hover:text-destructive hover:bg-destructive/10"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setDeletingWorklogId(log.id);
-                          setClickedRowId(null);
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </Button>
-                    </div>
-                  </PopoverContent>
-                </Popover>
+                        <div className="space-y-1">
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start rounded-[14px]"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedWorklog(log);
+                              setIsEditDialogOpen(true);
+                              setClickedRowId(null);
+                            }}
+                          >
+                            <Edit2 className="mr-2 h-4 w-4" />
+                            Edit
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            className="w-full justify-start rounded-[14px] text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDeletingWorklogId(log.id);
+                              setClickedRowId(null);
+                            }}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete
+                          </Button>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  ))}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

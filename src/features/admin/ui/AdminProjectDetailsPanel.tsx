@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -149,6 +149,59 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
       setIsEditDialogOpen(false);
     }
   }, [project]);
+
+  // Group tasks by status for the Tasks tab (must be before early return)
+  const tasksGroupedByStatus = useMemo(() => {
+    if (!tasks || tasks.length === 0) {
+      const empty: Record<string, Task[]> = {
+        'To Do': [],
+        'In Progress': [],
+        'Review': [],
+        'Blocked': [],
+        'Completed': [],
+        'Other': [],
+      };
+      return empty;
+    }
+    
+    const grouped: Record<string, Task[]> = {};
+    const statusOrder = ['To Do', 'In Progress', 'Review', 'Blocked', 'Completed'];
+    
+    // Initialize groups
+    statusOrder.forEach(status => {
+      grouped[status] = [];
+    });
+    grouped['Other'] = [];
+    
+    // Group tasks by status
+    tasks.forEach(task => {
+      const status = task.status || 'Other';
+      if (grouped[status]) {
+        grouped[status].push(task);
+      } else {
+        grouped['Other'].push(task);
+      }
+    });
+    
+    // Sort tasks within each group by creation date (newest first)
+    Object.keys(grouped).forEach(status => {
+      grouped[status].sort((a, b) => {
+        const dateA = a.created_at
+          ? new Date(a.created_at).getTime()
+          : a.updated_at
+            ? new Date(a.updated_at).getTime()
+            : 0;
+        const dateB = b.created_at
+          ? new Date(b.created_at).getTime()
+          : b.updated_at
+            ? new Date(b.updated_at).getTime()
+            : 0;
+        return dateB - dateA;
+      });
+    });
+    
+    return grouped;
+  }, [tasks]);
 
   if (!project) return null;
 
@@ -306,27 +359,10 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
     );
   };
 
-  const comments = project.comments || [];
+  const comments = project?.comments || [];
   const sortedComments = [...comments].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
-
-  // Filter out completed tasks and sort by latest first
-  const sortedTasks = [...tasks]
-    .filter((task) => task.status?.toLowerCase() !== 'completed')
-    .sort((a, b) => {
-      const dateA = a.created_at
-        ? new Date(a.created_at).getTime()
-        : a.updated_at
-          ? new Date(a.updated_at).getTime()
-          : 0;
-      const dateB = b.created_at
-        ? new Date(b.created_at).getTime()
-        : b.updated_at
-          ? new Date(b.updated_at).getTime()
-          : 0;
-      return dateB - dateA;
-    });
 
   const handleAcknowledgmentChange = (commentId: string, acknowledged: boolean) => {
     if (!profile) return;
@@ -401,9 +437,12 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
           <div className="mt-6">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-3 rounded-[14px]">
+              <TabsList className="grid w-full grid-cols-4 rounded-[14px]">
                 <TabsTrigger value="overview" className="rounded-[14px]">
                   Overview
+                </TabsTrigger>
+                <TabsTrigger value="tasks" className="rounded-[14px]">
+                  Tasks
                 </TabsTrigger>
                 <TabsTrigger value="milestones" className="rounded-[14px]">
                   Milestones
@@ -499,51 +538,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">No vendor linked</p>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Tasks Section */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Tasks ({sortedTasks.length})
-              </h3>
-              {sortedTasks.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No tasks assigned</p>
-              ) : (
-                <div className="space-y-1.5">
-                  {sortedTasks.map((task) => (
-                    <Card key={task.id} className="border">
-                      <CardContent className="p-2.5">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                            <h4 className="font-medium text-sm">{task.name}</h4>
-                            <Badge className={cn('text-xs px-1.5 py-0', getTaskStatusColor(task.status))}>
-                              {task.status}
-                            </Badge>
-                            {task.priority && (
-                              <Badge variant="outline" className="text-xs px-1.5 py-0">
-                                {task.priority}
-                              </Badge>
-                            )}
-                            {task.deadline && (
-                              <span className="text-xs text-muted-foreground">
-                                Due: {format(new Date(task.deadline), 'dd MMM')}
-                              </span>
-                            )}
-                          </div>
-                          {task.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">
-                              {task.description}
-                            </p>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
               )}
             </div>
 
@@ -670,6 +664,90 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 )}
               </div>
             </div>
+              </TabsContent>
+
+              <TabsContent value="tasks" className="mt-4 space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <FileText className="h-5 w-5" />
+                    All Tasks ({tasks.length})
+                  </h3>
+                  
+                  {tasks.length === 0 ? (
+                    <Card>
+                      <CardContent className="p-6">
+                        <p className="text-sm text-muted-foreground text-center">
+                          No tasks assigned to this project
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ) : (
+                    <div className="space-y-6">
+                      {['To Do', 'In Progress', 'Review', 'Blocked', 'Completed', 'Other'].map((status) => {
+                        const statusTasks = tasksGroupedByStatus[status] || [];
+                        if (statusTasks.length === 0) return null;
+                        
+                        return (
+                          <div key={status}>
+                            <div className="flex items-center gap-2 mb-3">
+                              <h4 className="text-base font-semibold">{status}</h4>
+                              <Badge variant="outline" className="text-xs">
+                                {statusTasks.length}
+                              </Badge>
+                            </div>
+                            <div className="space-y-2">
+                              {statusTasks.map((task) => (
+                                <Card key={task.id} className="border">
+                                  <CardContent className="p-3">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap mb-2">
+                                        <h4 className="font-medium text-sm">{task.name}</h4>
+                                        <Badge className={cn('text-xs px-1.5 py-0', getTaskStatusColor(task.status))}>
+                                          {task.status || 'N/A'}
+                                        </Badge>
+                                        {task.priority && (
+                                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                            {task.priority}
+                                          </Badge>
+                                        )}
+                                        {task.category && (
+                                          <Badge variant="outline" className="text-xs px-1.5 py-0">
+                                            {task.category}
+                                          </Badge>
+                                        )}
+                                      </div>
+                                      {task.description && (
+                                        <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
+                                          {task.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                        {task.deadline && (
+                                          <div className="flex items-center gap-1">
+                                            <Calendar className="h-3 w-3" />
+                                            <span>Due: {format(new Date(task.deadline), 'dd MMM yyyy')}</span>
+                                          </div>
+                                        )}
+                                        {task.assignees && task.assignees.length > 0 && (
+                                          <div className="flex items-center gap-1">
+                                            <User className="h-3 w-3" />
+                                            <span>
+                                              {task.assignees.map((a) => a.users?.name || 'Unknown').join(', ')}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               </TabsContent>
 
               <TabsContent value="milestones" className="mt-4">

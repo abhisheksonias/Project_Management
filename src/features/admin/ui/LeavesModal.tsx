@@ -16,6 +16,13 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -33,7 +40,7 @@ interface LeavesModalProps {
   userId: string;
   monthDate: Date;
   leaves: UserLeave[];
-  onAddLeave: (data: { leave_date: string; is_paid: boolean }) => Promise<void>;
+  onAddLeave: (data: { leave_date: string; is_paid: boolean; leave_type: 'full' | 'half' }) => Promise<void>;
   onDeleteLeave: (leaveId: string) => Promise<void>;
   isAdding: boolean;
   isDeleting: boolean;
@@ -53,6 +60,7 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isPaid, setIsPaid] = useState(false);
+  const [leaveType, setLeaveType] = useState<'full' | 'half'>('full');
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
 
   const handleAddLeave = async () => {
@@ -73,9 +81,11 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
       await onAddLeave({
         leave_date: dateStr,
         is_paid: isPaid,
+        leave_type: leaveType,
       });
       setSelectedDate(undefined);
       setIsPaid(false);
+      setLeaveType('full');
     } catch (error: any) {
       if (error?.code === '23505' || error?.message?.includes('unique')) {
         toast.error('Leave already exists for this date');
@@ -156,6 +166,18 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                   Paid Leave
                 </Label>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="leaveType">Leave Type</Label>
+                <Select value={leaveType} onValueChange={(value) => setLeaveType(value as 'full' | 'half')}>
+                  <SelectTrigger id="leaveType" className="rounded-[14px]">
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-[14px]">
+                    <SelectItem value="full">Full Day</SelectItem>
+                    <SelectItem value="half">Half Day</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
             <Button
@@ -174,13 +196,14 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                 <TableRow>
                   <TableHead>Leave Date</TableHead>
                   <TableHead>Type</TableHead>
+                  <TableHead>Paid?</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leaves.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={3} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
                       No leaves recorded for this month
                     </TableCell>
                   </TableRow>
@@ -188,6 +211,7 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                   leaves.map((leave) => (
                     <TableRow key={leave.id}>
                       <TableCell>{format(new Date(leave.leave_date), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="capitalize">{leave.leave_type || 'full'}</TableCell>
                       <TableCell>
                         <span
                           className={cn(
