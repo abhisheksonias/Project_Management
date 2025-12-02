@@ -36,6 +36,14 @@ export interface ProjectProfitResponse {
   pageSize: number;
 }
 
+export interface MonthlyProfitTrend {
+  month: string; // Format: "YYYY-MM"
+  monthLabel: string; // Format: "Jan 2025"
+  revenue: number;
+  cost: number;
+  profit: number;
+}
+
 class ProfitService {
   /**
    * Get paginated projects with profit data
@@ -139,9 +147,16 @@ class ProfitService {
 
   /**
    * Get user profit breakdown for a specific project
+   * @param projectId - Project ID
+   * @param month - Optional month filter (if provided, calculates profit for that month only)
    */
-  async getUserProjectProfit(projectId: string): Promise<UserProjectProfit[]> {
-    // Fetch user profit data from view
+  async getUserProjectProfit(projectId: string, month?: Date): Promise<UserProjectProfit[]> {
+    // If month is provided, calculate month-wise profit
+    if (month) {
+      return this.getUserProjectProfitForMonth(projectId, month);
+    }
+
+    // Fetch user profit data from view (overall)
     const { data: profitData, error: profitError } = await supabase
       .from('user_project_profit')
       .select('user_id, project_id, user_hours, project_revenue, user_revenue_share, user_cost, user_profit')
@@ -182,6 +197,297 @@ class ProfitService {
       user_profit: item.user_profit,
       user_name: usersMap.get(item.user_id) || 'Unknown User',
     }));
+  }
+
+  /**
+   * Get user profit breakdown for a specific project for a given month
+   */
+  private async getUserProjectProfitForMonth(projectId: string, month: Date): Promise<UserProjectProfit[]> {
+    // Calculate start and end of month
+    const startDate = new Date(month.getFullYear(), month.getMonth(), 1);
+    startDate.setUTCHours(0, 0, 0, 0);
+    const endDate = new Date(month.getFullYear(), month.getMonth() + 1, 0, 23, 59, 59, 999);
+    endDate.setUTCHours(23, 59, 59, 999);
+
+    // Fetch worklogs for this project in the given month
+    // Worklogs can have project_id directly OR through tasks
+    // First get all tasks for this project
+    const { data: projectTasks, error: tasksError } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('project_id', projectId);
+
+    if (tasksError) {
+      console.error('Error fetching project tasks:', tasksError);
+      throw tasksError;
+    }
+
+    const taskIds = (projectTasks || []).map((t: any) => t.id);
+
+    // Fetch worklogs - check both direct project_id and through tasks
+    // First, get worklogs with direct project_id
+    const { data: directWorklogs, error: directError } = await supabase
+      .from('work_logs')
+      .select('id, user_id, hours_num, task_id, project_id')
+      .eq('project_id', projectId)
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
+      .not('user_id', 'is', null);
+
+    if (directError) {
+      console.error('Error fetching direct worklogs:', directError);
+      throw directError;
+    }
+
+    // Then, get worklogs through tasks
+    let taskWorklogs: any[] = [];
+    if (taskIds.length > 0) {
+      const { data: taskWl, error: taskError } = await supabase
+        .from('work_logs')
+        .select('id, user_id, hours_num, task_id, project_id')
+        .in('task_id', taskIds)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .not('user_id', 'is', null);
+
+      if (taskError) {
+        console.error('Error fetching task worklogs:', taskError);
+        // Don't throw, just log - we'll use direct worklogs only
+      } else {
+        taskWorklogs = taskWl || [];
+      }
+    }
+
+    // Combine and deduplicate worklogs (in case a worklog matches both)
+    const worklogMap = new Map<string, any>();
+    (directWorklogs || []).forEach((wl: any) => {
+      if (wl.id) worklogMap.set(wl.id, wl);
+    });
+    taskWorklogs.forEach((wl: any) => {
+      if (wl.id && !worklogMap.has(wl.id)) {
+        worklogMap.set(wl.id, wl);
+      }
+    });
+
+    const projectWorklogs = Array.from(worklogMap.values());
+
+    // Calculate user hours for the month
+    const userHoursMap = new Map<string, number>();
+    projectWorklogs.forEach((wl: any) => {
+      if (!wl.user_id) return; // Skip if no user_id
+      const hours = typeof wl.hours_num === 'number' ? wl.hours_num : Number(wl.hours_num) || 0;
+      if (hours > 0) {
+        const currentHours = userHoursMap.get(wl.user_id) || 0;
+        userHoursMap.set(wl.user_id, currentHours + hours);
+      }
+    });
+
+    if (userHoursMap.size === 0) {
+      return [];
+    }
+
+    // Calculate ACTUAL revenue for this month based on milestones worked in this month
+    // Get all milestones for this project
+    const { data: milestones, error: milestonesError } = await supabase
+      .from('milestones')
+      .select('id, project_id, is_hourly, amount, hourly_rate')
+      .eq('project_id', projectId);
+
+    if (milestonesError) {
+      console.error('Error fetching milestones:', milestonesError);
+      throw milestonesError;
+    }
+
+    let monthRevenue = 0;
+    const milestoneIds = (milestones || []).map((m: any) => m.id);
+
+    if (milestoneIds.length > 0) {
+      // Get worklogs for milestones in this month
+      const { data: milestoneWorklogs, error: mwlError } = await supabase
+        .from('work_logs')
+        .select('task_id, hours_num, tasks!inner(milestone_id)')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endDate.toISOString())
+        .in('tasks.milestone_id', milestoneIds);
+
+      if (mwlError) {
+        console.error('Error fetching milestone worklogs:', mwlError);
+      } else if (milestoneWorklogs) {
+        // Calculate hours per milestone in this month
+        const milestoneHoursMap = new Map<string, number>();
+        milestoneWorklogs.forEach((wl: any) => {
+          const task = Array.isArray(wl.tasks) ? wl.tasks[0] : wl.tasks;
+          const milestoneId = task?.milestone_id;
+          if (milestoneId) {
+            const hours = typeof wl.hours_num === 'number' ? wl.hours_num : Number(wl.hours_num) || 0;
+            const currentHours = milestoneHoursMap.get(milestoneId) || 0;
+            milestoneHoursMap.set(milestoneId, currentHours + hours);
+          }
+        });
+
+        // Calculate revenue for each milestone based on hours worked in this month
+        // First, get total hours logged for each milestone (across all time) to calculate proportion for fixed milestones
+        const { data: allMilestoneWorklogs, error: allMwlError } = await supabase
+          .from('work_logs')
+          .select('task_id, hours_num, tasks!inner(milestone_id)')
+          .in('tasks.milestone_id', milestoneIds);
+
+        const allMilestoneHoursMap = new Map<string, number>();
+        if (!allMwlError && allMilestoneWorklogs) {
+          allMilestoneWorklogs.forEach((wl: any) => {
+            const task = Array.isArray(wl.tasks) ? wl.tasks[0] : wl.tasks;
+            const milestoneId = task?.milestone_id;
+            if (milestoneId) {
+              const hours = typeof wl.hours_num === 'number' ? wl.hours_num : Number(wl.hours_num) || 0;
+              const currentHours = allMilestoneHoursMap.get(milestoneId) || 0;
+              allMilestoneHoursMap.set(milestoneId, currentHours + hours);
+            }
+          });
+        }
+
+        (milestones || []).forEach((m: any) => {
+          const monthHours = milestoneHoursMap.get(m.id) || 0;
+          if (m.is_hourly) {
+            // For hourly milestones, revenue = hours worked in month * hourly_rate
+            monthRevenue += monthHours * (m.hourly_rate || 0);
+          } else {
+            // For fixed amount milestones, calculate proportional revenue based on hours
+            const totalMilestoneHours = allMilestoneHoursMap.get(m.id) || 0;
+            if (monthHours > 0 && totalMilestoneHours > 0) {
+              // Proportional: (month hours / total milestone hours) * milestone amount
+              const proportionalAmount = (monthHours / totalMilestoneHours) * (m.amount || 0);
+              monthRevenue += proportionalAmount;
+            } else if (monthHours > 0 && totalMilestoneHours === 0) {
+              // If this is the first work on milestone, include full amount
+              monthRevenue += m.amount || 0;
+            }
+          }
+        });
+      }
+    }
+
+    const monthTotalHours = Array.from(userHoursMap.values()).reduce((sum, hours) => sum + hours, 0);
+
+    // Get user costs and names
+    const userIds = Array.from(userHoursMap.keys());
+    
+    if (userIds.length === 0) {
+      return [];
+    }
+
+    // Fetch user names
+    const { data: usersData, error: usersError } = await supabase
+      .from('users')
+      .select('id, name')
+      .in('id', userIds);
+
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      throw usersError;
+    }
+
+    const usersMap = new Map<string, { name: string; hourlyCost: number }>();
+    (usersData || []).forEach((user: any) => {
+      if (user && user.id) {
+        usersMap.set(user.id, {
+          name: user.name || 'Unknown User',
+          hourlyCost: 0, // Will be calculated below
+        });
+      }
+    });
+
+    // Fetch user costs for this month using the hourly_cost_for_user_month function
+    const monthStart = new Date(month.getFullYear(), month.getMonth(), 1);
+    const monthStartStr = monthStart.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+
+    // Fetch hourly costs for all users in parallel
+    const costPromises = userIds.map(async (userId) => {
+      if (!usersMap.has(userId)) {
+        usersMap.set(userId, {
+          name: 'Unknown User',
+          hourlyCost: 0,
+        });
+      }
+
+      // Get hourly cost for this user for this month
+      const { data: costData, error: costError } = await supabase
+        .rpc('hourly_cost_for_user_month', {
+          p_user_id: userId,
+          p_month_date: monthStartStr,
+        });
+
+      if (!costError && costData && costData.length > 0) {
+        const hourlyCost = costData[0].hourly_cost;
+        const user = usersMap.get(userId);
+        if (user) {
+          user.hourlyCost = typeof hourlyCost === 'number' ? hourlyCost : Number(hourlyCost) || 0;
+        }
+      }
+      return { userId, hourlyCost: usersMap.get(userId)?.hourlyCost || 0 };
+    });
+
+    await Promise.all(costPromises);
+
+    // Calculate user revenue share and profit for the month
+    const result: UserProjectProfit[] = [];
+    userHoursMap.forEach((hours, userId) => {
+      const user = usersMap.get(userId) || { name: 'Unknown User', hourlyCost: 0 };
+      const userRevenueShare = monthTotalHours > 0 
+        ? (monthRevenue * hours) / monthTotalHours 
+        : 0;
+      const userCost = hours * user.hourlyCost;
+      const userProfit = userRevenueShare - userCost;
+
+      result.push({
+        user_id: userId,
+        project_id: projectId,
+        user_hours: hours,
+        project_revenue: monthRevenue,
+        user_revenue_share: userRevenueShare,
+        user_cost: userCost,
+        user_profit: userProfit,
+        user_name: user.name,
+      });
+    });
+
+    // Sort by hours descending
+    return result.sort((a, b) => b.user_hours - a.user_hours);
+  }
+
+  /**
+   * Get monthly profit trend for a project (last 6 months)
+   */
+  async getProjectMonthlyTrend(projectId: string, months: number = 6): Promise<MonthlyProfitTrend[]> {
+    const result: MonthlyProfitTrend[] = [];
+    const now = new Date();
+
+    // Get data for last N months
+    for (let i = months - 1; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      
+      // Get user profit data for this month (reuse existing method)
+      const monthData = await this.getUserProjectProfitForMonth(projectId, monthDate);
+
+      // Calculate totals for this month
+      const revenue = monthData.length > 0 
+        ? monthData[0].project_revenue || 0 
+        : 0;
+      const cost = monthData.reduce((sum, user) => sum + (user.user_cost || 0), 0);
+      const profit = revenue - cost;
+
+      const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+
+      result.push({
+        month: monthKey,
+        monthLabel,
+        revenue,
+        cost,
+        profit,
+      });
+    }
+
+    return result;
   }
 
   /**

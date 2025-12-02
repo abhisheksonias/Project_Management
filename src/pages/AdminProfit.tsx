@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { ProjectsProfitTable } from '@/features/profit/ui/ProjectsProfitTable';
 import { ProjectDetailsDrawer } from '@/features/profit/ui/ProjectDetailsDrawer';
-import { useProjectsProfit, useUserProjectProfit, useProjectProfit } from '@/features/profit/hooks/useProfit';
+import { useProjectsProfit, useProjectProfit } from '@/features/profit/hooks/useProfit';
 import { ProjectProfit } from '@/features/profit/services/profitService';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,10 +41,7 @@ const AdminProfit: React.FC = () => {
     status: statusFilter,
   });
 
-  // Fetch user profit data when a project is selected
-  const { data: userProfitData = [], isLoading: isLoadingUsers } = useUserProjectProfit(
-    selectedProject?.project_id || null
-  );
+  // Note: User profit data is now fetched inside ProjectDetailsDrawer with month toggle
 
   // Fetch full project details
   const { data: projectDetails } = useProjectProfit(selectedProject?.project_id || null);
@@ -145,21 +142,7 @@ const AdminProfit: React.FC = () => {
                   setSelectedMonth(new Date(year, month - 1));
                 }}
               >
-                <SelectTrigger className="w-[180px] rounded-[14px]">
-                  <SelectValue placeholder="Select month" />
-                </SelectTrigger>
-                <SelectContent>
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const date = new Date();
-                    date.setMonth(date.getMonth() - i);
-                    const monthStart = startOfMonth(date);
-                    return (
-                      <SelectItem key={format(monthStart, 'yyyy-MM')} value={format(monthStart, 'yyyy-MM')}>
-                        {format(monthStart, 'MMMM yyyy')}
-                      </SelectItem>
-                    );
-                  })}
-                </SelectContent>
+                
               </Select>
 
               {/* Project Status Filters */}
@@ -266,10 +249,9 @@ const AdminProfit: React.FC = () => {
         {/* Project Details Drawer */}
         <ProjectDetailsDrawer
           project={projectDetails || selectedProject}
-          users={userProfitData}
-          isLoading={isLoadingUsers}
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
+          selectedMonth={selectedMonth}
         />
       </div>
     </AdminLayout>

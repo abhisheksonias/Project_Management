@@ -4,6 +4,7 @@ import {
   Vendor,
   CreateVendorInput,
   UpdateVendorInput,
+  VendorBusinessStats,
 } from '../services/vendorService';
 import { toast } from 'sonner';
 
@@ -11,6 +12,14 @@ export const useVendors = () => {
   return useQuery<Vendor[]>({
     queryKey: ['vendors'],
     queryFn: () => vendorService.getVendors(),
+    staleTime: 60000,
+  });
+};
+
+export const useVendorBusinessStats = () => {
+  return useQuery<VendorBusinessStats[]>({
+    queryKey: ['vendors', 'business-stats'],
+    queryFn: () => vendorService.getVendorBusinessStats(),
     staleTime: 60000,
   });
 };
@@ -38,6 +47,7 @@ export const useUpdateVendor = () => {
       vendorService.updateVendor(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
+      queryClient.invalidateQueries({ queryKey: ['vendors', 'business-stats'] });
       toast.success('Vendor updated successfully');
     },
     onError: (error: Error) => {
