@@ -455,15 +455,22 @@ class ProfitService {
   }
 
   /**
-   * Get monthly profit trend for a project (last 6 months)
+   * Get monthly profit trend for a project (last N months, excluding current month)
    */
   async getProjectMonthlyTrend(projectId: string, months: number = 6): Promise<MonthlyProfitTrend[]> {
     const result: MonthlyProfitTrend[] = [];
     const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    // Get data for last N months
-    for (let i = months - 1; i >= 0; i--) {
+    // Get data for last N months, excluding current month
+    // Start from 1 month ago (i=1) to exclude current month
+    for (let i = months; i >= 1; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      
+      // Skip if this is the current month (shouldn't happen with i >= 1, but safety check)
+      if (monthDate.getTime() >= currentMonth.getTime()) {
+        continue;
+      }
       
       // Get user profit data for this month (reuse existing method)
       const monthData = await this.getUserProjectProfitForMonth(projectId, monthDate);
@@ -484,6 +491,44 @@ class ProfitService {
         revenue,
         cost,
         profit,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get project cost per month (excluding current month)
+   */
+  async getProjectCostPerMonth(projectId: string, months: number = 6): Promise<MonthlyProfitTrend[]> {
+    const result: MonthlyProfitTrend[] = [];
+    const now = new Date();
+    const currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Get data for last N months, excluding current month
+    for (let i = months; i >= 1; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      
+      // Skip if this is the current month
+      if (monthDate.getTime() >= currentMonth.getTime()) {
+        continue;
+      }
+      
+      // Get user profit data for this month to calculate cost
+      const monthData = await this.getUserProjectProfitForMonth(projectId, monthDate);
+
+      // Calculate cost for this month (sum of all user costs)
+      const cost = monthData.reduce((sum, user) => sum + (user.user_cost || 0), 0);
+
+      const monthLabel = monthDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      const monthKey = `${monthDate.getFullYear()}-${String(monthDate.getMonth() + 1).padStart(2, '0')}`;
+
+      result.push({
+        month: monthKey,
+        monthLabel,
+        revenue: 0, // Not needed for cost chart
+        cost,
+        profit: 0, // Not needed for cost chart
       });
     }
 

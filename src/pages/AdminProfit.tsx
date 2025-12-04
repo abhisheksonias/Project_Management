@@ -251,7 +251,6 @@ const AdminProfit: React.FC = () => {
           project={projectDetails || selectedProject}
           isOpen={isDrawerOpen}
           onClose={handleCloseDrawer}
-          selectedMonth={selectedMonth}
         />
       </div>
     </AdminLayout>

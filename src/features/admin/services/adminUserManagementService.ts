@@ -355,14 +355,17 @@ class AdminUserManagementService {
 
   /**
    * Update user
-   * If monthly_salary is updated and periodMonth is provided, creates/updates entry in user_salary_periods
+   * On salary change: automatically inserts/updates entry in user_salary_periods
+   * Uses periodMonth if provided, otherwise uses current month
    */
   async updateUser(userId: string, data: UpdateUserData): Promise<void> {
     const { periodMonth, monthly_salary, ...userUpdateData } = data;
 
-    // If salary is being updated and periodMonth is provided, create/update/delete salary period
-    if (monthly_salary !== undefined && periodMonth) {
-      const monthStart = startOfMonth(periodMonth);
+    // If salary is being updated, create/update/delete salary period
+    if (monthly_salary !== undefined) {
+      // Use provided periodMonth or default to current month
+      const effectiveMonth = periodMonth || new Date();
+      const monthStart = startOfMonth(effectiveMonth);
       const periodMonthStr = format(monthStart, 'yyyy-MM-dd');
 
       // Check if entry already exists for this user and month
@@ -371,7 +374,7 @@ class AdminUserManagementService {
         .select('id')
         .eq('user_id', userId)
         .eq('period_month', periodMonthStr)
-        .single();
+        .maybeSingle();
 
       if (checkError && checkError.code !== 'PGRST116') {
         // PGRST116 is "not found" which is fine, other errors should be thrown
@@ -390,13 +393,17 @@ class AdminUserManagementService {
         }
       } else {
         // Salary is not null, create or update period entry
+        const note = existingPeriod
+          ? `Salary updated on ${format(new Date(), 'yyyy-MM-dd')}`
+          : `Salary set to ${monthly_salary.toLocaleString()} effective from ${format(monthStart, 'MMMM yyyy')}`;
+
         if (existingPeriod) {
           // Update existing period
           const { error: updatePeriodError } = await supabase
             .from('user_salary_periods')
             .update({
               monthly_salary: monthly_salary,
-              note: `Updated on ${format(new Date(), 'yyyy-MM-dd')}`,
+              note: note,
             })
             .eq('id', existingPeriod.id);
 
@@ -409,7 +416,7 @@ class AdminUserManagementService {
               user_id: userId,
               period_month: periodMonthStr,
               monthly_salary: monthly_salary,
-              note: `Created on ${format(new Date(), 'yyyy-MM-dd')}`,
+              note: note,
             });
 
           if (insertPeriodError) throw insertPeriodError;
@@ -417,7 +424,7 @@ class AdminUserManagementService {
       }
     }
 
-    // Update users table (always include monthly_salary in update to keep it in sync)
+    // Optionally update users.monthly_salary (for convenience/current value)
     const { error } = await supabase
       .from('users')
       .update({
