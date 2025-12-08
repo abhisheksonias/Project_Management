@@ -30,7 +30,15 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { UserLeave } from '../services/adminUserManagementService';
+// UserLeave type definition (moved from deleted adminUserManagementService)
+export interface UserLeave {
+  id: string;
+  user_id: string;
+  leave_date: string;
+  is_paid: boolean;
+  leave_type: 'full' | 'half';
+  created_at: string;
+}
 import { toast } from 'sonner';
 
 interface LeavesModalProps {

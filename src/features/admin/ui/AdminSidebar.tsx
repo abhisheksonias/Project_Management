@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
+import {
   LayoutDashboard, 
   Briefcase, 
   CheckSquare, 
@@ -39,7 +39,7 @@ const navItems: NavItem[] = [
   { id: 'users', label: 'User Management', icon: UserCog, path: '/admin/users' },
   { id: 'team-efficiency', label: 'Team Efficiency', icon: Users, path: '/admin/team-efficiency' },
   { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
-  { id: 'profit', label: 'Profit', icon: DollarSign, path: '/admin/profit' },
+  { id: 'profit', label: 'Profit & Finance', icon: DollarSign, path: '/admin/profit' },
   { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
 ];
 

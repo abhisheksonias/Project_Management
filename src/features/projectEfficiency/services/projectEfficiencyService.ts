@@ -137,34 +137,60 @@ class ProjectEfficiencyService {
 
   /**
    * Calculate project efficiency stats (all-time data)
+   * Uses user_project_month_hours view for better performance
    */
   async getProjectEfficiencyStats(
     projectId: string
   ): Promise<ProjectEfficiencyStats> {
-    // Get all worklogs for this project (all-time)
-    let worklogsQuery = supabase
-      .from('work_logs')
-      .select('hours, created_at, user_id')
+    // Try to use user_project_month_hours view for total hours calculation
+    const { data: viewData, error: viewError } = await supabase
+      .from('user_project_month_hours')
+      .select('user_id, month_start, total_hours')
       .eq('project_id', projectId);
 
-    const { data: worklogs, error: worklogsError } = await worklogsQuery;
+    let totalHours = 0;
+    let worklogs: any[] = [];
+    let activeDaysSet = new Set<string>();
 
-    if (worklogsError) throw worklogsError;
+    if (!viewError && viewData && viewData.length > 0) {
+      // Calculate total hours from view
+      totalHours = viewData.reduce((sum, row) => sum + parseFloat(row.total_hours || 0), 0);
+      
+      // Still need work_logs for active days calculation
+      const { data: worklogsData } = await supabase
+        .from('work_logs')
+        .select('created_at, user_id')
+        .eq('project_id', projectId);
+      
+      worklogs = worklogsData || [];
+      activeDaysSet = new Set(worklogs.map(log => format(new Date(log.created_at), 'yyyy-MM-dd')));
+    } else {
+      // Fallback to work_logs
+      let worklogsQuery = supabase
+        .from('work_logs')
+        .select('hours, created_at, user_id')
+        .eq('project_id', projectId);
+
+      const { data: worklogsData, error: worklogsError } = await worklogsQuery;
+
+      if (worklogsError) throw worklogsError;
+      
+      worklogs = worklogsData || [];
+      totalHours = worklogs.reduce((sum, log) => sum + parseHours(log.hours), 0);
+      activeDaysSet = new Set(worklogs.map(log => format(new Date(log.created_at), 'yyyy-MM-dd')));
+    }
 
     // For all-time stats, we don't compare with previous period
     // Set previous period data to empty for comparison
     const prevWorklogs: any[] = [];
 
-    // Calculate total hours
-    const totalHours = (worklogs || []).reduce((sum, log) => sum + parseHours(log.hours), 0);
-    const prevTotalHours = (prevWorklogs || []).reduce((sum, log) => sum + parseHours(log.hours), 0);
-    const totalHoursChange = prevTotalHours > 0 
-      ? ((totalHours - prevTotalHours) / prevTotalHours) * 100 
-      : 0;
+    // For all-time stats, we don't compare with previous period
+    const prevTotalHours = 0;
+    const totalHoursChange = 0;
 
     // Calculate active days (unique days with worklogs)
-    const activeDays = new Set((worklogs || []).map(log => format(new Date(log.created_at), 'yyyy-MM-dd'))).size;
-    const prevActiveDays = new Set((prevWorklogs || []).map(log => format(new Date(log.created_at), 'yyyy-MM-dd'))).size;
+    const activeDays = activeDaysSet.size;
+    const prevActiveDays = 0;
     const activeDaysChange = prevActiveDays > 0 
       ? ((activeDays - prevActiveDays) / prevActiveDays) * 100 
       : 0;
@@ -186,8 +212,8 @@ class ProjectEfficiencyService {
       : 0;
 
     // Calculate unique team members (users who logged work)
-    const teamMembers = new Set((worklogs || []).map(log => log.user_id)).size;
-    const prevTeamMembers = new Set((prevWorklogs || []).map(log => log.user_id)).size;
+    const teamMembers = new Set(worklogs.map(log => log.user_id)).size;
+    const prevTeamMembers = 0;
     const teamMembersChange = prevTeamMembers > 0 
       ? ((teamMembers - prevTeamMembers) / prevTeamMembers) * 100 
       : 0;
@@ -239,11 +265,44 @@ class ProjectEfficiencyService {
   }
 
   /**
-   * Get hours by user for selected project (all-time)
+   * Get hours by user for selected project using user_project_month_hours view
    */
   async getHoursByUser(
     projectId: string
   ): Promise<HoursByUserData[]> {
+    // Try to use user_project_month_hours view first
+    const { data: viewData, error: viewError } = await supabase
+      .from('user_project_month_hours')
+      .select('user_id, total_hours, users!inner(id, name)')
+      .eq('project_id', projectId);
+
+    // If view works, use it; otherwise fallback to work_logs
+    if (!viewError && viewData && viewData.length > 0) {
+      // Group by user and sum hours
+      const userHoursMap = new Map<string, { name: string; hours: number }>();
+
+      viewData.forEach(row => {
+        const userId = row.user_id;
+        const userName = (row.users as any)?.name || 'Unknown User';
+        const currentHours = userHoursMap.get(userId)?.hours || 0;
+        
+        userHoursMap.set(userId, {
+          name: userName,
+          hours: currentHours + parseFloat(row.total_hours || 0),
+        });
+      });
+
+      // Convert to array and sort by hours descending
+      return Array.from(userHoursMap.entries())
+        .map(([userId, data]) => ({
+          userId,
+          userName: data.name,
+          hours: data.hours,
+        }))
+        .sort((a, b) => b.hours - a.hours);
+    }
+
+    // Fallback to work_logs
     const { data: worklogs, error } = await supabase
       .from('work_logs')
       .select('hours, user_id, users!inner(id, name)')

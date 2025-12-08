@@ -1,61 +1,87 @@
 import { useQuery } from '@tanstack/react-query';
-import { profitService, ProjectProfitParams, ProjectProfit, UserProjectProfit, MonthlyProfitTrend } from '../services/profitService';
+import {
+  profitService,
+  ProjectProfitOverall,
+  ProjectRevenueMonthly,
+  ProjectMonthCosts,
+  ProjectMonthlyProfit,
+  ProjectUserCost,
+  CompanyProfitMonthly,
+} from '../services/profitService';
 
-/**
- * Get paginated projects with profit data
- */
-export const useProjectsProfit = (params: ProjectProfitParams = {}) => {
-  return useQuery({
-    queryKey: ['profit', 'projects', params],
-    queryFn: () => profitService.getProjectsProfit(params),
-    staleTime: 30000, // 30 seconds
+export const useProjectProfitOverall = () => {
+  return useQuery<ProjectProfitOverall[]>({
+    queryKey: ['profit', 'overall'],
+    queryFn: () => profitService.getProjectProfitOverall(),
+    staleTime: 60000, // 1 minute
   });
 };
 
-/**
- * Get user profit breakdown for a specific project
- * @param projectId - Project ID
- * @param month - Optional month filter (if provided, calculates profit for that month only)
- */
-export const useUserProjectProfit = (projectId: string | null, month?: Date | null) => {
-  return useQuery<UserProjectProfit[]>({
-    queryKey: ['profit', 'user-project', projectId, month ? `${month.getFullYear()}-${month.getMonth()}` : 'overall'],
+export const useProjectRevenueMonthly = (projectId: string | undefined) => {
+  return useQuery<ProjectRevenueMonthly[]>({
+    queryKey: ['profit', 'revenue-monthly', projectId],
     queryFn: () => {
       if (!projectId) throw new Error('Project ID is required');
-      return profitService.getUserProjectProfit(projectId, month || undefined);
+      return profitService.getProjectRevenueMonthly(projectId);
     },
     enabled: !!projectId,
-    staleTime: 30000,
+    staleTime: 60000,
   });
 };
 
-/**
- * Get single project profit details
- */
-export const useProjectProfit = (projectId: string | null) => {
-  return useQuery<ProjectProfit | null>({
-    queryKey: ['profit', 'project', projectId],
+export const useProjectMonthCosts = (projectId: string | undefined) => {
+  return useQuery<ProjectMonthCosts[]>({
+    queryKey: ['profit', 'month-costs', projectId],
     queryFn: () => {
       if (!projectId) throw new Error('Project ID is required');
-      return profitService.getProjectProfit(projectId);
+      return profitService.getProjectMonthCosts(projectId);
     },
     enabled: !!projectId,
-    staleTime: 30000,
+    staleTime: 60000,
   });
 };
 
-/**
- * Get monthly profit trend for a project
- */
-export const useProjectMonthlyTrend = (projectId: string | null, months: number = 6) => {
-  return useQuery<MonthlyProfitTrend[]>({
-    queryKey: ['profit', 'monthly-trend', projectId, months],
+export const useProjectMonthlyProfit = (projectId: string | undefined) => {
+  return useQuery<ProjectMonthlyProfit[]>({
+    queryKey: ['profit', 'monthly-profit', projectId],
     queryFn: () => {
       if (!projectId) throw new Error('Project ID is required');
-      return profitService.getProjectMonthlyTrend(projectId, months);
+      return profitService.getProjectMonthlyProfit(projectId);
     },
     enabled: !!projectId,
-    staleTime: 30000,
+    staleTime: 60000,
+  });
+};
+
+export const useProjectProfitById = (projectId: string | undefined) => {
+  return useQuery<ProjectProfitOverall | null>({
+    queryKey: ['profit', 'by-id', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error('Project ID is required');
+      return profitService.getProjectProfitById(projectId);
+    },
+    enabled: !!projectId,
+    staleTime: 60000,
+  });
+};
+
+export const useProjectUserCosts = (projectId: string | undefined) => {
+  return useQuery<ProjectUserCost[]>({
+    queryKey: ['profit', 'user-costs', projectId],
+    queryFn: () => {
+      if (!projectId) throw new Error('Project ID is required');
+      return profitService.getProjectUserCosts(projectId);
+    },
+    enabled: !!projectId,
+    staleTime: 60000,
+  });
+};
+
+export const useCompanyProfitMonthly = () => {
+  return useQuery<CompanyProfitMonthly[]>({
+    queryKey: ['profit', 'company-monthly'],
+    queryFn: () => profitService.getCompanyProfitMonthly(),
+    staleTime: 60000,
   });
 };
 

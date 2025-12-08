@@ -145,25 +145,64 @@ class EfficiencyService {
     
     const adminIds = adminUsers?.map(u => u.id) || [];
 
-    // Get worklogs for current period
-    let worklogsQuery = supabase
-      .from('work_logs')
-      .select('hours, created_at, user_id, project_id')
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString());
+    // Use user_month_hours view for better performance when possible
+    // For month-based ranges, use the view; otherwise use work_logs
+    const isMonthBased = dateRange === 'this-month' || dateRange === 'last-month';
+    
+    let totalHours = 0;
+    let worklogs: any[] = [];
+    let activeDaysSet = new Set<string>();
 
-    if (userId) {
-      worklogsQuery = worklogsQuery.eq('user_id', userId);
+    if (isMonthBased && !userId) {
+      // Use view for team stats in month-based ranges
+      const monthStart = format(startOfMonth(start), 'yyyy-MM-dd');
+      const { data: monthHours, error: viewError } = await supabase
+        .from('user_month_hours')
+        .select('user_id, total_hours')
+        .eq('month_start', monthStart);
+
+      if (!viewError && monthHours) {
+        // Filter out admin users
+        const filteredHours = monthHours.filter(row => !adminIds.includes(row.user_id));
+        totalHours = filteredHours.reduce((sum, row) => sum + parseFloat(row.total_hours || 0), 0);
+        
+        // Still need worklogs for active days calculation
+        const { data: worklogsData } = await supabase
+          .from('work_logs')
+          .select('created_at, user_id')
+          .gte('created_at', start.toISOString())
+          .lte('created_at', end.toISOString());
+        
+        worklogs = (worklogsData || []).filter(log => !adminIds.includes(log.user_id));
+        activeDaysSet = new Set(worklogs.map(log => format(new Date(log.created_at), 'yyyy-MM-dd')));
+      } else {
+        // Fallback to work_logs
+        throw viewError || new Error('Failed to fetch from view');
+      }
+    } else {
+      // Use work_logs for custom ranges or user-specific queries
+      let worklogsQuery = supabase
+        .from('work_logs')
+        .select('hours, created_at, user_id, project_id')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+
+      if (userId) {
+        worklogsQuery = worklogsQuery.eq('user_id', userId);
+      }
+
+      const { data: allWorklogs, error: worklogsError } = await worklogsQuery;
+
+      if (worklogsError) throw worklogsError;
+
+      // Filter out admin users if not filtering by specific user
+      worklogs = userId 
+        ? (allWorklogs || [])
+        : (allWorklogs || []).filter(log => !adminIds.includes(log.user_id));
+      
+      totalHours = worklogs.reduce((sum, log) => sum + parseHours(log.hours), 0);
+      activeDaysSet = new Set(worklogs.map(log => format(new Date(log.created_at), 'yyyy-MM-dd')));
     }
-
-    const { data: allWorklogs, error: worklogsError } = await worklogsQuery;
-
-    if (worklogsError) throw worklogsError;
-
-    // Filter out admin users if not filtering by specific user
-    const worklogs = userId 
-      ? (allWorklogs || [])
-      : (allWorklogs || []).filter(log => !adminIds.includes(log.user_id));
 
     // Get worklogs for previous period (for comparison)
     let prevWorklogsQuery = supabase
@@ -183,15 +222,14 @@ class EfficiencyService {
       ? (allPrevWorklogs || [])
       : (allPrevWorklogs || []).filter(log => !adminIds.includes(log.user_id));
 
-    // Calculate total hours
-    const totalHours = (worklogs || []).reduce((sum, log) => sum + parseHours(log.hours), 0);
+    // Calculate previous period stats
     const prevTotalHours = (prevWorklogs || []).reduce((sum, log) => sum + parseHours(log.hours), 0);
     const totalHoursChange = prevTotalHours > 0 
       ? ((totalHours - prevTotalHours) / prevTotalHours) * 100 
       : 0;
 
     // Calculate active days (unique days with worklogs)
-    const activeDays = new Set((worklogs || []).map(log => format(new Date(log.created_at), 'yyyy-MM-dd'))).size;
+    const activeDays = activeDaysSet.size;
     const prevActiveDays = new Set((prevWorklogs || []).map(log => format(new Date(log.created_at), 'yyyy-MM-dd'))).size;
     const activeDaysChange = prevActiveDays > 0 
       ? ((activeDays - prevActiveDays) / prevActiveDays) * 100 
@@ -288,7 +326,7 @@ class EfficiencyService {
   }
 
   /**
-   * Get hours by project
+   * Get hours by project using user_project_month_hours view
    */
   async getHoursByProject(
     userId?: string,
@@ -298,6 +336,14 @@ class EfficiencyService {
   ): Promise<HoursByProjectData[]> {
     const { start, end } = this.getDateRange(dateRange, customStart, customEnd);
 
+    // Get all months in the date range
+    const months: Date[] = [];
+    const currentMonth = new Date(start);
+    while (currentMonth <= end) {
+      months.push(new Date(currentMonth));
+      currentMonth.setMonth(currentMonth.getMonth() + 1);
+    }
+
     // Get admin user IDs to exclude
     const { data: adminUsers } = await supabase
       .from('users')
@@ -306,36 +352,43 @@ class EfficiencyService {
     
     const adminIds = adminUsers?.map(u => u.id) || [];
 
-    let worklogsQuery = supabase
-      .from('work_logs')
-      .select('hours, project_id, user_id, projects!inner(id, name)')
-      .gte('created_at', start.toISOString())
-      .lte('created_at', end.toISOString());
+    // Fetch data from user_project_month_hours view for all months
+    const monthStarts = months.map(m => format(startOfMonth(m), 'yyyy-MM-dd'));
+    
+    let viewQuery = supabase
+      .from('user_project_month_hours')
+      .select('user_id, project_id, month_start, total_hours, projects!inner(id, name)')
+      .in('month_start', monthStarts);
 
     if (userId) {
-      worklogsQuery = worklogsQuery.eq('user_id', userId);
+      viewQuery = viewQuery.eq('user_id', userId);
     }
 
-    const { data: allWorklogs, error } = await worklogsQuery;
+    const { data: viewData, error } = await viewQuery;
 
     if (error) throw error;
 
-    // Filter out admin users if not filtering by specific user
-    const worklogs = userId 
-      ? (allWorklogs || [])
-      : (allWorklogs || []).filter(log => !adminIds.includes(log.user_id));
+    // Filter out admin users and projects outside date range
+    const filteredData = (viewData || []).filter(row => {
+      if (!userId && adminIds.includes(row.user_id)) return false;
+      
+      const rowMonth = new Date(row.month_start);
+      return rowMonth >= startOfMonth(start) && rowMonth <= startOfMonth(end);
+    });
 
-    // Group by project
+    // Group by project and sum hours
     const projectHoursMap = new Map<string, { name: string; hours: number }>();
 
-    (worklogs || []).forEach(log => {
-      const projectId = log.project_id;
-      const projectName = (log.projects as any)?.name || 'Unknown Project';
+    filteredData.forEach(row => {
+      const projectId = row.project_id;
+      if (!projectId) return;
+      
+      const projectName = (row.projects as any)?.name || 'Unknown Project';
       const currentHours = projectHoursMap.get(projectId)?.hours || 0;
       
       projectHoursMap.set(projectId, {
         name: projectName,
-        hours: currentHours + parseHours(log.hours),
+        hours: currentHours + parseFloat(row.total_hours || 0),
       });
     });
 

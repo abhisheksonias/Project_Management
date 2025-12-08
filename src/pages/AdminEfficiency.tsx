@@ -177,18 +177,21 @@ const AdminEfficiency: React.FC = () => {
     <AdminLayout>
       <div className="flex flex-col min-h-screen bg-muted/30">
         {/* Header Section */}
-        <header className="bg-card border-b border-border px-4 py-6 sm:px-6 lg:px-8">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Efficiency Overview</h1>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                Review team and individual user efficiency based on worklogs.
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 rounded-full bg-primary" />
+                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Efficiency Overview</h1>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base ml-4">
+                Review team and individual user efficiency based on worklogs and performance metrics.
               </p>
             </div>
             <div className="flex flex-col gap-3 items-start sm:flex-row sm:items-end">
               {/* Date Range Filter */}
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
+                <Calendar className="h-4 w-4 text-primary" />
                 <div className="relative">
                   <Select
                     value={dateRange === 'custom' ? 'custom' : dateRange}
@@ -201,7 +204,7 @@ const AdminEfficiency: React.FC = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-9 w-[180px] rounded-[14px]">
+                    <SelectTrigger className="h-9 w-[180px] rounded-[14px] border-2 hover:border-primary/50 transition-colors">
                       {dateRange === 'custom' && tempStartDate && tempEndDate ? (
                         <span className="text-sm font-medium">
                           {format(tempStartDate, 'MMM d')} - {format(tempEndDate, 'MMM d')}
@@ -281,13 +284,13 @@ const AdminEfficiency: React.FC = () => {
               </div>
 
               {/* User Filter */}
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
+                <Users className="h-4 w-4 text-primary" />
                 <Select
                   value={selectedUserId || 'all'}
                   onValueChange={(value) => setSelectedUserId(value === 'all' ? undefined : value)}
                 >
-                  <SelectTrigger className="h-9 w-[180px] rounded-[14px]">
+                  <SelectTrigger className="h-9 w-[180px] rounded-[14px] border-2 hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="All users" />
                   </SelectTrigger>
                   <SelectContent>
@@ -312,7 +315,7 @@ const AdminEfficiency: React.FC = () => {
               <EfficiencyMetricsCards stats={stats} isLoading={isLoadingStats} />
 
               {/* User Profile Card (only when user selected) */}
-              {selectedUserId && (
+              {selectedUserId && selectedUser && (
                 <UserProfileCard
                   user={selectedUser}
                   isLoading={false}
@@ -335,6 +338,14 @@ const AdminEfficiency: React.FC = () => {
                   isLoading={isLoadingHoursByProject}
                 />
               </div>
+
+              {/* Recent Worklogs Table (only when user selected) */}
+              {selectedUserId && (
+                <RecentWorklogsTable
+                  data={recentWorklogs}
+                  isLoading={isLoadingRecentWorklogs}
+                />
+              )}
             </div>
           </div>
         </div>

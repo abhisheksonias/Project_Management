@@ -55,9 +55,21 @@ const AdminProjects: React.FC = () => {
     createDefaultNewProjectFormState()
   );
 
-  // Filter projects
+  // Status priority for sorting: In Progress > Open > Client Approval > On Hold
+  const getStatusPriority = (projectStatus: string | null): number => {
+    if (!projectStatus) return 999; // No status goes to the end
+    
+    const statusLower = projectStatus.toLowerCase();
+    if (statusLower === 'in progress') return 1;
+    if (statusLower === 'open') return 2;
+    if (statusLower === 'client approval') return 3;
+    if (statusLower === 'on hold') return 4;
+    return 999; // Other statuses go to the end
+  };
+
+  // Filter and sort projects
   const filteredProjects = useMemo(() => {
-    return projects.filter((project) => {
+    const filtered = projects.filter((project) => {
       // Exclude completed projects by default (unless status filter is "Completed")
       if (status === 'All Statuses') {
         const projectStatus = project.status?.toLowerCase() || '';
@@ -120,6 +132,19 @@ const AdminProjects: React.FC = () => {
       }
 
       return true;
+    });
+
+    // Sort by status priority, then by name
+    return filtered.sort((a, b) => {
+      const priorityA = getStatusPriority(a.status);
+      const priorityB = getStatusPriority(b.status);
+      
+      if (priorityA !== priorityB) {
+        return priorityA - priorityB;
+      }
+      
+      // If same priority, sort alphabetically by name
+      return (a.name || '').localeCompare(b.name || '');
     });
   }, [projects, searchQuery, status, priority, deadline]);
 

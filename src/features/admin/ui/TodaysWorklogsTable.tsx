@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '@/components/ui/card';
 import { AdminWorklog } from '../services/adminWorklogService';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -46,8 +47,9 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
   const [deletingWorklogId, setDeletingWorklogId] = useState<string | null>(null);
   const [clickedRowId, setClickedRowId] = useState<string | null>(null);
   const [hoveredRowId, setHoveredRowId] = useState<string | null>(null);
-  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number } | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ top: number; left: number; side: 'top' | 'bottom' } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const deleteWorklogMutation = useDeleteWorklog();
 
   const sortedWorklogs = useMemo(() => {
@@ -63,23 +65,68 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
     });
   }, [worklogs]);
 
-  // Update tooltip position when hovering
+  // Update tooltip position when hovering - use viewport coordinates for fixed positioning
   useEffect(() => {
-    if (hoveredRowId && !clickedRowId && containerRef.current) {
-      // Use setTimeout to ensure DOM is updated
-      const timeoutId = setTimeout(() => {
+    if (hoveredRowId && !clickedRowId) {
+      const updatePosition = () => {
         const rowElement = document.getElementById(`worklog-row-${hoveredRowId}`);
-        if (rowElement && containerRef.current) {
-          const rect = rowElement.getBoundingClientRect();
-          const containerRect = containerRef.current.getBoundingClientRect();
-          setTooltipPosition({
-            top: rect.top - containerRect.top - 10,
-            left: rect.left - containerRect.left + rect.width / 2,
-          });
-        }
-      }, 50); // Small delay to ensure DOM is updated
+        if (!rowElement) return;
+
+        const rect = rowElement.getBoundingClientRect();
+        const viewportHeight = window.innerHeight;
+        const viewportWidth = window.innerWidth;
+        
+        // Estimate tooltip dimensions
+        const estimatedTooltipHeight = 120;
+        const estimatedTooltipWidth = 300;
+        const spaceAbove = rect.top;
+        const spaceBelow = viewportHeight - rect.bottom;
+        
+        // Determine if tooltip should appear above or below based on available space
+        const showAbove = spaceBelow < estimatedTooltipHeight && spaceAbove > spaceBelow;
+        
+        // Calculate horizontal position (center of row, but keep within viewport)
+        const rowCenterX = rect.left + rect.width / 2;
+        const left = Math.max(
+          estimatedTooltipWidth / 2 + 12, // Keep margin from left edge
+          Math.min(
+            rowCenterX,
+            viewportWidth - estimatedTooltipWidth / 2 - 12 // Keep margin from right edge
+          )
+        );
+        
+        // Calculate vertical position
+        const top = showAbove 
+          ? Math.max(12, rect.top - 8) // Position above, but keep margin from top
+          : Math.min(viewportHeight - estimatedTooltipHeight - 12, rect.bottom + 8); // Position below, but keep margin from bottom
+        
+        setTooltipPosition({
+          top,
+          left,
+          side: showAbove ? 'top' : 'bottom',
+        });
+      };
+
+      // Initial position
+      const timeoutId = setTimeout(updatePosition, 50);
       
-      return () => clearTimeout(timeoutId);
+      // Update on scroll and resize
+      const handleUpdate = () => {
+        if (hoveredRowId && !clickedRowId) {
+          updatePosition();
+        }
+      };
+      
+      window.addEventListener('scroll', handleUpdate, true);
+      window.addEventListener('resize', handleUpdate);
+      containerRef.current?.addEventListener('scroll', handleUpdate);
+      
+      return () => {
+        clearTimeout(timeoutId);
+        window.removeEventListener('scroll', handleUpdate, true);
+        window.removeEventListener('resize', handleUpdate);
+        containerRef.current?.removeEventListener('scroll', handleUpdate);
+      };
     } else {
       setTooltipPosition(null);
     }
@@ -216,28 +263,39 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
               })}
             </tbody>
           </table>
-          {/* Custom tooltip overlay - appears on hover */}
-          {hoveredRowId && tooltipPosition && !clickedRowId && (() => {
-            const log = sortedWorklogs.find((l) => l.id === hoveredRowId);
-            if (!log) return null;
-            const hasNote = log.note && log.note.trim().length > 0;
-            
-            return (
-              <div
-                className="absolute z-[100] bg-popover border border-border rounded-[14px] shadow-md p-3 max-w-md pointer-events-none"
-                style={{
-                  left: `${tooltipPosition.left}px`,
-                  top: `${tooltipPosition.top}px`,
-                  transform: 'translate(-50%, -100%)',
-                }}
-              >
-                <p className="text-sm whitespace-pre-wrap break-words">
-                  {hasNote ? log.note : 'Note not added'}
+          {/* Tooltip will be rendered via portal */}
+        </div>
+      )}
+
+      {/* Custom tooltip overlay - rendered via portal for proper visibility */}
+      {hoveredRowId && tooltipPosition && !clickedRowId && typeof window !== 'undefined' && createPortal(
+        (() => {
+          const log = sortedWorklogs.find((l) => l.id === hoveredRowId);
+          if (!log) return null;
+          const hasNote = log.note && log.note.trim().length > 0;
+          
+          return (
+            <div
+              ref={tooltipRef}
+              className="fixed z-[9999] bg-popover border-2 border-border rounded-[14px] shadow-xl p-4 max-w-sm pointer-events-none animate-in fade-in-0 zoom-in-95 duration-200"
+              style={{
+                left: `${tooltipPosition.left}px`,
+                top: `${tooltipPosition.top}px`,
+                transform: tooltipPosition.side === 'top'
+                  ? 'translate(-50%, calc(-100% - 8px))'
+                  : 'translate(-50%, 8px)',
+              }}
+            >
+              <div className="flex items-start gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
+                  {hasNote ? log.note : <span className="text-muted-foreground italic">Note not added</span>}
                 </p>
               </div>
-            );
-          })()}
-        </div>
+            </div>
+          );
+        })(),
+        document.body
       )}
 
       {/* Edit Dialog */}

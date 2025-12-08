@@ -4,7 +4,8 @@ import {
   Vendor,
   CreateVendorInput,
   UpdateVendorInput,
-  VendorBusinessStats,
+  VendorProfit,
+  VendorProject,
 } from '../services/vendorService';
 import { toast } from 'sonner';
 
@@ -12,14 +13,6 @@ export const useVendors = () => {
   return useQuery<Vendor[]>({
     queryKey: ['vendors'],
     queryFn: () => vendorService.getVendors(),
-    staleTime: 60000,
-  });
-};
-
-export const useVendorBusinessStats = () => {
-  return useQuery<VendorBusinessStats[]>({
-    queryKey: ['vendors', 'business-stats'],
-    queryFn: () => vendorService.getVendorBusinessStats(),
     staleTime: 60000,
   });
 };
@@ -47,12 +40,32 @@ export const useUpdateVendor = () => {
       vendorService.updateVendor(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['vendors'] });
-      queryClient.invalidateQueries({ queryKey: ['vendors', 'business-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['vendor-profits'] });
       toast.success('Vendor updated successfully');
     },
     onError: (error: Error) => {
       toast.error(`Failed to update vendor: ${error.message}`);
     },
+  });
+};
+
+export const useVendorProfits = () => {
+  return useQuery<VendorProfit[]>({
+    queryKey: ['vendor-profits'],
+    queryFn: () => vendorService.getVendorProfits(),
+    staleTime: 60000,
+  });
+};
+
+export const useVendorProjects = (vendorId: string | undefined) => {
+  return useQuery<VendorProject[]>({
+    queryKey: ['vendor-projects', vendorId],
+    queryFn: () => {
+      if (!vendorId) throw new Error('Vendor ID is required');
+      return vendorService.getVendorProjects(vendorId);
+    },
+    enabled: !!vendorId,
+    staleTime: 60000,
   });
 };
 

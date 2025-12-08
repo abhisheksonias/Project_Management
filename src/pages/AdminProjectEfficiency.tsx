@@ -50,23 +50,26 @@ const AdminProjectEfficiency: React.FC = () => {
     <AdminLayout>
       <div className="flex flex-col min-h-screen bg-muted/30">
         {/* Header Section */}
-        <header className="bg-card border-b border-border px-4 sm:px-6 lg:px-8 py-6">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Project Efficiency Overview</h1>
-              <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                Review project efficiency and team performance based on worklogs.
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 rounded-full bg-primary" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Project Efficiency Overview</h1>
+              </div>
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base ml-4">
+                Review project efficiency and team performance based on worklogs and metrics.
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
               {/* Project Filter */}
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
+                <FolderOpen className="h-4 w-4 text-primary" />
                 <Select
                   value={selectedProjectId || 'all'}
                   onValueChange={(value) => setSelectedProjectId(value === 'all' ? undefined : value)}
                 >
-                  <SelectTrigger className="w-[200px] rounded-[14px] h-9">
+                  <SelectTrigger className="w-[220px] rounded-[14px] h-9 border-2 hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Select a project" />
                   </SelectTrigger>
                   <SelectContent>
@@ -89,9 +92,13 @@ const AdminProjectEfficiency: React.FC = () => {
             {!selectedProjectId ? (
               <div className="flex items-center justify-center h-[400px]">
                 <div className="text-center">
-                  <FolderOpen className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
-                  <p className="text-lg font-semibold text-muted-foreground">Select a project to view efficiency</p>
-                  <p className="text-sm text-muted-foreground mt-2">Choose a project from the dropdown above</p>
+                  <div className="h-20 w-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+                    <FolderOpen className="h-10 w-10 text-primary" />
+                  </div>
+                  <h3 className="text-xl font-bold text-foreground mb-2">Select a Project</h3>
+                  <p className="text-sm text-muted-foreground max-w-md">
+                    Choose a project from the dropdown above to view detailed efficiency metrics, team performance, and worklog analytics.
+                  </p>
                 </div>
               </div>
             ) : (
