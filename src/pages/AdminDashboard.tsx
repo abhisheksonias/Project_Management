@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { AdminHeader } from '@/features/admin/ui/AdminHeader';
-import { KpiRow } from '@/features/admin/ui/KpiRow';
+import { CompanyPerformanceSummary } from '@/features/admin/ui/CompanyPerformanceSummary';
 import { DailyHoursCard } from '@/features/admin/ui/DailyHoursCard';
 import { TopProjectsCard } from '@/features/admin/ui/TopProjectsCard';
+import { CompanyMonthlyProfitCard } from '@/features/profit/ui/CompanyMonthlyProfitCard';
 import { AdminFilters, DateRangeOption } from '@/features/admin/services/adminService';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths } from 'date-fns';
 
@@ -130,12 +131,17 @@ const AdminDashboard: React.FC = () => {
         <div className="flex-1">
           <div className="p-4 sm:p-6 lg:p-8">
             <div className="space-y-6 sm:space-y-8">
-              <KpiRow filters={filters} />
+              {/* Company Performance Summary - Key Metrics */}
+              <CompanyPerformanceSummary filters={filters} />
               
+              {/* Charts Row */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
                 <DailyHoursCard filters={filters} />
-                <TopProjectsCard filters={filters} />
+                <TopProjectsCard />
               </div>
+
+              {/* Monthly Company Profit Trend */}
+              <CompanyMonthlyProfitCard />
             </div>
           </div>
         </div>

@@ -267,6 +267,8 @@ class AdminService {
   }
 
   async getTopProjects(limit: number = 5, filters?: AdminFilters): Promise<ProjectWithHours[]> {
+    // If filters is undefined, return constant data (all-time top projects)
+    // This is used for dashboard where we want consistent top projects
     let worklogsQuery = supabase
       .from('work_logs')
       .select(`
@@ -283,43 +285,48 @@ class AdminService {
         )
       `);
 
-    // Apply date range filter
-    let queryStartDate: Date;
-    let queryEndDate: Date;
-    
-    if (filters?.startDate && filters?.endDate) {
-      queryStartDate = new Date(filters.startDate);
-      queryEndDate = new Date(filters.endDate);
-      queryStartDate.setHours(0, 0, 0, 0);
-      queryEndDate.setHours(23, 59, 59, 999);
-    } else if (filters?.dateRange || filters?.reportingPeriod) {
-      const dateRange = this.getDateRange(filters);
-      queryStartDate = new Date(dateRange.start);
-      queryEndDate = new Date(dateRange.end);
-      queryStartDate.setHours(0, 0, 0, 0);
-      queryEndDate.setHours(23, 59, 59, 999);
-    } else {
-      // Default: all time (no date filter)
-      queryStartDate = new Date(0);
-      queryEndDate = new Date();
-      queryEndDate.setHours(23, 59, 59, 999);
-    }
-    
-    worklogsQuery = worklogsQuery
-      .gte('created_at', queryStartDate.toISOString())
-      .lte('created_at', queryEndDate.toISOString());
+    // Apply date range filter only if filters are provided
+    // If filters is undefined, get all-time data (constant)
+    if (filters) {
+      let queryStartDate: Date;
+      let queryEndDate: Date;
+      
+      if (filters.startDate && filters.endDate) {
+        queryStartDate = new Date(filters.startDate);
+        queryEndDate = new Date(filters.endDate);
+        queryStartDate.setHours(0, 0, 0, 0);
+        queryEndDate.setHours(23, 59, 59, 999);
+      } else if (filters.dateRange || filters.reportingPeriod) {
+        const dateRange = this.getDateRange(filters);
+        queryStartDate = new Date(dateRange.start);
+        queryEndDate = new Date(dateRange.end);
+        queryStartDate.setHours(0, 0, 0, 0);
+        queryEndDate.setHours(23, 59, 59, 999);
+      } else {
+        // Default: all time (no date filter)
+        queryStartDate = new Date(0);
+        queryEndDate = new Date();
+        queryEndDate.setHours(23, 59, 59, 999);
+      }
+      
+      worklogsQuery = worklogsQuery
+        .gte('created_at', queryStartDate.toISOString())
+        .lte('created_at', queryEndDate.toISOString());
 
-    if (filters?.projectId) {
-      worklogsQuery = worklogsQuery.eq('project_id', filters.projectId);
+      if (filters.projectId) {
+        worklogsQuery = worklogsQuery.eq('project_id', filters.projectId);
+      }
     }
+    // If filters is undefined, no date filtering - get all-time data (constant)
 
     const { data: worklogs, error } = await worklogsQuery;
 
     if (error) throw error;
 
     // Filter by department if specified (filter by task category in post-processing)
+    // Only apply department filter if filters are provided
     let filteredWorklogs = worklogs;
-    if (filters?.department && filters.department !== 'all') {
+    if (filters && filters.department && filters.department !== 'all') {
       const category = filters.department === 'design' ? 'design' : 'development';
       filteredWorklogs = worklogs?.filter((log) => {
         const task = log.tasks as any;

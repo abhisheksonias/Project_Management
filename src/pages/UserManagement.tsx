@@ -1,16 +1,12 @@
-import React, { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
+import { useAllUsers, useUserLeaves, useUserMonthStats, useUsersMonthStats, useUpsertSalaryPeriod, useCreateLeave, useDeleteLeave, useUpdateUser } from '@/features/admin/hooks/useUserManagement';
+import { UserWithDetails, UpdateUserData, UserLeave } from '@/features/admin/services/userManagementService';
+import { LeavesModal } from '@/features/admin/ui/LeavesModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Card } from '@/components/ui/card';
 import {
   Table,
   TableBody,
@@ -19,34 +15,14 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, Edit, Trash2, MoreVertical, Download, UserCheck, UserX, DollarSign, Calendar as CalendarIcon, CalendarDays } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
 import {
-  useUsersPaginated,
-  useDepartments,
-  useUserMonthHours,
-  useUserUnpaidLeaves,
-  useCreateUser,
-  useUpdateUser,
-  useDeleteUser,
-  useBulkUpdateActiveStatus,
-  useUserLeaves,
-  useAddUserLeave,
-  useDeleteUserLeave,
-  useHourlyCostForUser,
-} from '@/features/admin/hooks/useAdminUserManagement';
-import { UserFormModal } from '@/features/admin/ui/UserFormModal';
-import { LeavesModal } from '@/features/admin/ui/LeavesModal';
-import { adminUserManagementService, UserWithDetails } from '@/features/admin/services/adminUserManagementService';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -57,804 +33,668 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar, Plus, Edit, Trash2, Search, CalendarDays, Save, X, Users, AlertCircle, Pencil } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { format, startOfMonth, subMonths, addMonths } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const UserManagement: React.FC = () => {
   const navigate = useNavigate();
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeFilter, setActiveFilter] = useState<boolean | null>(null);
-  const [departmentFilter, setDepartmentFilter] = useState<string>('All');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(20);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [isUserFormOpen, setIsUserFormOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserWithDetails | null>(null);
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
+  const [selectedUser, setSelectedUser] = useState<UserWithDetails | null>(null);
   const [isLeavesModalOpen, setIsLeavesModalOpen] = useState(false);
-  const [selectedUserForLeaves, setSelectedUserForLeaves] = useState<{ id: string; name: string } | null>(null);
-  const [userForHourlyCost, setUserForHourlyCost] = useState<{ id: string; name: string } | null>(null);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState<UserWithDetails | null>(null);
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [editingSalary, setEditingSalary] = useState<{ userId: string; value: string } | null>(null);
+  const [isSalaryModalOpen, setIsSalaryModalOpen] = useState(false);
+  const [salaryPeriodMonth, setSalaryPeriodMonth] = useState<Date>(startOfMonth(new Date()));
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    onConfirm: () => void;
+  }>({ open: false, title: '', description: '', onConfirm: () => {} });
 
-  // Queries
-  const { data: usersData, isLoading } = useUsersPaginated({
-    page,
-    pageSize,
-    search: searchQuery || undefined,
-    isActive: activeFilter,
-    department: departmentFilter !== 'All' ? departmentFilter : null,
-  });
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const { data: departments = [] } = useDepartments();
-  const users = usersData?.users || [];
-  const totalUsers = usersData?.total || 0;
-  const totalPages = Math.ceil(totalUsers / pageSize);
+  // Fetch all users with salary for selected month
+  const { data: users = [], isLoading: isLoadingUsers } = useAllUsers(selectedMonth);
 
-  // Get user IDs for bulk queries
-  const userIds = useMemo(() => users.map((u) => u.id), [users]);
-
-  // Get month hours and unpaid leaves in parallel
-  const { data: monthHours = [], isLoading: isLoadingHours } = useUserMonthHours(selectedMonth, userIds);
-  const { data: unpaidLeaves = [] } = useUserUnpaidLeaves(selectedMonth, userIds);
-
-  // Create maps for quick lookup
-  const hoursMap = useMemo(() => {
-    const map = new Map<string, number>();
-    monthHours.forEach((h) => {
-      // Ensure total_hours is a number
-      const hours = typeof h.total_hours === 'string' 
-        ? parseFloat(h.total_hours) 
-        : Number(h.total_hours) || 0;
-      map.set(h.user_id, hours);
-    });
-    return map;
-  }, [monthHours]);
-
-  const unpaidLeavesMap = useMemo(() => {
-    const map = new Map<string, number>();
-    unpaidLeaves.forEach((l) => map.set(l.user_id, l.unpaid_leaves_count));
-    return map;
-  }, [unpaidLeaves]);
-
-  // Mutations
-  const createUserMutation = useCreateUser();
-  const updateUserMutation = useUpdateUser();
-  const deleteUserMutation = useDeleteUser();
-  const bulkUpdateActiveMutation = useBulkUpdateActiveStatus();
-  const addLeaveMutation = useAddUserLeave();
-  const deleteLeaveMutation = useDeleteUserLeave();
-
-  // Get leaves for selected user
-  const { data: userLeaves = [] } = useUserLeaves(
-    selectedUserForLeaves?.id || null,
-    selectedMonth
-  );
-
-  // Get hourly cost for selected user (on-demand)
-  const { data: hourlyCostData } = useHourlyCostForUser(
-    userForHourlyCost?.id || null,
-    selectedMonth
-  );
-
-  // Helper function to calculate hourly cost client-side
-  const calculateHourlyCost = (user: UserWithDetails): number | null => {
-    const totalHours = hoursMap.get(user.id);
-    const unpaid = unpaidLeavesMap.get(user.id) || 0;
-    return adminUserManagementService.calculateHourlyCost(
-      user.monthly_salary,
-      unpaid,
-      totalHours || null,
-      selectedMonth
+  // Filter users by search
+  const filteredUsers = useMemo(() => {
+    if (!debouncedSearchQuery) return users;
+    const query = debouncedSearchQuery.toLowerCase();
+    return users.filter(
+      (user) =>
+        user.name.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.department?.toLowerCase().includes(query) ||
+        user.role?.toLowerCase().includes(query)
     );
-  };
+  }, [users, debouncedSearchQuery]);
 
-  const daysInSelectedMonth = useMemo(
-    () => new Date(selectedMonth.getFullYear(), selectedMonth.getMonth() + 1, 0).getDate(),
-    [selectedMonth]
+  // Fetch month stats for all users
+  const userIds = useMemo(() => filteredUsers.map((u) => u.id), [filteredUsers]);
+  const { data: usersMonthStatsMap, isLoading: isLoadingStats } = useUsersMonthStats(userIds, selectedMonth);
+
+  // Fetch leaves and stats for selected user and month (for modal)
+  const { data: leaves = [], isLoading: isLoadingLeaves } = useUserLeaves(
+    selectedUser?.id || null,
+    selectedMonth
   );
 
-  const calculateNetSalary = (user: UserWithDetails, unpaidLeavesCount: number): number | null => {
-    if (!user.monthly_salary) return null;
+  const { data: monthStats } = useUserMonthStats(
+    selectedUser?.id || null,
+    selectedMonth
+  );
 
-    const dailySalary = user.monthly_salary / daysInSelectedMonth;
-    const net = user.monthly_salary - dailySalary * unpaidLeavesCount;
+  const upsertSalaryMutation = useUpsertSalaryPeriod();
+  const createLeaveMutation = useCreateLeave();
+  const deleteLeaveMutation = useDeleteLeave();
+  const updateUserMutation = useUpdateUser();
 
-    return Math.max(0, Number(net.toFixed(2)));
-  };
+  const [editingUser, setEditingUser] = useState<UserWithDetails | null>(null);
+  const [editFormData, setEditFormData] = useState<UpdateUserData>({});
 
-  const handleCreateUser = () => {
-    setEditingUser(null);
-    setIsUserFormOpen(true);
-  };
-
-  const handleEditUser = (user: UserWithDetails) => {
-    try {
-      // Use setTimeout to ensure dropdown closes before opening modal
-      setTimeout(() => {
-        setEditingUser(user);
-        setIsUserFormOpen(true);
-      }, 100);
-    } catch (error: any) {
-      console.error('Error opening edit modal:', error);
-      toast.error('Failed to open edit form');
-    }
-  };
-
-  const handleSaveUser = async (data: any) => {
-    try {
-      if (editingUser) {
-        // If salary is being updated, include periodMonth for salary period creation
-        const updateData = {
-          ...data,
-          ...(data.monthly_salary !== undefined && {
-            periodMonth: selectedMonth,
-          }),
-        };
-        await updateUserMutation.mutateAsync({ userId: editingUser.id, data: updateData });
-        toast.success('User updated successfully');
-      } else {
-        await createUserMutation.mutateAsync(data);
-        toast.success('User created successfully');
-      }
-      setIsUserFormOpen(false);
-      setEditingUser(null);
-    } catch (error: any) {
-      console.error('Error saving user:', error);
-      // Error is already handled in UserFormModal, so we don't need to show another toast
-      // Just re-throw to let the modal handle it
-      throw error;
-    }
-  };
-
-  const handleDeleteUser = async (user: UserWithDetails) => {
-    setUserToDelete(user);
-    setIsDeleteDialogOpen(true);
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!userToDelete) return;
-    try {
-      await deleteUserMutation.mutateAsync(userToDelete.id);
-      toast.success('User deleted successfully');
-      setIsDeleteDialogOpen(false);
-      setUserToDelete(null);
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to delete user');
-    }
-  };
-
-  const handleToggleSelection = (userId: string) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(userId)) {
-      newSelected.delete(userId);
-    } else {
-      newSelected.add(userId);
-    }
-    setSelectedIds(newSelected);
-  };
-
-  const handleToggleAllSelection = () => {
-    if (selectedIds.size === users.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(users.map((u) => u.id)));
-    }
-  };
-
-  const handleBulkSetActive = async (isActive: boolean) => {
-    if (selectedIds.size === 0) {
-      toast.error('Please select at least one user');
-      return;
-    }
-    try {
-      await bulkUpdateActiveMutation.mutateAsync({
-        userIds: Array.from(selectedIds),
-        isActive,
-      });
-      toast.success(`${selectedIds.size} user(s) updated successfully`);
-      setSelectedIds(new Set());
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to update users');
-    }
+  const formatCurrency = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '—';
+    if (value === 0) return '₹0';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   const handleOpenLeavesModal = (user: UserWithDetails) => {
-    setSelectedUserForLeaves({ id: user.id, name: user.name });
+    setSelectedUser(user);
     setIsLeavesModalOpen(true);
   };
 
-  const handleOpenCalendarPage = (user: UserWithDetails) => {
-    const monthParam = format(selectedMonth, 'yyyy-MM');
-    navigate(`/admin/users/${user.id}/calendar?month=${monthParam}`);
-  };
+  const [salaryInputValue, setSalaryInputValue] = useState('');
 
-  const handleBulkDelete = () => {
-    if (selectedIds.size === 0) return;
-    setIsBulkDeleteDialogOpen(true);
-  };
+  const handleOpenSalaryModal = useCallback((user: UserWithDetails) => {
+    setSelectedUser(user);
+    setSalaryPeriodMonth(selectedMonth);
+    // Pre-fill with current salary for the selected month
+    const currentSalary = user.current_salary || 0;
+    setSalaryInputValue(currentSalary.toString());
+    setIsSalaryModalOpen(true);
+  }, [selectedMonth]);
 
-  const confirmBulkDelete = async () => {
-    if (selectedIds.size === 0) return;
-    try {
-      await Promise.all(
-        Array.from(selectedIds).map((id) => deleteUserMutation.mutateAsync(id))
-      );
-      toast.success(`${selectedIds.size} user(s) deleted successfully`);
-      setSelectedIds(new Set());
-    } catch (error: any) {
-      toast.error(error?.message || 'Failed to delete selected users');
-    } finally {
-      setIsBulkDeleteDialogOpen(false);
-    }
-  };
+  const handleSaveSalary = async () => {
+    if (!selectedUser) return;
 
-  const handleAddLeave = async (data: { leave_date: string; is_paid: boolean; leave_type: 'full' | 'half' }) => {
-    if (!selectedUserForLeaves) return;
-    await addLeaveMutation.mutateAsync({
-      user_id: selectedUserForLeaves.id,
-      ...data,
-    });
-    toast.success('Leave added successfully');
-  };
-
-  const handleDeleteLeave = async (leaveId: string) => {
-    if (!selectedUserForLeaves) return;
-    await deleteLeaveMutation.mutateAsync({ leaveId, userId: selectedUserForLeaves.id });
-    toast.success('Leave deleted successfully');
-  };
-
-  const handleComputeHourlyCost = async (user: UserWithDetails) => {
-    setUserForHourlyCost({ id: user.id, name: user.name });
-    // The query will automatically fetch the hourly cost
-    // Show toast when data is available
-    setTimeout(() => {
-      if (hourlyCostData) {
-        if (hourlyCostData.hourly_cost) {
-          toast.success(`Hourly cost: ${hourlyCostData.hourly_cost} ${user.salary_currency}`);
-        } else {
-          toast.info('Hourly cost cannot be calculated (no hours or salary)');
-        }
-      }
-    }, 500);
-  };
-
-  const handleSalaryEdit = (user: UserWithDetails) => {
-    setEditingSalary({ userId: user.id, value: user.monthly_salary?.toString() || '' });
-  };
-
-  const handleSalarySave = async (userId: string, value: string) => {
-    const numValue = value ? parseFloat(value) : null;
-    if (numValue !== null && (isNaN(numValue) || numValue < 0)) {
-      toast.error('Invalid salary value');
+    const salaryValue = parseFloat(salaryInputValue);
+    if (isNaN(salaryValue) || salaryValue < 0) {
+      toast.error('Please enter a valid salary amount');
       return;
     }
+
     try {
-      await updateUserMutation.mutateAsync({
-        userId,
-        data: { 
-          monthly_salary: numValue,
-          periodMonth: selectedMonth, // Pass selected month for salary period creation
-        },
+      const monthStart = startOfMonth(salaryPeriodMonth);
+      await upsertSalaryMutation.mutateAsync({
+        user_id: selectedUser.id,
+        period_month: format(monthStart, 'yyyy-MM-dd'),
+        monthly_salary: salaryValue,
+        note: `Updated on ${format(new Date(), 'yyyy-MM-dd')}`,
       });
-      setEditingSalary(null);
-      toast.success(`Salary updated successfully for ${format(selectedMonth, 'MMMM yyyy')}`);
+
+      toast.success(`Salary updated successfully for ${format(salaryPeriodMonth, 'MMMM yyyy')}`);
+      setIsSalaryModalOpen(false);
+      setSalaryInputValue('');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to update salary');
     }
   };
 
-  const handleExportCSV = () => {
-    const headers = ['Name', 'Role', 'Department', 'Monthly Salary', 'Net Salary', 'Currency', 'Active', 'Total Hours', 'Unpaid Leaves', 'Hourly Cost'];
-    const rows = users.map((user) => {
-      const totalHours = hoursMap.get(user.id) || 0;
-      const unpaid = unpaidLeavesMap.get(user.id) || 0;
-      const netSalary = calculateNetSalary(user, unpaid);
-      const hourlyCost = calculateHourlyCost(user);
-      return [
-        user.name,
-        user.role || '',
-        user.department || '',
-        user.monthly_salary?.toString() || '',
-        netSalary?.toString() || '',
-        user.salary_currency,
-        user.is_active ? 'Yes' : 'No',
-        totalHours.toFixed(2),
-        unpaid.toString(),
-        hourlyCost ? hourlyCost.toFixed(2) : '—',
-      ];
+  const handleAddLeave = async (data: { leave_date: string; is_paid: boolean; leave_type: 'full' | 'half' }) => {
+    if (!selectedUser) return;
+
+    try {
+      await createLeaveMutation.mutateAsync({
+        user_id: selectedUser.id,
+      ...data,
     });
+    toast.success('Leave added successfully');
+    } catch (error: any) {
+      if (error?.code === '23505' || error?.message?.includes('unique')) {
+        toast.error('Leave already exists for this date');
+        } else {
+        toast.error(error?.message || 'Failed to add leave');
+      }
+    }
+  };
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(',')),
-    ].join('\n');
+  const handleDeleteLeave = async (leaveId: string) => {
+    try {
+      await deleteLeaveMutation.mutateAsync(leaveId);
+    toast.success('Leave deleted successfully');
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to delete leave');
+        }
+  };
 
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `users_${format(selectedMonth, 'yyyy-MM')}.csv`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    toast.success('CSV exported successfully');
+  const handleNavigateToCalendar = (userId: string) => {
+    navigate(`/admin/users/${userId}/calendar`);
+  };
+
+  const handleSaveUser = async (userId: string) => {
+    if (!editingUser || !editFormData) return;
+
+    try {
+      await updateUserMutation.mutateAsync({
+        userId,
+        data: editFormData,
+      });
+      toast.success('User updated successfully');
+      setEditingUser(null);
+      setEditFormData({});
+    } catch (error: any) {
+      toast.error(error?.message || 'Failed to update user');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setEditFormData({});
+  };
+
+  const handleToggleActive = (user: UserWithDetails, newStatus: boolean) => {
+    if (!newStatus) {
+      // Show confirmation when deactivating
+      setConfirmDialog({
+        open: true,
+        title: 'Deactivate User?',
+        description: `Are you sure you want to deactivate ${user.name}? They will not be able to access the system.`,
+        onConfirm: async () => {
+          try {
+            await updateUserMutation.mutateAsync({
+              userId: user.id,
+              data: { is_active: false },
+            });
+            toast.success('User deactivated successfully');
+            setConfirmDialog({ open: false, title: '', description: '', onConfirm: () => {} });
+          } catch (error: any) {
+            toast.error(error?.message || 'Failed to deactivate user');
+          }
+        },
+      });
+    } else {
+      // Activate immediately without confirmation
+      updateUserMutation.mutate(
+        {
+          userId: user.id,
+          data: { is_active: true },
+        },
+        {
+          onSuccess: () => {
+            toast.success('User activated successfully');
+          },
+          onError: (error: any) => {
+            toast.error(error?.message || 'Failed to activate user');
+          },
+        }
+      );
+    }
   };
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="space-y-6">
+      <div className="flex flex-col min-h-screen bg-muted/30">
               {/* Header */}
+        <header className="bg-card border-b border-border px-4 py-6 sm:px-6 lg:px-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">User Management</h1>
-                  <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-                    Manage users, salaries, and leaves
+            <div className="flex-1">
+              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">User Management</h1>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                Manage user salaries and leaves
                   </p>
                 </div>
-                <Button
-                  onClick={handleCreateUser}
-                  className="bg-primary text-white hover:bg-primary/90 rounded-[14px]"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
               </div>
 
-              {/* Filters and Search */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex flex-wrap gap-4 items-center">
-                  {/* Month Picker */}
-                  <div className="flex gap-2 items-center">
-                    <Select
-                      value={selectedMonth.getMonth().toString()}
-                      onValueChange={(month) => {
-                        const newDate = new Date(selectedMonth);
-                        newDate.setMonth(parseInt(month));
-                        setSelectedMonth(newDate);
-                      }}
-                    >
-                      <SelectTrigger className="w-[140px] rounded-[14px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[14px]">
-                        {[
-                          'January', 'February', 'March', 'April', 'May', 'June',
-                          'July', 'August', 'September', 'October', 'November', 'December'
-                        ].map((month, index) => (
-                          <SelectItem key={index} value={index.toString()}>
-                            {month}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select
-                      value={selectedMonth.getFullYear().toString()}
-                      onValueChange={(year) => {
-                        const newDate = new Date(selectedMonth);
-                        newDate.setFullYear(parseInt(year));
-                        setSelectedMonth(newDate);
-                      }}
-                    >
-                      <SelectTrigger className="w-[100px] rounded-[14px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[14px]">
-                        {Array.from({ length: 10 }, (_, i) => {
-                          const year = new Date().getFullYear() - 2 + i;
-                          return (
-                            <SelectItem key={year} value={year.toString()}>
-                              {year}
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Search */}
+          {/* Filters */}
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-1 items-center gap-4">
+              <div className="relative flex-1 max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
                     placeholder="Search users..."
                     value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setPage(1);
-                    }}
-                    className="w-full sm:w-[300px] rounded-[14px]"
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 rounded-[14px]"
                   />
-
-                  {/* Active Filter */}
-                  <Select
-                    value={activeFilter === null ? 'All' : activeFilter ? 'Active' : 'Inactive'}
-                    onValueChange={(value) => {
-                      setActiveFilter(
-                        value === 'All' ? null : value === 'Active'
-                      );
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[140px] rounded-[14px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-[14px]">
-                      <SelectItem value="All">All Users</SelectItem>
-                      <SelectItem value="Active">Active</SelectItem>
-                      <SelectItem value="Inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* Department Filter */}
-                  <Select
-                    value={departmentFilter}
-                    onValueChange={(value) => {
-                      setDepartmentFilter(value);
-                      setPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[160px] rounded-[14px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-[14px]">
-                      <SelectItem value="All">All Departments</SelectItem>
-                      {departments.map((dept) => (
-                        <SelectItem key={dept} value={dept}>
-                          {dept}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Bulk Actions */}
-                <div className="flex gap-2">
-                  {selectedIds.size > 0 && (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkSetActive(true)}
-                        className="rounded-[14px]"
-                      >
-                        <UserCheck className="mr-2 h-4 w-4" />
-                        Set Active
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleBulkSetActive(false)}
-                        className="rounded-[14px]"
-                      >
-                        <UserX className="mr-2 h-4 w-4" />
-                        Set Inactive
-                      </Button>
-                    </>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExportCSV}
-                    className="rounded-[14px]"
-                  >
-                    <Download className="mr-2 h-4 w-4" />
-                    Export CSV
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleBulkDelete}
-                    disabled={selectedIds.size === 0 || deleteUserMutation.isPending}
-                    className="rounded-[14px] disabled:opacity-60"
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete Selected
-                  </Button>
-                </div>
               </div>
 
-              {/* Table */}
-              <div className="border rounded-[14px] bg-white">
-                {isLoading ? (
-                  <div className="p-8 text-center text-muted-foreground">Loading...</div>
-                ) : users.length === 0 ? (
-                  <div className="p-8 text-center text-muted-foreground">No users found</div>
-                ) : (
+                  <Select
+                value={format(selectedMonth, 'yyyy-MM')}
+                    onValueChange={(value) => {
+                  const [year, month] = value.split('-').map(Number);
+                  setSelectedMonth(new Date(year, month - 1));
+                    }}
+                  >
+                <SelectTrigger className="w-[180px] rounded-[14px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => {
+                    const monthDate = subMonths(new Date(), i);
+                    return (
+                      <SelectItem
+                        key={format(monthDate, 'yyyy-MM')}
+                        value={format(monthDate, 'yyyy-MM')}
+                      >
+                        {format(monthDate, 'MMMM yyyy')}
+                        </SelectItem>
+                    );
+                  }).reverse()}
+                    </SelectContent>
+                  </Select>
+                </div>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 sm:p-6 lg:p-8">
+            {isLoadingUsers ? (
+              <div className="space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-16 w-full rounded-[14px]" />
+                ))}
+                </div>
+            ) : filteredUsers.length === 0 ? (
+              <Card className="p-12 rounded-[14px] border-2 border-dashed">
+                <div className="text-center">
+                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
+                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                    {debouncedSearchQuery ? 'No users found' : 'No users available'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {debouncedSearchQuery
+                      ? `No users match "${debouncedSearchQuery}". Try adjusting your search.`
+                      : 'There are no users in the system yet.'}
+                  </p>
+                  {debouncedSearchQuery && (
+                      <Button
+                        variant="outline"
+                      onClick={() => setSearchQuery('')}
+                        className="rounded-[14px]"
+                      >
+                      Clear Search
+                      </Button>
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <div className="rounded-[14px] border border-border bg-card shadow-sm">
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={selectedIds.size === users.length && users.length > 0}
-                            onCheckedChange={handleToggleAllSelection}
-                          />
-                        </TableHead>
                         <TableHead>Name</TableHead>
                         <TableHead>Role</TableHead>
                         <TableHead>Department</TableHead>
-                        <TableHead>Monthly Salary</TableHead>
+                        <TableHead>Status</TableHead>
+                      <TableHead>Current Salary</TableHead>
                         <TableHead>Net Salary</TableHead>
-                        <TableHead>Active</TableHead>
-                        <TableHead>Total Hours</TableHead>
+                        <TableHead>Hourly Price</TableHead>
                         <TableHead>Unpaid Leaves</TableHead>
-                        <TableHead>Hourly Cost</TableHead>
-                        <TableHead>Calendar</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {users.map((user) => {
-                        const totalHours = hoursMap.get(user.id) ?? 0;
-                        const unpaid = unpaidLeavesMap.get(user.id) || 0;
-                        const netSalary = calculateNetSalary(user, unpaid);
-                        const hourlyCost = calculateHourlyCost(user);
-                        const isSelected = selectedIds.has(user.id);
-                        const isEditingSalary = editingSalary?.userId === user.id;
-
+                    {filteredUsers.map((user) => {
+                      const userStats = usersMonthStatsMap?.get(user.id);
+                      const isEditing = editingUser?.id === user.id;
                         return (
-                          <TableRow key={user.id} className="group">
-                            <TableCell>
-                              <Checkbox
-                                checked={isSelected}
-                                onCheckedChange={() => handleToggleSelection(user.id)}
+                        <TableRow key={user.id}>
+                          <TableCell className="font-medium">
+                            {isEditing ? (
+                              <Input
+                                value={editFormData.name ?? user.name}
+                                onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
+                                className="w-full min-w-[150px] h-9"
+                                autoFocus
+                                placeholder="User name"
                               />
-                            </TableCell>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center justify-between gap-2">
-                                <span>{user.name}</span>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
+                            ) : (
+                              <div className="flex items-center gap-2 group">
+                                <span className="flex-1">{user.name}</span>
                                     <Button
                                       variant="ghost"
                                       size="icon"
-                                      className="h-8 w-8 rounded-full opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => {
+                                    setEditingUser(user);
+                                    setEditFormData({
+                                      name: user.name,
+                                      role: user.role,
+                                      department: user.department,
+                                      rank: user.rank,
+                                      is_active: user.is_active,
+                                    });
+                                  }}
+                                  title="Edit user"
                                     >
-                                      <MoreVertical className="h-4 w-4" />
+                                  <Pencil className="h-3.5 w-3.5" />
                                     </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end" className="rounded-[14px]">
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        handleEditUser(user);
-                                      }}
-                                      className="rounded-[14px]"
-                                    >
-                                      <Edit className="mr-2 h-4 w-4" />
-                                      Edit
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onSelect={(e) => {
-                                        e.preventDefault();
-                                        handleOpenLeavesModal(user);
-                                      }}
-                                      className="rounded-[14px]"
-                                    >
-                                      <CalendarIcon className="mr-2 h-4 w-4" />
-                                      Leaves
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
                               </div>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <Select
+                                value={editFormData.role ?? user.role ?? 'none'}
+                                onValueChange={(value) => setEditFormData({ ...editFormData, role: value === 'none' ? null : value })}
+                              >
+                                <SelectTrigger className="w-full min-w-[120px] h-9">
+                                  <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">None</SelectItem>
+                                  <SelectItem value="User">User</SelectItem>
+                                  <SelectItem value="Admin">Admin</SelectItem>
+                                  <SelectItem value="Sales">Sales</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <Badge variant="outline" className="text-xs">
+                                {user.role || '—'}
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {isEditing ? (
+                              <Input
+                                value={editFormData.department ?? user.department ?? ''}
+                                onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value || null })}
+                                className="w-full min-w-[140px] h-9"
+                                placeholder="Department"
+                              />
+                            ) : (
+                              <span className="text-sm">{user.department || '—'}</span>
+                            )}
                             </TableCell>
-                            <TableCell>{user.role || '—'}</TableCell>
-                            <TableCell>{user.department || '—'}</TableCell>
                             <TableCell>
-                              {isEditingSalary ? (
+                            {isEditing ? (
                                 <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    value={editingSalary.value}
-                                    onChange={(e) =>
-                                      setEditingSalary({ ...editingSalary, value: e.target.value })
-                                    }
-                                    className="w-24 h-8"
-                                    onBlur={() => handleSalarySave(user.id, editingSalary.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') {
-                                        handleSalarySave(user.id, editingSalary.value);
-                                      } else if (e.key === 'Escape') {
-                                        setEditingSalary(null);
-                                      }
-                                    }}
-                                    autoFocus
+                                <Switch
+                                  checked={editFormData.is_active ?? user.is_active ?? false}
+                                  onCheckedChange={(checked) =>
+                                    setEditFormData({ ...editFormData, is_active: checked })
+                                  }
                                   />
-                                  <span className="text-sm text-muted-foreground">
-                                    {user.salary_currency}
+                                <span className="text-xs text-muted-foreground">
+                                  {editFormData.is_active ?? user.is_active ? 'Active' : 'Inactive'}
                                   </span>
                                 </div>
                               ) : (
-                                <div
-                                  className="cursor-pointer hover:bg-gray-50 px-2 py-1 rounded"
-                                  onClick={() => handleSalaryEdit(user)}
-                                  title="Click to edit"
+                              <div className="flex items-center gap-2">
+                                <Switch
+                                  checked={user.is_active ?? false}
+                                  onCheckedChange={(checked) => handleToggleActive(user, checked)}
+                                  disabled={updateUserMutation.isPending}
+                                />
+                                <Badge
+                                  variant={user.is_active ? 'default' : 'secondary'}
+                                  className={cn(
+                                    'text-xs',
+                                    user.is_active
+                                      ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                                      : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                                  )}
                                 >
-                                  {user.monthly_salary
-                                    ? `${user.monthly_salary.toLocaleString()} ${user.salary_currency}`
-                                    : '—'}
+                                  {user.is_active ? 'Active' : 'Inactive'}
+                                </Badge>
                                 </div>
                               )}
                             </TableCell>
                             <TableCell>
-                              {netSalary !== null
-                                ? `${netSalary.toLocaleString()} ${user.salary_currency}`
-                                : '—'}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={cn(
-                                  'px-2 py-1 rounded-full text-xs font-medium',
-                                  user.is_active
-                                    ? 'bg-green-100 text-green-800'
-                                    : 'bg-gray-100 text-gray-800'
-                                )}
-                              >
-                                {user.is_active ? 'Yes' : 'No'}
+                            <div
+                              className="flex items-center gap-2 group"
+                              onClick={() => handleOpenSalaryModal(user)}
+                            >
+                              <span className={cn(
+                                "font-medium",
+                                user.current_salary === 0 && "text-muted-foreground"
+                              )}>
+                                {formatCurrency(user.current_salary)}
                               </span>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenSalaryModal(user);
+                                }}
+                                title="Edit salary"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
                             </TableCell>
-                            <TableCell className="font-medium">
-                              {totalHours.toFixed(2)}
-                            </TableCell>
-                            <TableCell>{unpaid}</TableCell>
                             <TableCell>
-                              {hourlyCost ? (
-                                `${hourlyCost.toFixed(2)} ${user.salary_currency}`
-                              ) : (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handleComputeHourlyCost(user)}
-                                  disabled={!user.monthly_salary || !totalHours || totalHours <= 0}
-                                  className="text-xs"
-                                >
-                                  <DollarSign className="h-3 w-3 mr-1" />
-                                  Compute
-                                </Button>
+                            {isLoadingStats ? (
+                              <Skeleton className="h-4 w-20" />
+                            ) : (
+                              formatCurrency(userStats?.net_salary)
+                            )}
+                            </TableCell>
+                            <TableCell>
+                            {isLoadingStats ? (
+                              <Skeleton className="h-4 w-20" />
+                            ) : (
+                              userStats?.hourly_price 
+                                ? formatCurrency(userStats.hourly_price)
+                                : '—'
                               )}
                             </TableCell>
                             <TableCell>
+                            {isLoadingStats ? (
+                              <Skeleton className="h-4 w-12" />
+                            ) : (
+                              userStats?.unpaid_leaves || '—'
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              {isEditing ? (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveUser(user.id)}
+                                    className="rounded-[14px]"
+                                    disabled={updateUserMutation.isPending}
+                                  >
+                                    <Save className="h-4 w-4 mr-1" />
+                                    {updateUserMutation.isPending ? 'Saving...' : 'Save'}
+                                  </Button>
+                                <Button
+                                    size="sm"
+                                  variant="ghost"
+                                    onClick={handleCancelEdit}
+                                    className="rounded-[14px]"
+                                    disabled={updateUserMutation.isPending}
+                                  >
+                                    <X className="h-4 w-4 mr-1" />
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
                               <Button
+                                  size="sm"
                                 variant="outline"
+                                    onClick={() => handleOpenLeavesModal(user)}
+                                    className="rounded-[14px]"
+                                  >
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    Leaves
+                                </Button>
+                              <Button
                                 size="sm"
+                                variant="outline"
+                                    onClick={() => handleNavigateToCalendar(user.id)}
                                 className="rounded-[14px]"
-                                onClick={() => handleOpenCalendarPage(user)}
                               >
-                                <CalendarDays className="mr-2 h-4 w-4" />
+                                    <CalendarDays className="h-4 w-4 mr-1" />
+                                    Calendar
                               </Button>
+                                </>
+                              )}
+                            </div>
                             </TableCell>
                           </TableRow>
                         );
                       })}
                     </TableBody>
                   </Table>
+              </div>
                 )}
+          </div>
               </div>
 
-              {/* Pagination */}
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-muted-foreground">
-                  Showing {users.length === 0 ? 0 : (page - 1) * pageSize + 1} to{' '}
-                  {Math.min(page * pageSize, totalUsers)} of {totalUsers} users
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <Label>Page Size:</Label>
-                    <Select
-                      value={pageSize.toString()}
-                      onValueChange={(value) => {
-                        setPageSize(parseInt(value));
-                        setPage(1);
+        {/* Salary Modal */}
+        <Dialog open={isSalaryModalOpen} onOpenChange={setIsSalaryModalOpen}>
+          <DialogContent className="sm:max-w-[500px] rounded-[14px]">
+            <DialogHeader>
+              <DialogTitle>Update Salary</DialogTitle>
+              <DialogDescription>
+                Set salary for {selectedUser?.name} for a specific month
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Period Month</Label>
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        'w-full justify-start text-left font-normal rounded-[14px]',
+                        !salaryPeriodMonth && 'text-muted-foreground'
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {salaryPeriodMonth ? format(salaryPeriodMonth, 'MMMM yyyy') : 'Select month'}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={salaryPeriodMonth}
+                      onSelect={(date) => {
+                        if (date) {
+                          setSalaryPeriodMonth(startOfMonth(date));
+                          setIsDatePickerOpen(false);
+                        }
                       }}
-                    >
-                      <SelectTrigger className="w-[80px] rounded-[14px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-[14px]">
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(Math.max(1, page - 1))}
-                      disabled={page === 1}
-                      className="rounded-[14px]"
-                    >
-                      Previous
-                    </Button>
-                    <span className="px-4 py-2 text-sm">
-                      Page {page} of {totalPages || 1}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setPage(Math.min(totalPages, page + 1))}
-                      disabled={page >= totalPages}
-                      className="rounded-[14px]"
-                    >
-                      Next
-                    </Button>
-                  </div>
-                </div>
+                      defaultMonth={salaryPeriodMonth}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label>Monthly Salary (INR)</Label>
+                <Input
+                  type="number"
+                  value={salaryInputValue}
+                  onChange={(e) => setSalaryInputValue(e.target.value)}
+                  placeholder="50000"
+                  min="0"
+                  step="0.01"
+                  className="rounded-[14px]"
+                  autoFocus
+                />
+                <p className="text-xs text-muted-foreground">
+                  Current salary for {format(selectedMonth, 'MMMM yyyy')}: {formatCurrency(selectedUser?.current_salary || 0)}
+                </p>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* User Form Modal */}
-      <UserFormModal
-        open={isUserFormOpen}
-        onOpenChange={(open) => {
-          setIsUserFormOpen(open);
-          if (!open) setEditingUser(null);
-        }}
-        user={editingUser}
-        onSave={handleSaveUser}
-        isSaving={createUserMutation.isPending || updateUserMutation.isPending}
-      />
+            <DialogFooter>
+                    <Button
+                      variant="outline"
+                onClick={() => {
+                  setIsSalaryModalOpen(false);
+                  setSalaryInputValue('');
+                }}
+                      className="rounded-[14px]"
+                    >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveSalary}
+                disabled={!salaryInputValue || parseFloat(salaryInputValue) < 0 || upsertSalaryMutation.isPending}
+                className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {upsertSalaryMutation.isPending ? 'Saving...' : 'Save Salary'}
+                    </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
       {/* Leaves Modal */}
-      {selectedUserForLeaves && (
+        {selectedUser && (
         <LeavesModal
           open={isLeavesModalOpen}
           onOpenChange={setIsLeavesModalOpen}
-          userName={selectedUserForLeaves.name}
-          userId={selectedUserForLeaves.id}
+            userName={selectedUser.name}
+            userId={selectedUser.id}
           monthDate={selectedMonth}
-          leaves={userLeaves}
+            leaves={leaves}
           onAddLeave={handleAddLeave}
           onDeleteLeave={handleDeleteLeave}
-          isAdding={addLeaveMutation.isPending}
+            isAdding={createLeaveMutation.isPending}
           isDeleting={deleteLeaveMutation.isPending}
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        {/* Confirmation Dialog */}
+        <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
         <AlertDialogContent className="rounded-[14px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete User</AlertDialogTitle>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                {confirmDialog.title}
+              </AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete {userToDelete?.name}? This action cannot be undone.
+                {confirmDialog.description}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={confirmDeleteUser}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+                onClick={confirmDialog.onConfirm}
+                className="rounded-[14px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+                Confirm
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AlertDialog open={isBulkDeleteDialogOpen} onOpenChange={setIsBulkDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[14px]">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Selected Users</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete {selectedIds.size} selected user(s)? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmBulkDelete}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
-              disabled={deleteUserMutation.isPending}
-            >
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      </div>
     </AdminLayout>
   );
 };

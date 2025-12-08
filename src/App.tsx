@@ -24,8 +24,8 @@ import AdminWorklogs from "./pages/AdminWorklogs";
 import AdminEfficiency from "./pages/AdminEfficiency";
 import AdminProjectEfficiency from "./pages/AdminProjectEfficiency";
 import AdminVendors from "./pages/AdminVendors";
-import UserCalendarView from "./pages/UserCalendarView";
 import UserManagement from "./pages/UserManagement";
+import UserCalendarView from "./pages/UserCalendarView";
 import AdminProfit from "./pages/AdminProfit";
 
 const queryClient = new QueryClient();
@@ -76,18 +76,18 @@ const App = () => (
             } 
           />
           <Route 
-            path="/admin/users/:userId/calendar" 
-            element={
-              <ProtectedRoute requiredRole="Admin">
-                <UserCalendarView />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
             path="/admin/users" 
             element={
               <ProtectedRoute requiredRole="Admin">
                 <UserManagement />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/users/:userId/calendar" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <UserCalendarView />
               </ProtectedRoute>
             } 
           />

@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { format, parse, startOfMonth, addMonths, subMonths, getDaysInMonth } from 'date-fns';
+import React, { useState, useMemo } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
+import { useUserLeaves, useUserWorklogsForMonth, useUserMonthStats, useAllUsers } from '@/features/admin/hooks/useUserManagement';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   Select,
   SelectContent,
@@ -10,22 +11,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { format, startOfMonth, getDaysInMonth, parse, subMonths, addMonths } from 'date-fns';
+import { cn } from '@/lib/utils';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { useAllUsers, useUserMonthlyActivity } from '@/features/admin/hooks/useAdminUserManagement';
-import { UserLeave, UserWorklogEntry } from '@/features/admin/services/adminUserManagementService';
-import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const dayKey = (date: Date) => format(date, 'yyyy-MM-dd');
 
@@ -47,324 +41,370 @@ const buildCalendarDays = (month: Date) => {
   return cells;
 };
 
-const leaveWeight = (leave: UserLeave) => (leave.leave_type === 'half' ? 0.5 : 1);
-
-const SummaryCard: React.FC<{ title: string; value: string; icon?: React.ReactNode }> = ({
-  title,
-  value,
-  icon,
-}) => (
-  <Card className="rounded-[14px] border-[#E7E7E7] bg-white dark:bg-card">
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-      {icon}
-    </CardHeader>
-    <CardContent>
-      <div className="text-2xl font-bold">{value}</div>
-    </CardContent>
-  </Card>
-);
-
-interface DayCellProps {
-  date: Date | null;
-  leaves: UserLeave[];
-  worklogs: UserWorklogEntry[];
-  onSelect: (date: Date) => void;
-}
-
-const DayCell: React.FC<DayCellProps> = ({ date, leaves, worklogs, onSelect }) => {
-  if (!date) return <div className="h-28 rounded-[14px] bg-muted/30" />;
-
-  const workHours = worklogs.reduce((acc, log) => acc + (log.hours_num || 0), 0);
-  const leaveSummary = leaves.map((leave) => ({
-    label: leave.leave_type === 'half' ? 'Half' : 'Full',
-    color: leave.is_paid ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800',
-    key: leave.id,
-  }));
-
-  return (
-    <button
-      type="button"
-      onClick={() => onSelect(date)}
-      className={cn(
-        'h-28 rounded-[14px] border border-[#E7E7E7] bg-white p-3 text-left transition-all hover:border-primary hover:shadow-sm focus-visible:ring-2 focus-visible:ring-primary',
-        leaves.length > 0 && 'border-primary/40'
-      )}
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">{format(date, 'd')}</span>
-        {workHours > 0 && (
-          <span className="text-xs font-medium text-primary">{workHours.toFixed(1)}h</span>
-        )}
-      </div>
-      <div className="mt-2 space-y-1">
-        {leaveSummary.map((leave) => (
-          <span
-            key={leave.key}
-            className={cn(
-              'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
-              leave.color
-            )}
-          >
-            {leave.label} Leave
-          </span>
-        ))}
-        {worklogs.slice(0, 2).map((log) => (
-          <div key={log.id} className="text-xs text-muted-foreground truncate">
-            {log.project?.name || log.task?.name || 'Worklog'} - {log.hours_num.toFixed(1)}h
-          </div>
-        ))}
-        {worklogs.length > 2 && (
-          <div className="text-[11px] text-muted-foreground">+{worklogs.length - 2} more</div>
-        )}
-      </div>
-    </button>
-  );
-};
-
 const UserCalendarView: React.FC = () => {
-  const { userId: routeUserId } = useParams<{ userId: string }>();
-  const location = useLocation();
+  const { userId: initialUserId } = useParams<{ userId: string }>();
   const navigate = useNavigate();
-
-  const query = new URLSearchParams(location.search);
-  const [currentMonth, setCurrentMonth] = useState<Date>(() => parseMonth(query.get('month')));
-  const [selectedUserId, setSelectedUserId] = useState<string | undefined>(routeUserId);
+  const [selectedUserId, setSelectedUserId] = useState<string>(initialUserId || '');
+  const [selectedMonth, setSelectedMonth] = useState<Date>(startOfMonth(new Date()));
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
 
-  const { data: users = [], isLoading: loadingUsers } = useAllUsers();
+  // Fetch all users for dropdown
+  const { data: allUsers = [] } = useAllUsers();
 
-  useEffect(() => {
-    if (!selectedUserId && users.length > 0) {
-      setSelectedUserId(users[0].id);
-    }
-  }, [selectedUserId, users]);
-
-  const { data: activity, isLoading } = useUserMonthlyActivity(
-    selectedUserId ?? null,
-    currentMonth
+  const { data: leaves = [], isLoading: isLoadingLeaves } = useUserLeaves(
+    selectedUserId || null,
+    selectedMonth
   );
 
+  const { data: worklogs = [], isLoading: isLoadingWorklogs } = useUserWorklogsForMonth(
+    selectedUserId || null,
+    selectedMonth
+  );
+
+  const { data: monthStats, isLoading: isLoadingStats } = useUserMonthStats(
+    selectedUserId || null,
+    selectedMonth
+  );
+
+  const selectedUser = allUsers.find((u) => u.id === selectedUserId);
+
+  // Create maps for quick lookup
   const leavesMap = useMemo(() => {
-    const map = new Map<string, UserLeave[]>();
-    (activity?.leaves || []).forEach((leave) => {
-      const entries = map.get(leave.leave_date) || [];
-      entries.push(leave);
-      map.set(leave.leave_date, entries);
+    const map = new Map<string, any>();
+    leaves.forEach((leave) => {
+      map.set(leave.leave_date, leave);
     });
     return map;
-  }, [activity?.leaves]);
+  }, [leaves]);
 
-  const worklogMap = useMemo(() => {
-    const map = new Map<string, UserWorklogEntry[]>();
-    (activity?.worklogs || []).forEach((log) => {
-      const key = dayKey(new Date(log.created_at));
-      const entries = map.get(key) || [];
-      entries.push(log);
-      map.set(key, entries);
+  const worklogsMap = useMemo(() => {
+    const map = new Map<string, any[]>();
+    worklogs.forEach((log: any) => {
+      const date = format(new Date(log.created_at), 'yyyy-MM-dd');
+      if (!map.has(date)) {
+        map.set(date, []);
+      }
+      map.get(date)!.push(log);
     });
     return map;
-  }, [activity?.worklogs]);
+  }, [worklogs]);
 
-  const totalLeaveDays = useMemo(
-    () => (activity?.leaves || []).reduce((acc, leave) => acc + leaveWeight(leave), 0),
-    [activity?.leaves]
-  );
+  const calendarDays = useMemo(() => buildCalendarDays(selectedMonth), [selectedMonth]);
 
-  const totalHours = useMemo(
-    () => (activity?.worklogs || []).reduce((acc, log) => acc + (log.hours_num || 0), 0),
-    [activity?.worklogs]
-  );
-
-  const calendarDays = useMemo(() => buildCalendarDays(currentMonth), [currentMonth]);
-  const selectedKey = selectedDate ? dayKey(selectedDate) : null;
-  const selectedLeaves = selectedKey ? leavesMap.get(selectedKey) || [] : [];
-  const selectedLogs = selectedKey ? worklogMap.get(selectedKey) || [] : [];
-
-  const handleMonthChange = (direction: 'prev' | 'next') => {
-    setCurrentMonth((prev) => (direction === 'next' ? addMonths(prev, 1) : subMonths(prev, 1)));
-    setSelectedDate(null);
+  const handleDateClick = (date: Date | null) => {
+    if (date) {
+      setSelectedDate(date);
+      setIsDetailsOpen(true);
+    }
   };
 
-  const handleBack = () => {
-    navigate('/admin/users');
+  const handlePrevMonth = () => {
+    setSelectedMonth(subMonths(selectedMonth, 1));
+  };
+
+  const handleNextMonth = () => {
+    setSelectedMonth(addMonths(selectedMonth, 1));
+  };
+
+  const selectedDateLeaves = selectedDate ? leavesMap.get(dayKey(selectedDate)) : null;
+  const selectedDateWorklogs = selectedDate ? worklogsMap.get(dayKey(selectedDate)) || [] : [];
+
+  const formatCurrency = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return '—';
+    return new Intl.NumberFormat('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
+  };
+
+  const formatHours = (hours: number | null | undefined): string => {
+    if (hours === null || hours === undefined) return '—';
+    return `${hours.toFixed(2)}h`;
   };
 
   return (
     <AdminLayout>
-      <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8 space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-col h-screen bg-gradient-to-br from-muted/50 to-muted/30 overflow-hidden">
+        {/* Header */}
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 py-5 sm:px-6">
+          <div className="flex flex-col gap-5">
+            {/* Top Row: Back button and Title */}
+            <div className="flex items-center gap-4">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate('/admin/users')}
+                className="rounded-[14px] h-9 w-9 hover:bg-primary/10 hover:text-primary transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
               <div className="flex items-center gap-3">
-                <Button variant="outline" className="rounded-[14px]" onClick={handleBack}>
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Back to Users
-                </Button>
-                <div>
-                  {/* <p className="text-sm text-muted-foreground">User Calendar</p> */}
-                  <h1 className="text-2xl font-bold">
-                    {users.find((u) => u.id === selectedUserId)?.name || 'Select a user'}
-                  </h1>
-                </div>
+                <div className="h-8 w-1 rounded-full bg-primary" />
+                <h1 className="text-2xl font-bold text-foreground">User Calendar View</h1>
               </div>
-              <div className="flex flex-wrap gap-3">
+            </div>
+
+            {/* Second Row: User Dropdown and Month Navigation */}
+            <div className="flex items-center gap-4 flex-wrap">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium text-muted-foreground">User:</span>
                 <Select
                   value={selectedUserId}
-                  onValueChange={setSelectedUserId}
-                  disabled={loadingUsers || users.length === 0}
+                  onValueChange={(value) => {
+                    setSelectedUserId(value);
+                    navigate(`/admin/users/${value}/calendar`, { replace: true });
+                  }}
                 >
-                  <SelectTrigger className="w-[220px] rounded-[14px]">
+                  <SelectTrigger className="w-[220px] rounded-[14px] h-10 border-2 hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Select user" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-[14px] max-h-64">
-                    {users.map((user) => (
+                  <SelectContent>
+                    {allUsers.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
                         {user.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
 
+              <div className="flex items-center gap-3 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handlePrevMonth}
+                  className="rounded-[14px] h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <h2 className="text-lg font-bold min-w-[160px] text-center text-foreground">
+                  {format(selectedMonth, 'MMMM yyyy')}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleNextMonth}
+                  className="rounded-[14px] h-8 w-8 hover:bg-primary/10 hover:text-primary transition-colors"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <SummaryCard
-                title="Total Logged Hours"
-                value={`${totalHours.toFixed(1)}h`}
-                icon={<Clock className="h-5 w-5 text-primary" />}
-              />
-              <SummaryCard
-                title="Total Leave Days"
-                value={`${totalLeaveDays.toFixed(1)} d`}
-                icon={<CalendarIcon className="h-5 w-5 text-primary" />}
-              />
-            </div>
-
-            <div className="rounded-[14px] border border-[#E7E7E7] bg-white p-4">
-              <div className="mb-4 flex items-center justify-between gap-4 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-primary" />
-                    Worklogs
+            {/* Third Row: Month Stats - Enhanced Cards */}
+            {monthStats && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card className="p-3 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Salary</span>
+                    <span className="text-lg font-bold text-foreground">{formatCurrency(monthStats.monthly_salary)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-green-200" />
-                    Paid Leave
+                </Card>
+                <Card className="p-3 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Net Salary</span>
+                    <span className="text-lg font-bold text-primary">{formatCurrency(monthStats.net_salary)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="h-3 w-3 rounded-full bg-red-200" />
-                    Unpaid Leave
+                </Card>
+                <Card className="p-3 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Total Hours</span>
+                    <span className="text-lg font-bold text-foreground">{formatHours(monthStats.total_hours)}</span>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 rounded-[14px] border border-[#E7E7E7] bg-white px-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => handleMonthChange('prev')}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium px-2">
-                    {format(currentMonth, 'MMMM yyyy')}
-                  </span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="rounded-full"
-                    onClick={() => handleMonthChange('next')}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
+                </Card>
+                <Card className="p-3 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 hover:shadow-md transition-shadow">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Unpaid Leaves</span>
+                    <span className="text-lg font-bold text-destructive">{monthStats.unpaid_leaves}</span>
+                  </div>
+                </Card>
               </div>
-
-              {isLoading ? (
-                <div className="p-10 text-center text-muted-foreground">Loading calendar...</div>
-              ) : (
-                <div className="grid grid-cols-7 gap-3">
-                  {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((weekday) => (
-                    <div key={weekday} className="text-center text-xs font-semibold text-muted-foreground">
-                      {weekday}
-                    </div>
-                  ))}
-                  {calendarDays.map((date, idx) => (
-                    <DayCell
-                      key={idx}
-                      date={date}
-                      leaves={date ? leavesMap.get(dayKey(date)) || [] : []}
-                      worklogs={date ? worklogMap.get(dayKey(date)) || [] : []}
-                      onSelect={(selected) => setSelectedDate(selected)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
+            )}
           </div>
-        </div>
-      </div>
+        </header>
 
-      <Dialog
-        open={!!selectedDate}
-        onOpenChange={(open) => {
-          if (!open) setSelectedDate(null);
-        }}
-      >
-        <DialogContent className="sm:max-w-[500px] rounded-[14px]">
-          <DialogHeader>
-            <DialogTitle>{selectedDate ? format(selectedDate, 'PPP') : 'Day Details'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Leaves</h3>
-              {selectedLeaves.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No leave recorded.</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedLeaves.map((leave) => (
-                    <div
-                      key={leave.id}
+        {/* Calendar Grid */}
+        <div className="flex-1 p-4 sm:p-6 overflow-hidden min-h-0">
+          <div className="h-full flex flex-col gap-4">
+            <Card className="p-4 rounded-[14px] h-full flex flex-col min-h-0 shadow-lg border-2 bg-card/95 backdrop-blur-sm">
+              <div className="grid grid-cols-7 gap-2 mb-2 flex-shrink-0">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
+                  <div key={day} className="text-center text-sm font-bold text-muted-foreground py-2 bg-muted/50 rounded-[8px]">
+                    {day}
+                  </div>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-2 flex-1 min-h-0" style={{ gridAutoRows: '1fr' }}>
+                {calendarDays.map((date, index) => {
+                  if (!date) {
+                    return <div key={`empty-${index}`} className="rounded-[8px]" />;
+                  }
+
+                  const dateKey = dayKey(date);
+                  const leave = leavesMap.get(dateKey);
+                  const dayWorklogs = worklogsMap.get(dateKey) || [];
+                  const totalHours = dayWorklogs.reduce((sum, log: any) => sum + (log.hours_num || 0), 0);
+                  const isToday = dayKey(date) === dayKey(new Date());
+                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+
+                  return (
+                    <button
+                      key={dateKey}
+                      onClick={() => handleDateClick(date)}
                       className={cn(
-                        'rounded-[12px] border px-3 py-2 text-sm',
-                        leave.is_paid ? 'border-green-200 bg-green-50' : 'border-red-200 bg-red-50'
+                        'rounded-[10px] border-2 p-2.5 text-left transition-all duration-200 flex flex-col justify-between min-h-0 h-full',
+                        'hover:scale-[1.02] hover:shadow-md hover:z-10 relative',
+                        isToday && 'border-primary bg-primary/10 shadow-md ring-2 ring-primary/20',
+                        !isToday && !leave && 'border-border/50 bg-card hover:bg-muted/50',
+                        isWeekend && !isToday && !leave && 'bg-muted/30',
+                        leave && !leave.is_paid && leave.leave_type === 'full' && 'bg-red-50 border-red-400 shadow-sm hover:bg-red-100',
+                        leave && !leave.is_paid && leave.leave_type === 'half' && 'bg-orange-50 border-orange-400 shadow-sm hover:bg-orange-100',
+                        leave && leave.is_paid && 'bg-green-50 border-green-400 shadow-sm hover:bg-green-100'
                       )}
                     >
-                      <div className="font-medium capitalize">{leave.leave_type} day</div>
-                      <div className="text-xs text-muted-foreground">
-                        {leave.is_paid ? 'Paid' : 'Unpaid'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-muted-foreground mb-2">Worklogs</h3>
-              {selectedLogs.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No worklogs recorded.</p>
-              ) : (
-                <div className="space-y-2">
-                  {selectedLogs.map((log) => (
-                    <div key={log.id} className="rounded-[12px] border border-[#E7E7E7] p-3 text-sm">
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium">
-                          {log.project?.name || log.task?.name || 'Worklog'}
+                      <div className="flex items-center justify-between flex-shrink-0">
+                        <span className={cn(
+                          'text-base font-bold',
+                          isToday && 'text-primary',
+                          !isToday && isWeekend && 'text-muted-foreground',
+                          !isToday && !isWeekend && 'text-foreground'
+                        )}>
+                          {format(date, 'd')}
                         </span>
-                        <span className="text-primary font-semibold">{log.hours_num.toFixed(1)}h</span>
+                        {leave && (
+                          <span className={cn(
+                            'text-xs font-bold px-1.5 py-0.5 rounded-full',
+                            leave.leave_type === 'half' && 'bg-orange-200 text-orange-800',
+                            leave.leave_type === 'full' && leave.is_paid && 'bg-green-200 text-green-800',
+                            leave.leave_type === 'full' && !leave.is_paid && 'bg-red-200 text-red-800'
+                          )}>
+                            {leave.leave_type === 'half' ? '½' : 'L'}
+                          </span>
+                        )}
                       </div>
-                      {log.note && (
-                        <p className="mt-1 text-xs text-muted-foreground">{log.note}</p>
+                      {totalHours > 0 && (
+                        <div className="flex items-center gap-1.5 mt-auto flex-shrink-0 bg-primary/10 px-2 py-1 rounded-[6px]">
+                          <Clock className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs font-semibold text-primary">{totalHours.toFixed(1)}h</span>
+                        </div>
                       )}
-                    </div>
-                  ))}
+                    </button>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Legend - Enhanced */}
+            <Card className="p-4 rounded-[14px] border-2 bg-card/95 backdrop-blur-sm shadow-sm flex-shrink-0">
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-[6px] border-2 border-red-400 bg-red-50 shadow-sm" />
+                  <span className="font-medium text-foreground">Unpaid Full Day</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-[6px] border-2 border-orange-400 bg-orange-50 shadow-sm" />
+                  <span className="font-medium text-foreground">Unpaid Half Day</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-[6px] border-2 border-green-400 bg-green-50 shadow-sm" />
+                  <span className="font-medium text-foreground">Paid Leave</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded-[6px] border-2 border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20" />
+                  <span className="font-medium text-foreground">Today</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+
+        {/* Day Details Dialog */}
+        <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+          <DialogContent className="sm:max-w-[550px] rounded-[14px] border-2 shadow-xl">
+            <DialogHeader className="pb-4 border-b border-border/50">
+              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                <CalendarIcon className="h-5 w-5 text-primary" />
+                {selectedDate ? format(selectedDate, 'EEEE, MMMM d, yyyy') : 'Day Details'}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {/* Leave Info */}
+              {selectedDateLeaves && (
+                <Card className="p-4 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className={cn(
+                      'w-2 h-2 rounded-full',
+                      selectedDateLeaves.is_paid ? 'bg-green-500' : 'bg-red-500'
+                    )} />
+                    <h3 className="font-bold text-base text-foreground">Leave Information</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Type</span>
+                      <span className="text-sm font-semibold text-foreground">
+                        {selectedDateLeaves.leave_type === 'half' ? 'Half Day' : 'Full Day'}
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+                      <span className={cn(
+                        'text-sm font-bold',
+                        selectedDateLeaves.is_paid ? 'text-green-600' : 'text-red-600'
+                      )}>
+                        {selectedDateLeaves.is_paid ? 'Paid' : 'Unpaid'}
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {/* Worklogs */}
+              {selectedDateWorklogs.length > 0 && (
+                <Card className="p-4 rounded-[14px] border-2 bg-gradient-to-br from-card to-muted/30 shadow-sm">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <h3 className="font-bold text-base text-foreground">Worklogs</h3>
+                  </div>
+                  <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                    {selectedDateWorklogs.map((log: any) => (
+                      <div key={log.id} className="p-3 rounded-[10px] bg-muted/50 border border-border/50 hover:bg-muted transition-colors">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-semibold text-sm text-foreground">
+                            {log.tasks?.name || log.projects?.name || 'No task/project'}
+                          </span>
+                          <span className="text-sm font-bold text-primary bg-primary/10 px-2 py-1 rounded-[6px]">
+                            {log.hours}
+                          </span>
+                        </div>
+                        {log.note && (
+                          <p className="text-xs text-muted-foreground mt-2 leading-relaxed">{log.note}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 pt-3 border-t-2 border-border/50">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Total Hours</span>
+                      <span className="text-lg font-bold text-primary">
+                        {selectedDateWorklogs.reduce((sum: number, log: any) => sum + (log.hours_num || 0), 0).toFixed(2)}h
+                      </span>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
+              {!selectedDateLeaves && selectedDateWorklogs.length === 0 && (
+                <Card className="p-8 rounded-[14px] border-2 border-dashed border-border/50">
+                  <p className="text-center text-muted-foreground text-sm">No data available for this day</p>
+                </Card>
               )}
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      </div>
     </AdminLayout>
   );
 };

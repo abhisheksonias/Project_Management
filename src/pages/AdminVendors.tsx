@@ -1,23 +1,17 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { useVendors, useCreateVendor, useUpdateVendor, useVendorBusinessStats } from '@/features/vendors/hooks/useVendors';
+import { useVendors, useCreateVendor, useVendorProfits } from '@/features/vendors/hooks/useVendors';
 import { Vendor } from '@/features/vendors/services/vendorService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { Edit, X } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { VendorDetailsModal } from '@/features/vendors/ui/VendorDetailsModal';
+import { EditVendorDialog } from '@/features/vendors/ui/EditVendorDialog';
+import { TrendingUp, TrendingDown, Edit2, DollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface VendorFormState {
   name: string;
@@ -35,14 +29,21 @@ const defaultFormState: VendorFormState = {
 
 const AdminVendors: React.FC = () => {
   const [formState, setFormState] = useState<VendorFormState>(defaultFormState);
+  const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
+  const [selectedVendorName, setSelectedVendorName] = useState<string | null>(null);
+  const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const { data: vendors = [], isLoading } = useVendors();
-  const { data: businessStats = [], isLoading: isLoadingStats } = useVendorBusinessStats();
+  const { data: vendorProfits = [], isLoading: isLoadingProfits } = useVendorProfits();
   const createVendorMutation = useCreateVendor();
 
-  // Create a map of vendor_id to business stats for quick lookup
-  const statsMap = new Map(
-    businessStats.map((stats) => [stats.vendor_id, stats])
-  );
+  // Create a map of vendor_id -> profit data
+  const profitMap = useMemo(() => {
+    const map = new Map<string, typeof vendorProfits[0]>();
+    vendorProfits.forEach((profit) => {
+      map.set(profit.vendor_id, profit);
+    });
+    return map;
+  }, [vendorProfits]);
 
   const handleChange = (field: keyof VendorFormState, value: string) => {
     setFormState((prev) => ({ ...prev, [field]: value }));
@@ -77,15 +78,37 @@ const AdminVendors: React.FC = () => {
   return (
     <AdminLayout>
       <div className="flex min-h-screen flex-col bg-muted/30">
-        <header className="bg-card border-b border-border px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Vendors</h1>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                Maintain the list of approved vendors and link them to projects.
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 py-6 sm:px-6 lg:px-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex-1">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 rounded-full bg-primary" />
+                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Vendors</h1>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground sm:text-base ml-4">
+                Manage vendors, view profit metrics, and project details.
               </p>
             </div>
-            <div className="text-sm text-muted-foreground">{vendorCountText}</div>
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-sm text-muted-foreground">{vendorCountText}</div>
+              {!isLoadingProfits && vendorProfits.length > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Total Profit:{' '}
+                  <span
+                    className={cn(
+                      'font-semibold',
+                      vendorProfits.reduce((sum, p) => sum + p.total_profit, 0) >= 0
+                        ? 'text-green-700'
+                        : 'text-red-700'
+                    )}
+                  >
+                    {formatCurrency(
+                      vendorProfits.reduce((sum, p) => sum + p.total_profit, 0)
+                    )}
+                  </span>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
@@ -164,14 +187,21 @@ const AdminVendors: React.FC = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {vendors.map((vendor) => (
-                        <VendorRow 
-                          key={vendor.id} 
-                          vendor={vendor} 
-                          businessStats={statsMap.get(vendor.id)} 
-                          isLoadingStats={isLoadingStats}
-                        />
-                      ))}
+                      {vendors.map((vendor) => {
+                        const profit = profitMap.get(vendor.id);
+                        return (
+                          <VendorRow
+                            key={vendor.id}
+                            vendor={vendor}
+                            profit={profit}
+                            onVendorClick={() => {
+                              setSelectedVendorId(vendor.id);
+                              setSelectedVendorName(vendor.name);
+                            }}
+                            onEditClick={() => setEditingVendor(vendor)}
+                          />
+                        );
+                      })}
                     </div>
                   )}
                 </CardContent>
@@ -179,97 +209,75 @@ const AdminVendors: React.FC = () => {
             </div>
           </div>
         </main>
+
+        {/* Vendor Details Modal */}
+        <VendorDetailsModal
+          vendorId={selectedVendorId}
+          vendorName={selectedVendorName}
+          open={!!selectedVendorId}
+          onOpenChange={(open) => {
+            if (!open) {
+              setSelectedVendorId(null);
+              setSelectedVendorName(null);
+            }
+          }}
+        />
+
+        {/* Edit Vendor Dialog */}
+        <EditVendorDialog
+          vendor={editingVendor}
+          open={!!editingVendor}
+          onOpenChange={(open) => {
+            if (!open) setEditingVendor(null);
+          }}
+        />
       </div>
     </AdminLayout>
   );
 };
 
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
+
 interface VendorRowProps {
   vendor: Vendor;
-  businessStats?: {
-    total_projects: number;
+  profit?: {
+    vendor_id: string;
+    vendor_name: string;
     total_revenue: number;
     total_cost: number;
     total_profit: number;
     profit_margin_percent: number | null;
+    project_count: number;
   };
-  isLoadingStats?: boolean;
+  onVendorClick: () => void;
+  onEditClick: () => void;
 }
 
-const VendorRow: React.FC<VendorRowProps> = ({ vendor, businessStats, isLoadingStats }) => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editFormState, setEditFormState] = useState({
-    name: vendor.name,
-    email: vendor.email || '',
-    phone: vendor.phone || '',
-    website: vendor.website || '',
-  });
-  const updateVendorMutation = useUpdateVendor();
-
-  // Sync form state when vendor changes
-  useEffect(() => {
-    setEditFormState({
-      name: vendor.name,
-      email: vendor.email || '',
-      phone: vendor.phone || '',
-      website: vendor.website || '',
-    });
-  }, [vendor]);
-
-  const formatCurrency = (value: number | null | undefined): string => {
-    if (value === null || value === undefined) return '-';
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value);
-  };
-
-  const handleEditClick = () => {
-    setEditFormState({
-      name: vendor.name,
-      email: vendor.email || '',
-      phone: vendor.phone || '',
-      website: vendor.website || '',
-    });
-    setIsEditDialogOpen(true);
-  };
-
-  const handleEditSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
-    const trimmedName = editFormState.name.trim();
-    if (!trimmedName) return;
-
-    updateVendorMutation.mutate(
-      {
-        id: vendor.id,
-        input: {
-          name: trimmedName,
-          email: editFormState.email.trim() || null,
-          phone: editFormState.phone.trim() || null,
-          website: editFormState.website.trim() || null,
-        },
-      },
-      {
-        onSuccess: () => {
-          setIsEditDialogOpen(false);
-        },
-      }
-    );
-  };
-
-  const handleEditChange = (field: keyof typeof editFormState, value: string) => {
-    setEditFormState((prev) => ({ ...prev, [field]: value }));
-  };
+const VendorRow: React.FC<VendorRowProps> = ({ vendor, profit, onVendorClick, onEditClick }) => {
+  const isPositive = profit ? profit.total_profit >= 0 : false;
 
   return (
-    <>
-      <div className="rounded-[14px] border border-border px-4 py-3">
-        <div className="flex flex-col gap-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+    <div className="rounded-[14px] border-2 border-border hover:border-primary/50 transition-colors bg-card shadow-sm">
+      <div className="px-4 py-4">
+        <div className="flex flex-col gap-4">
+          {/* Header Row */}
+          <div className="flex items-start justify-between">
             <div className="flex-1">
-              <p className="text-base font-semibold text-foreground">{vendor.name}</p>
+              <div className="flex items-center gap-3 mb-2">
+                <p className="text-base font-semibold text-foreground">{vendor.name}</p>
+                {profit && profit.project_count > 0 && (
+                  <span className="text-xs px-2 py-1 rounded-[8px] bg-muted text-muted-foreground">
+                    {profit.project_count} project{profit.project_count > 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
               <div className="mt-1 text-sm text-muted-foreground space-y-1">
                 {vendor.email && <p>Email: {vendor.email}</p>}
                 {vendor.phone && <p>Phone: {vendor.phone}</p>}
@@ -281,6 +289,7 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, businessStats, isLoadingS
                       className="text-primary underline"
                       target="_blank"
                       rel="noreferrer"
+                      onClick={(e) => e.stopPropagation()}
                     >
                       {vendor.website}
                     </a>
@@ -288,143 +297,70 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, businessStats, isLoadingS
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={handleEditClick}
-                className="h-8 w-8 rounded-[14px]"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEditClick();
+                }}
+                className="h-8 w-8 rounded-[8px]"
               >
-                <Edit className="h-4 w-4" />
+                <Edit2 className="h-4 w-4" />
               </Button>
-              <div className="text-xs text-muted-foreground">
-                Added {format(new Date(vendor.created_at), 'dd MMM yyyy')}
-              </div>
             </div>
           </div>
 
-        {/* Business Statistics */}
-        {isLoadingStats ? (
-          <div className="pt-2 border-t border-border">
-            <Skeleton className="h-16 w-full" />
-          </div>
-        ) : businessStats && businessStats.total_projects > 0 ? (
-          <div className="pt-2 border-t border-border">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Business Overview</p>
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">Projects</p>
-                <p className="text-sm font-semibold">{businessStats.total_projects}</p>
+          {/* Profit Row */}
+          {profit && profit.project_count > 0 ? (
+            <div
+              className="flex items-center justify-between p-3 rounded-[8px] bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+              onClick={onVendorClick}
+            >
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                  Net Profit
+                </span>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Revenue</p>
-                <p className="text-sm font-semibold">{formatCurrency(businessStats.total_revenue)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Cost</p>
-                <p className="text-sm font-semibold">{formatCurrency(businessStats.total_cost)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Profit</p>
-                <p className={`text-sm font-semibold ${
-                  businessStats.total_profit < 0 ? 'text-red-600' : 
-                  businessStats.total_profit > 0 ? 'text-green-600' : ''
-                }`}>
-                  {formatCurrency(businessStats.total_profit)}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Margin</p>
-                <Badge
-                  variant={businessStats.profit_margin_percent !== null && businessStats.profit_margin_percent < 0 
-                    ? 'destructive' 
-                    : 'default'}
-                  className="text-xs"
+              <div className="flex items-center gap-3">
+                {isPositive ? (
+                  <TrendingUp className="h-4 w-4 text-green-700" />
+                ) : (
+                  <TrendingDown className="h-4 w-4 text-red-700" />
+                )}
+                <span
+                  className={cn(
+                    'text-base font-bold',
+                    isPositive ? 'text-green-700' : 'text-red-700'
+                  )}
                 >
-                  {businessStats.profit_margin_percent !== null
-                    ? `${businessStats.profit_margin_percent.toFixed(1)}%`
-                    : '-'}
-                </Badge>
+                  {formatCurrency(profit.total_profit)}
+                </span>
+                {profit.profit_margin_percent !== null && (
+                  <span
+                    className={cn(
+                      'text-xs font-medium px-2 py-1 rounded-[6px]',
+                      profit.profit_margin_percent >= 0
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-red-100 text-red-700'
+                    )}
+                  >
+                    {profit.profit_margin_percent >= 0 ? '+' : ''}
+                    {profit.profit_margin_percent.toFixed(1)}%
+                  </span>
+                )}
               </div>
             </div>
-          </div>
-        ) : businessStats && businessStats.total_projects === 0 ? (
-          <div className="pt-2 border-t border-border">
-            <p className="text-xs text-muted-foreground">No projects assigned yet</p>
-          </div>
-        ) : null}
+          ) : (
+            <div className="text-xs text-muted-foreground">
+              Added {format(new Date(vendor.created_at), 'dd MMM yyyy')}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Edit Vendor Dialog */}
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="rounded-[14px]">
-          <DialogHeader>
-            <DialogTitle>Edit Vendor</DialogTitle>
-            <DialogDescription>
-              Update vendor information below.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Name *</Label>
-              <Input
-                value={editFormState.name}
-                onChange={(e) => handleEditChange('name', e.target.value)}
-                placeholder="Acme Inc."
-                required
-                className="rounded-[14px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Email</Label>
-              <Input
-                type="email"
-                value={editFormState.email}
-                onChange={(e) => handleEditChange('email', e.target.value)}
-                placeholder="contact@acme.com"
-                className="rounded-[14px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Phone</Label>
-              <Input
-                value={editFormState.phone}
-                onChange={(e) => handleEditChange('phone', e.target.value)}
-                placeholder="+1 555 123 4567"
-                className="rounded-[14px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-sm text-muted-foreground">Website</Label>
-              <Input
-                value={editFormState.website}
-                onChange={(e) => handleEditChange('website', e.target.value)}
-                placeholder="https://acme.com"
-                className="rounded-[14px]"
-              />
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsEditDialogOpen(false)}
-                className="rounded-[14px]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={updateVendorMutation.isPending || !editFormState.name.trim()}
-              >
-                {updateVendorMutation.isPending ? 'Updating...' : 'Update Vendor'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 };
 

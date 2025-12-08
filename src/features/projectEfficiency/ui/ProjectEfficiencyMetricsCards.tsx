@@ -68,25 +68,28 @@ export const ProjectEfficiencyMetricsCards: React.FC<ProjectEfficiencyMetricsCar
   ];
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
       {metrics.map((metric, index) => (
-        <Card key={index} className="rounded-[14px] shadow-md bg-card">
+        <Card key={index} className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30 hover:shadow-xl transition-shadow">
           <CardContent className="p-6">
-            <div className="space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">{metric.title}</p>
+            <div className="space-y-3">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">{metric.title}</p>
               <div className="flex items-baseline justify-between">
                 <p className="text-3xl font-bold text-foreground">{metric.value}</p>
-                {metric.change !== undefined && (
-                  <div className="flex items-center gap-1">
+                {metric.change !== undefined && metric.change !== 0 && (
+                  <div className={cn(
+                    "flex items-center gap-1 px-2 py-1 rounded-[8px]",
+                    metric.positive ? "bg-green-100" : "bg-red-100"
+                  )}>
                     {metric.positive ? (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
+                      <TrendingUp className="h-4 w-4 text-green-700" />
                     ) : (
-                      <TrendingDown className="h-4 w-4 text-primary" />
+                      <TrendingDown className="h-4 w-4 text-red-700" />
                     )}
                     <span
                       className={cn(
-                        'text-sm font-medium',
-                        metric.positive ? 'text-green-600' : 'text-primary'
+                        'text-xs font-bold',
+                        metric.positive ? 'text-green-700' : 'text-red-700'
                       )}
                     >
                       {formatChange(metric.change)}

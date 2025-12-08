@@ -1,213 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
-import { ProjectsProfitTable } from '@/features/profit/ui/ProjectsProfitTable';
-import { ProjectDetailsDrawer } from '@/features/profit/ui/ProjectDetailsDrawer';
-import { useProjectsProfit, useProjectProfit } from '@/features/profit/hooks/useProfit';
-import { ProjectProfit } from '@/features/profit/services/profitService';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Download, RefreshCw, Search } from 'lucide-react';
-import { PaginationControls } from '@/shared/ui/PaginationControls';
-import { exportProjectsProfitToCSV } from '@/shared/utils/csvExportProfit';
-import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
+import { useProjectProfitOverall } from '@/features/profit/hooks/useProfit';
+import { ProjectFinancialDrawer } from '@/features/profit/ui/ProjectFinancialDrawer';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { startOfMonth, format } from 'date-fns';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { Card, CardContent } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { DollarSign, TrendingUp, TrendingDown, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-const PROJECTS_PER_PAGE = 20;
+const formatCurrency = (amount: number): string => {
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(amount);
+};
 
 const AdminProfit: React.FC = () => {
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [selectedProjectName, setSelectedProjectName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [selectedProject, setSelectedProject] = useState<ProjectProfit | null>(null);
-  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [selectedMonth, setSelectedMonth] = useState<Date>(new Date());
-  const [statusFilter, setStatusFilter] = useState<string>('All');
-  
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  // Fetch projects profit data
-  const { data: projectsData, isLoading, refetch } = useProjectsProfit({
-    page: currentPage,
-    pageSize: PROJECTS_PER_PAGE,
-    search: searchQuery,
-    status: statusFilter,
-  });
+  const { data: projectsProfit, isLoading } = useProjectProfitOverall();
 
-  // Note: User profit data is now fetched inside ProjectDetailsDrawer with month toggle
+  const filteredProjects = useMemo(() => {
+    if (!projectsProfit) return [];
+    if (!searchQuery.trim()) return projectsProfit;
 
-  // Fetch full project details
-  const { data: projectDetails } = useProjectProfit(selectedProject?.project_id || null);
+    const query = searchQuery.toLowerCase();
+    return projectsProfit.filter(
+      (project) =>
+        project.project_name.toLowerCase().includes(query) ||
+        project.project_id.toLowerCase().includes(query)
+    );
+  }, [projectsProfit, searchQuery]);
 
-  const handleProjectClick = (project: ProjectProfit) => {
-    setSelectedProject(project);
-    setIsDrawerOpen(true);
+  const handleProjectClick = (projectId: string, projectName: string) => {
+    setSelectedProjectId(projectId);
+    setSelectedProjectName(projectName);
   };
 
   const handleCloseDrawer = () => {
-    setIsDrawerOpen(false);
-    setSelectedProject(null);
+    setSelectedProjectId(null);
+    setSelectedProjectName(null);
   };
 
-  const handleExportCSV = () => {
-    try {
-      if (!projectsData?.data || projectsData.data.length === 0) {
-        toast({
-          title: 'No data to export',
-          description: 'There are no projects to export',
-          variant: 'destructive',
-        });
-        return;
-      }
-      exportProjectsProfitToCSV(projectsData.data);
-      toast({
-        title: 'Export successful',
-        description: `Exported ${projectsData.data.length} project(s) to CSV`,
-      });
-    } catch (error: any) {
-      toast({
-        title: 'Export failed',
-        description: error.message || 'Failed to export CSV',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleRefresh = () => {
-    queryClient.invalidateQueries({ queryKey: ['profit'] });
-    refetch();
-    toast({
-      title: 'Refreshed',
-      description: 'Profit data has been refreshed',
-    });
-  };
-
-  const handleSearchChange = (value: string) => {
-    setSearchQuery(value);
-    setCurrentPage(1); // Reset to first page on search
-  };
-
-  const handleStatusFilterChange = (status: string) => {
-    setStatusFilter(status);
-    setCurrentPage(1); // Reset to first page on filter change
-  };
-
-  const totalPages = projectsData
-    ? Math.ceil(projectsData.total / PROJECTS_PER_PAGE)
-    : 0;
+  // Calculate totals
+  const totals = useMemo(() => {
+    if (!projectsProfit) return null;
+    return projectsProfit.reduce(
+      (acc, project) => ({
+        revenue: acc.revenue + project.project_revenue,
+        cost: acc.cost + project.project_total_cost,
+        profit: acc.profit + project.profit,
+      }),
+      { revenue: 0, cost: 0, profit: 0 }
+    );
+  }, [projectsProfit]);
 
   return (
     <AdminLayout>
       <div className="flex flex-col min-h-screen bg-muted/30">
         {/* Header Section */}
-        <header className="bg-card border-b border-border px-4 py-6 sm:px-6 lg:px-8">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-
-                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Profit Dashboard</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="h-8 w-1 rounded-full bg-primary" />
+                <h1 className="text-2xl sm:text-3xl font-bold text-foreground">
+                  Project Profit & Finance
+                </h1>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
-                View project-level and user-level profit breakdowns
+              <p className="text-muted-foreground mt-1 text-sm sm:text-base ml-4">
+                View revenue, costs, and profit metrics for all projects.
               </p>
-            </div>
-          </div>
-
-          {/* Top Bar with Filters */}
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 items-center gap-4">
-              {/* Search */}
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search projects..."
-                  value={searchQuery}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="pl-9 rounded-[14px]"
-                />
-              </div>
-
-              {/* Month Selector */}
-              <Select
-                value={format(selectedMonth, 'yyyy-MM')}
-                onValueChange={(value) => {
-                  const [year, month] = value.split('-').map(Number);
-                  setSelectedMonth(new Date(year, month - 1));
-                }}
-              >
-                
-              </Select>
-
-              {/* Project Status Filters */}
-              <div className="flex items-center gap-2">
-                <Button
-                  variant={statusFilter === 'All' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setStatusFilter('All');
-                    setCurrentPage(1);
-                  }}
-                  className={`rounded-full ${
-                    statusFilter === 'All' ? 'bg-primary text-primary-foreground' : ''
-                  }`}
-                >
-                  All
-                </Button>
-                <Button
-                  variant={statusFilter === 'Active' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setStatusFilter('Active');
-                    setCurrentPage(1);
-                  }}
-                  className={`rounded-full ${
-                    statusFilter === 'Active' ? 'bg-primary text-primary-foreground' : ''
-                  }`}
-                >
-                  Active
-                </Button>
-                <Button
-                  variant={statusFilter === 'Completed' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => {
-                    setStatusFilter('Completed');
-                    setCurrentPage(1);
-                  }}
-                  className={`rounded-full ${
-                    statusFilter === 'Completed' ? 'bg-primary text-primary-foreground' : ''
-                  }`}
-                >
-                  Completed
-                </Button>
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                onClick={handleRefresh}
-                className="rounded-[14px]"
-                disabled={isLoading}
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
-              <Button
-                onClick={handleExportCSV}
-                className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
-                disabled={!projectsData?.data || projectsData.data.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </Button>
             </div>
           </div>
         </header>
@@ -215,42 +90,186 @@ const AdminProfit: React.FC = () => {
         {/* Main Content */}
         <div className="flex-1 overflow-y-auto">
           <div className="p-4 sm:p-6 lg:p-8">
-            {/* Projects Table */}
-            <ProjectsProfitTable
-              projects={projectsData?.data || []}
-              isLoading={isLoading}
-              onProjectClick={handleProjectClick}
-            />
+            {/* Summary Cards */}
+            {totals && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6">
+                <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Total Revenue
+                        </p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {formatCurrency(totals.revenue)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="mt-4">
-                <PaginationControls
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={setCurrentPage}
+                <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-red-100 flex items-center justify-center">
+                        <DollarSign className="h-5 w-5 text-red-700" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Total Cost
+                        </p>
+                        <p className="text-2xl font-bold text-foreground">
+                          {formatCurrency(totals.cost)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
+                  <CardContent className="p-6">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className={cn(
+                          'h-10 w-10 rounded-full flex items-center justify-center',
+                          totals.profit >= 0 ? 'bg-green-100' : 'bg-red-100'
+                        )}
+                      >
+                        {totals.profit >= 0 ? (
+                          <TrendingUp className="h-5 w-5 text-green-700" />
+                        ) : (
+                          <TrendingDown className="h-5 w-5 text-red-700" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                          Net Profit
+                        </p>
+                        <p
+                          className={cn(
+                            'text-2xl font-bold',
+                            totals.profit >= 0 ? 'text-green-700' : 'text-red-700'
+                          )}
+                        >
+                          {formatCurrency(totals.profit)}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Search Bar */}
+            <div className="mb-6">
+              <div className="relative max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search projects..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 rounded-[14px] border-2"
                 />
               </div>
-            )}
+            </div>
 
-            {/* Empty State */}
-            {!isLoading && projectsData && projectsData.data.length === 0 && (
-              <div className="mt-8 text-center">
-                <p className="text-muted-foreground">
-                  {searchQuery
-                    ? 'No projects found matching your search'
-                    : 'No profit data available'}
-                </p>
-              </div>
-            )}
+            {/* Projects Table */}
+            <Card className="rounded-[14px] border-2 shadow-lg">
+              <CardContent className="p-0">
+                {isLoading ? (
+                  <div className="p-6 space-y-4">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : filteredProjects.length === 0 ? (
+                  <div className="p-12 text-center">
+                    <DollarSign className="h-16 w-16 mx-auto mb-4 text-muted-foreground opacity-50" />
+                    <p className="text-lg font-semibold text-foreground mb-2">
+                      {searchQuery ? 'No projects found' : 'No profit data available'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {searchQuery
+                        ? 'Try adjusting your search query'
+                        : 'Projects with milestones and worklogs will appear here'}
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="hover:bg-muted/50">
+                        <TableHead className="font-semibold">Project Name</TableHead>
+                        <TableHead className="text-right font-semibold">Revenue</TableHead>
+                        <TableHead className="text-right font-semibold">Cost</TableHead>
+                        <TableHead className="text-right font-semibold">Profit</TableHead>
+                        <TableHead className="text-right font-semibold">Margin</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredProjects.map((project) => {
+                        const isPositive = project.profit >= 0;
+                        return (
+                          <TableRow
+                            key={project.project_id}
+                            className="cursor-pointer hover:bg-muted/50 transition-colors"
+                            onClick={() =>
+                              handleProjectClick(project.project_id, project.project_name)
+                            }
+                          >
+                            <TableCell className="font-medium">{project.project_name}</TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(project.project_revenue)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {formatCurrency(project.project_total_cost)}
+                            </TableCell>
+                            <TableCell
+                              className={cn(
+                                'text-right font-semibold',
+                                isPositive ? 'text-green-700' : 'text-red-700'
+                              )}
+                            >
+                              {formatCurrency(project.profit)}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {project.profit_margin_percent !== null ? (
+                                <span
+                                  className={cn(
+                                    'font-medium',
+                                    project.profit_margin_percent >= 0
+                                      ? 'text-green-700'
+                                      : 'text-red-700'
+                                  )}
+                                >
+                                  {project.profit_margin_percent >= 0 ? '+' : ''}
+                                  {project.profit_margin_percent.toFixed(2)}%
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground">—</span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Project Details Drawer */}
-        <ProjectDetailsDrawer
-          project={projectDetails || selectedProject}
-          isOpen={isDrawerOpen}
-          onClose={handleCloseDrawer}
+        {/* Project Financial Drawer */}
+        <ProjectFinancialDrawer
+          projectId={selectedProjectId}
+          projectName={selectedProjectName}
+          open={!!selectedProjectId}
+          onOpenChange={(open) => {
+            if (!open) handleCloseDrawer();
+          }}
         />
       </div>
     </AdminLayout>

@@ -30,16 +30,18 @@ const getStatusBadge = (status: ProjectStatus) => {
 };
 
 interface TopProjectsCardProps {
-  filters?: AdminFilters;
+  filters?: AdminFilters; // Kept for backward compatibility but not used
 }
 
-export const TopProjectsCard: React.FC<TopProjectsCardProps> = ({ filters }) => {
-  const { data: projects, isLoading, error } = useAdminTopProjects(5, filters);
+export const TopProjectsCard: React.FC<TopProjectsCardProps> = () => {
+  // Top projects are constant - not filtered by date range
+  const { data: projects, isLoading, error } = useAdminTopProjects(5, undefined);
 
   return (
-    <Card className="rounded-[14px] shadow-md">
-      <CardHeader>
+    <Card className="rounded-[14px] border-2 shadow-lg bg-card">
+      <CardHeader className="pb-3">
         <CardTitle className="text-foreground font-semibold">Top Projects</CardTitle>
+        <p className="text-sm text-muted-foreground">By hours logged</p>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -66,20 +68,20 @@ export const TopProjectsCard: React.FC<TopProjectsCardProps> = ({ filters }) => 
             <p>No projects found</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {projects.map((project) => (
               <div 
                 key={project.id} 
-                className="flex items-center justify-between py-2 border-b border-border last:border-0"
+                className="flex items-center justify-between py-2 px-2 rounded-[8px] hover:bg-muted/50 transition-colors border-b border-border/50 last:border-0"
               >
-                <div className="flex-1">
-                  <p className="font-medium text-foreground">{project.name}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-foreground truncate">{project.name}</p>
                   {project.client && (
-                    <p className="text-sm text-muted-foreground">Client: {project.client}</p>
+                    <p className="text-xs text-muted-foreground truncate">Client: {project.client}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
-                  <p className="text-sm font-medium text-foreground">{formatHoursToHHMM(project.hours)}h</p>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <p className="text-sm font-semibold text-foreground">{formatHoursToHHMM(project.hours)}h</p>
                   {getStatusBadge(project.status as ProjectStatus)}
                 </div>
               </div>

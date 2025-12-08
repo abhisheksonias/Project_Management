@@ -50,13 +50,13 @@ export const DailyHoursCard: React.FC<DailyHoursCardProps> = ({ filters }) => {
   const { data: chartData, isLoading, error } = useAdminDailyHours(filters);
 
   return (
-    <Card className="rounded-[14px] shadow-md">
-      <CardHeader>
+    <Card className="rounded-[14px] border-2 shadow-lg bg-card">
+      <CardHeader className="pb-3">
         <CardTitle className="text-foreground font-semibold">Daily Hours Logged</CardTitle>
         <p className="text-sm text-muted-foreground">Last 30 Days</p>
       </CardHeader>
       <CardContent>
-        <div className="h-[300px] w-full">
+        <div className="h-[280px] w-full">
           {isLoading ? (
             <Skeleton className="h-full w-full" />
           ) : error ? (

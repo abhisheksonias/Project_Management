@@ -24,14 +24,24 @@ export interface UpdateVendorInput {
   website?: string | null;
 }
 
-export interface VendorBusinessStats {
+export interface VendorProfit {
   vendor_id: string;
   vendor_name: string;
-  total_projects: number;
   total_revenue: number;
   total_cost: number;
   total_profit: number;
   profit_margin_percent: number | null;
+  project_count: number;
+}
+
+export interface VendorProject {
+  project_id: string;
+  project_name: string;
+  project_revenue: number;
+  project_total_cost: number;
+  profit: number;
+  profit_margin_percent: number | null;
+  status: string | null;
 }
 
 class VendorService {
@@ -78,89 +88,148 @@ class VendorService {
   }
 
   /**
-   * Get business statistics for all vendors
+   * Get profit summary for all vendors
    */
-  async getVendorBusinessStats(): Promise<VendorBusinessStats[]> {
+  async getVendorProfits(): Promise<VendorProfit[]> {
     // Get all vendors
-    const vendors = await this.getVendors();
+    const { data: vendors, error: vendorsError } = await supabase
+      .from('vendors')
+      .select('id, name');
 
-    // Get all projects with vendor_id
-    const { data: projectsData, error: projectsError } = await supabase
+    if (vendorsError) throw vendorsError;
+
+    // Get profit data for all projects
+    const { data: projectProfits, error: profitsError } = await supabase
+      .from('project_profit_overall')
+      .select('project_id, project_name, project_revenue, project_total_cost, profit, profit_margin_percent');
+
+    if (profitsError) throw profitsError;
+
+    // Get projects with vendor_id
+    const { data: projects, error: projectsError } = await supabase
       .from('projects')
-      .select('id, vendor_id, name');
+      .select('id, vendor_id');
 
     if (projectsError) throw projectsError;
 
-    // Get profit data for all projects
-    const { data: profitData, error: profitError } = await supabase
-      .from('project_profit')
-      .select('project_id, project_revenue, project_total_cost, profit, profit_margin_percent');
-
-    if (profitError) {
-      console.error('Error fetching profit data:', profitError);
-      // Continue with empty profit data
-    }
-
-    // Create a map of project_id to profit data
-    const profitMap = new Map<string, any>();
-    (profitData || []).forEach((profit: any) => {
-      profitMap.set(profit.project_id, profit);
+    // Create a map of project_id -> vendor_id
+    const projectVendorMap = new Map<string, string>();
+    projects?.forEach((project) => {
+      if (project.vendor_id) {
+        projectVendorMap.set(project.id, project.vendor_id);
+      }
     });
 
-    // Group projects by vendor and calculate stats
-    const vendorStatsMap = new Map<string, VendorBusinessStats>();
+    // Create a map of vendor_id -> profit data
+    const vendorProfitMap = new Map<string, {
+      revenue: number;
+      cost: number;
+      profit: number;
+      projectCount: number;
+    }>();
 
-    // Initialize stats for all vendors
-    vendors.forEach((vendor) => {
-      vendorStatsMap.set(vendor.id, {
+    // Aggregate profits by vendor
+    projectProfits?.forEach((projectProfit) => {
+      const vendorId = projectVendorMap.get(projectProfit.project_id);
+      if (!vendorId) return;
+
+      const existing = vendorProfitMap.get(vendorId) || {
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        projectCount: 0,
+      };
+
+      existing.revenue += parseFloat(projectProfit.project_revenue || 0);
+      existing.cost += parseFloat(projectProfit.project_total_cost || 0);
+      existing.profit += parseFloat(projectProfit.profit || 0);
+      existing.projectCount += 1;
+
+      vendorProfitMap.set(vendorId, existing);
+    });
+
+    // Convert to array
+    return (vendors || []).map((vendor) => {
+      const profitData = vendorProfitMap.get(vendor.id) || {
+        revenue: 0,
+        cost: 0,
+        profit: 0,
+        projectCount: 0,
+      };
+
+      const profitMargin = profitData.revenue > 0
+        ? (profitData.profit / profitData.revenue) * 100
+        : null;
+
+      return {
         vendor_id: vendor.id,
         vendor_name: vendor.name,
-        total_projects: 0,
-        total_revenue: 0,
-        total_cost: 0,
-        total_profit: 0,
-        profit_margin_percent: null,
-      });
+        total_revenue: profitData.revenue,
+        total_cost: profitData.cost,
+        total_profit: profitData.profit,
+        profit_margin_percent: profitMargin !== null ? parseFloat(profitMargin.toFixed(2)) : null,
+        project_count: profitData.projectCount,
+      };
     });
-
-    // Aggregate data from projects
-    (projectsData || []).forEach((project: any) => {
-      if (!project.vendor_id) return;
-
-      const stats = vendorStatsMap.get(project.vendor_id);
-      if (!stats) return;
-
-      stats.total_projects += 1;
-
-      const profit = profitMap.get(project.id);
-      if (profit) {
-        stats.total_revenue += Number(profit.project_revenue || 0);
-        stats.total_cost += Number(profit.project_total_cost || 0);
-        stats.total_profit += Number(profit.profit || 0);
-      }
-    });
-
-    // Calculate profit margin for each vendor
-    vendorStatsMap.forEach((stats) => {
-      if (stats.total_revenue > 0) {
-        stats.profit_margin_percent = Number(
-          ((stats.total_profit / stats.total_revenue) * 100).toFixed(2)
-        );
-      }
-    });
-
-    // Convert to array and sort by total revenue descending
-    return Array.from(vendorStatsMap.values()).sort(
-      (a, b) => b.total_revenue - a.total_revenue
-    );
   }
 
   /**
-   * Get business statistics for a single vendor
+   * Get projects for a specific vendor with profit data
    */
-  async getVendorBusinessStatsById(vendorId: string): Promise<VendorBusinessStats | null> {
-    const allStats = await this.getVendorBusinessStats();
-    return allStats.find((stats) => stats.vendor_id === vendorId) || null;
+  async getVendorProjects(vendorId: string): Promise<VendorProject[]> {
+    // Get projects for this vendor
+    const { data: projects, error: projectsError } = await supabase
+      .from('projects')
+      .select('id, name, status, vendor_id')
+      .eq('vendor_id', vendorId);
+
+    if (projectsError) throw projectsError;
+    if (!projects || projects.length === 0) return [];
+
+    const projectIds = projects.map((p) => p.id);
+
+    // Get profit data for these projects
+    const { data: projectProfits, error: profitsError } = await supabase
+      .from('project_profit_overall')
+      .select('project_id, project_name, project_revenue, project_total_cost, profit, profit_margin_percent')
+      .in('project_id', projectIds);
+
+    if (profitsError) throw profitsError;
+
+    // Create a map of project_id -> profit data
+    const profitMap = new Map<string, any>();
+    projectProfits?.forEach((profit) => {
+      profitMap.set(profit.project_id, profit);
+    });
+
+    // Combine project and profit data
+    return projects.map((project) => {
+      const profitData = profitMap.get(project.id);
+      if (profitData) {
+        return {
+          project_id: project.id,
+          project_name: project.name,
+          project_revenue: parseFloat(profitData.project_revenue || 0),
+          project_total_cost: parseFloat(profitData.project_total_cost || 0),
+          profit: parseFloat(profitData.profit || 0),
+          profit_margin_percent: profitData.profit_margin_percent
+            ? parseFloat(profitData.profit_margin_percent)
+            : null,
+          status: project.status,
+        };
+      }
+
+      // If no profit data, return with zeros
+      return {
+        project_id: project.id,
+        project_name: project.name,
+        project_revenue: 0,
+        project_total_cost: 0,
+        profit: 0,
+        profit_margin_percent: null,
+        status: project.status,
+      };
+    });
   }
 }
 
