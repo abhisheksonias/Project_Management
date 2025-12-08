@@ -27,6 +27,7 @@ import AdminVendors from "./pages/AdminVendors";
 import UserManagement from "./pages/UserManagement";
 import UserCalendarView from "./pages/UserCalendarView";
 import AdminProfit from "./pages/AdminProfit";
+import AdminProfile from "./pages/AdminProfile";
 
 const queryClient = new QueryClient();
 
@@ -120,6 +121,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminProfit />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/profile" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminProfile />
               </ProtectedRoute>
             } 
           />

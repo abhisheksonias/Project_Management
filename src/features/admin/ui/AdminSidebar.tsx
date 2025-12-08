@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/contexts/AuthContext';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface NavItem {
   id: string;
@@ -61,9 +62,16 @@ const SidebarContentInternal: React.FC<{
       {/* Logo Section */}
       <div className={cn("p-6 border-b border-sidebar-border", isCollapsed && "px-2")}>
         <div className={cn("flex items-center gap-3", isCollapsed && "justify-center")}>
-          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
-            <span className="text-green-600 font-bold text-sm">WA</span>
-          </div>
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
+            <AvatarFallback className="bg-green-100 text-green-600 font-bold text-sm">
+              {profile?.name
+                ?.split(' ')
+                .map((n) => n[0])
+                .join('')
+                .toUpperCase() || 'WA'}
+            </AvatarFallback>
+          </Avatar>
           {!isCollapsed && (
             <div className="flex flex-col">
               <span className="text-sm font-semibold text-foreground">{profile?.name}</span>
@@ -104,28 +112,20 @@ const SidebarContentInternal: React.FC<{
       {/* Bottom Section */}
       <div className={cn("p-3 border-t border-sidebar-border space-y-2", isCollapsed && "px-2")}>
         <div className="space-y-1">
-          {/* <button
-            onClick={() => handleNavClick('/admin/settings')}
+          <button
+            onClick={() => handleNavClick('/admin/profile')}
             className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
-              isCollapsed && "justify-center"
+              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+              isCollapsed && "justify-center",
+              isActive('/admin/profile')
+                ? "bg-[#FEEAEA] text-primary"
+                : "text-foreground hover:bg-accent hover:text-accent-foreground"
             )}
-            title={isCollapsed ? "Settings" : undefined}
+            title={isCollapsed ? "Profile" : undefined}
           >
-            <Settings className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            {!isCollapsed && <span>Settings</span>}
-          </button> */}
-          {/* <button
-            onClick={() => handleNavClick('/admin/help')}
-            className={cn(
-              "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground transition-colors",
-              isCollapsed && "justify-center"
-            )}
-            title={isCollapsed ? "Help" : undefined}
-          >
-            <HelpCircle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            {!isCollapsed && <span>Help</span>}
-          </button> */}
+            <Settings className={cn("h-5 w-5 flex-shrink-0", isActive('/admin/profile') ? "text-primary" : "text-muted-foreground")} />
+            {!isCollapsed && <span>Profile</span>}
+          </button>
         </div>
       </div>
     </>

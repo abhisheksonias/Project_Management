@@ -316,14 +316,14 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             </Button> */}
 
             {/* Logout Button */}
-            <Button
+            {/* <Button
               variant="outline"
               onClick={handleLogout}
               className="rounded-[14px] border-secondary hover:bg-secondary h-9 sm:h-10 px-3 sm:px-4"
             >
               <LogOut className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Logout</span>
-            </Button>
+            </Button> */}
           </div>
         </div>
 
