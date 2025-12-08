@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { useAuth } from '@/contexts/AuthContext';
-import { UserSidebar } from '@/features/worklogs/ui/UserSidebar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,9 +23,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-const Profile: React.FC = () => {
-  const { profile, user, signOut } = useAuth();
-  const navigate = useNavigate();
+const AdminProfile: React.FC = () => {
+  const { profile, signOut } = useAuth();
   const updateProfileMutation = useUpdateProfile();
   const changePasswordMutation = useChangePassword();
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
@@ -182,32 +180,13 @@ const Profile: React.FC = () => {
     }
   };
 
-  const handleSidebarNavigation = (tab: string) => {
-    if (tab === 'dashboard') {
-      navigate('/user/dashboard');
-    } else if (tab === 'calendar') {
-      navigate('/user/calendar');
-    } else if (tab === 'worklog-history') {
-      navigate('/user/worklog-history');
-    } else if (tab === 'projects') {
-      navigate('/user/projects');
-    } else if (tab === 'tasks') {
-      navigate('/user/tasks');
-    } else if (tab === 'reports') {
-      navigate('/user/dashboard');
-    } else if (tab === 'settings') {
-      navigate('/user/profile');
-    }
-  };
-
   if (!profile) {
     return (
-      <div className="flex h-screen">
-        <UserSidebar currentTab="settings" onTabChange={handleSidebarNavigation} />
-        <div className="flex-1 flex items-center justify-center">
+      <AdminLayout>
+        <div className="flex items-center justify-center h-screen">
           <p className="text-muted-foreground">Loading profile...</p>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
@@ -218,10 +197,8 @@ const Profile: React.FC = () => {
 
   
   return (
-    <div className="flex h-screen bg-[#FAFAFA]">
-      <UserSidebar currentTab="settings" onTabChange={handleSidebarNavigation} />
-      
-      <div className="flex-1 overflow-y-auto">
+    <AdminLayout>
+      <div className="min-h-screen bg-[#FAFAFA]">
         <div className="p-8 max-w-6xl mx-auto">
           {/* Header */}
           <div className="flex items-start justify-between mb-8">
@@ -363,7 +340,7 @@ const Profile: React.FC = () => {
                     <Label htmlFor="role">Role</Label>
                     <Input
                       id="role"
-                      value={profile.role || 'User'}
+                      value={profile.role || 'Admin'}
                       disabled
                       className="bg-gray-100 text-gray-600"
                     />
@@ -418,7 +395,7 @@ const Profile: React.FC = () => {
                 <CardContent className="space-y-4">
                   <div className="flex justify-between items-center">
                     <Label className="text-sm font-normal">Role</Label>
-                    <span className="text-sm text-gray-700">{profile.role || 'User'}</span>
+                    <span className="text-sm text-gray-700">{profile.role || 'Admin'}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <Label className="text-sm font-normal">Department</Label>
@@ -453,9 +430,9 @@ const Profile: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </AdminLayout>
   );
 };
 
-export default Profile;
+export default AdminProfile;
 

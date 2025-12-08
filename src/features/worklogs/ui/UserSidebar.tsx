@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -11,7 +11,6 @@ import {
   Calendar,
   BarChart3,
   Settings,
-  LogOut,
   Menu,
   X
 } from 'lucide-react';
@@ -26,8 +25,7 @@ const SidebarContentInternal: React.FC<{
   currentTab: string;
   onTabChange: (tab: string) => void;
   isCollapsed: boolean;
-  onSignOut: () => void;
-}> = ({ currentTab, onTabChange, isCollapsed, onSignOut }) => {
+}> = ({ currentTab, onTabChange, isCollapsed }) => {
   const { profile } = useAuth();
 
   const menuItems = [
@@ -44,6 +42,7 @@ const SidebarContentInternal: React.FC<{
       <div className={cn('mb-6 flex items-center gap-3 px-4', isCollapsed && 'justify-center')}>
         {!isCollapsed && (
           <Avatar className="h-10 w-10">
+            <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
             <AvatarFallback className="bg-primary text-white">
               {profile?.name
                 ?.split(' ')
@@ -96,7 +95,7 @@ const SidebarContentInternal: React.FC<{
         </div>
       )}
 
-      {/* Settings & Logout */}
+      {/* Settings */}
       <div className="mt-auto space-y-1 border-t px-2 pt-2">
         <Button
           variant="ghost"
@@ -106,28 +105,15 @@ const SidebarContentInternal: React.FC<{
           <Settings className="h-5 w-5" />
           {!isCollapsed && <span>Profile</span>}
         </Button>
-        <Button
-          variant="ghost"
-          className="w-full justify-start gap-3 hover:bg-white/50"
-          onClick={onSignOut}
-        >
-          <LogOut className="h-5 w-5" />
-          {!isCollapsed && <span>Logout</span>}
-        </Button>
       </div>
     </div>
   );
 };
 
 export const UserSidebar: React.FC<UserSidebarProps> = ({ currentTab, onTabChange }) => {
-  const { signOut } = useAuth();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
-
-  const handleSignOut = async () => {
-    await signOut();
-  };
 
   // Mobile sidebar using Sheet
   if (isMobile) {
@@ -146,7 +132,6 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({ currentTab, onTabChang
               setIsOpen(false);
             }}
             isCollapsed={false}
-            onSignOut={handleSignOut}
           />
         </SheetContent>
       </Sheet>
@@ -175,7 +160,6 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({ currentTab, onTabChang
         currentTab={currentTab}
         onTabChange={onTabChange}
         isCollapsed={isCollapsed}
-        onSignOut={handleSignOut}
       />
     </div>
   );
