@@ -52,8 +52,8 @@ export const DailyHoursCard: React.FC<DailyHoursCardProps> = ({ filters }) => {
   return (
     <Card className="rounded-[14px] border-2 shadow-lg bg-card">
       <CardHeader className="pb-3">
-        <CardTitle className="text-foreground font-semibold">Daily Hours Logged</CardTitle>
-        <p className="text-sm text-muted-foreground">Last 30 Days</p>
+        <CardTitle className="text-foreground font-semibold">Hours Logged frequency</CardTitle>
+        {/* <p className="text-sm text-muted-foreground">Last 30 Days</p> */}
       </CardHeader>
       <CardContent>
         <div className="h-[280px] w-full">
