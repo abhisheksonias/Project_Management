@@ -326,7 +326,7 @@ class EfficiencyService {
   }
 
   /**
-   * Get hours by project using user_project_month_hours view
+   * Get hours by project using user_project_month_hours view with fallback to work_logs
    */
   async getHoursByProject(
     userId?: string,
@@ -336,14 +336,6 @@ class EfficiencyService {
   ): Promise<HoursByProjectData[]> {
     const { start, end } = this.getDateRange(dateRange, customStart, customEnd);
 
-    // Get all months in the date range
-    const months: Date[] = [];
-    const currentMonth = new Date(start);
-    while (currentMonth <= end) {
-      months.push(new Date(currentMonth));
-      currentMonth.setMonth(currentMonth.getMonth() + 1);
-    }
-
     // Get admin user IDs to exclude
     const { data: adminUsers } = await supabase
       .from('users')
@@ -352,43 +344,183 @@ class EfficiencyService {
     
     const adminIds = adminUsers?.map(u => u.id) || [];
 
-    // Fetch data from user_project_month_hours view for all months
-    const monthStarts = months.map(m => format(startOfMonth(m), 'yyyy-MM-dd'));
-    
-    let viewQuery = supabase
-      .from('user_project_month_hours')
-      .select('user_id, project_id, month_start, total_hours, projects!inner(id, name)')
-      .in('month_start', monthStarts);
+    // Try to use user_project_month_hours view first
+    try {
+      // Get all months in the date range
+      const months: Date[] = [];
+      const currentMonth = new Date(start);
+      while (currentMonth <= end) {
+        months.push(new Date(currentMonth));
+        currentMonth.setMonth(currentMonth.getMonth() + 1);
+      }
 
-    if (userId) {
-      viewQuery = viewQuery.eq('user_id', userId);
+      const monthStarts = months.map(m => format(startOfMonth(m), 'yyyy-MM-dd'));
+      
+      let viewQuery = supabase
+        .from('user_project_month_hours')
+        .select('user_id, project_id, month_start, total_hours, projects!inner(id, name)')
+        .in('month_start', monthStarts);
+
+      if (userId) {
+        viewQuery = viewQuery.eq('user_id', userId);
+      }
+
+      const { data: viewData, error: viewError } = await viewQuery;
+
+      // If view works and has data, use it
+      if (!viewError && viewData && viewData.length > 0) {
+        // Filter out admin users and projects outside date range
+        const filteredData = viewData.filter(row => {
+          if (!userId && adminIds.includes(row.user_id)) return false;
+          
+          const rowMonth = new Date(row.month_start);
+          return rowMonth >= startOfMonth(start) && rowMonth <= startOfMonth(end);
+        });
+
+        // Group by project and sum hours
+        const projectHoursMap = new Map<string, { name: string; hours: number }>();
+
+        filteredData.forEach(row => {
+          const projectId = row.project_id;
+          if (!projectId) return;
+          
+          const projectName = (row.projects as any)?.name || 'Unknown Project';
+          const currentHours = projectHoursMap.get(projectId)?.hours || 0;
+          
+          projectHoursMap.set(projectId, {
+            name: projectName,
+            hours: currentHours + parseFloat(row.total_hours || 0),
+          });
+        });
+
+        // Convert to array and sort by hours descending
+        const result = Array.from(projectHoursMap.entries())
+          .map(([projectId, data]) => ({
+            projectId,
+            projectName: data.name,
+            hours: data.hours,
+          }))
+          .sort((a, b) => b.hours - a.hours);
+
+        if (result.length > 0) {
+          return result;
+        }
+      }
+    } catch (error) {
+      // If view fails, fall through to work_logs
+      console.warn('Failed to fetch from user_project_month_hours view, falling back to work_logs:', error);
     }
 
-    const { data: viewData, error } = await viewQuery;
+    // Fallback to work_logs - fetch directly from work_logs table
+    let worklogsQuery = supabase
+      .from('work_logs')
+      .select('hours, created_at, project_id, user_id, tasks!inner(project_id), projects(id, name)')
+      .gte('created_at', start.toISOString())
+      .lte('created_at', end.toISOString());
 
-    if (error) throw error;
+    if (userId) {
+      worklogsQuery = worklogsQuery.eq('user_id', userId);
+    }
 
-    // Filter out admin users and projects outside date range
-    const filteredData = (viewData || []).filter(row => {
-      if (!userId && adminIds.includes(row.user_id)) return false;
-      
-      const rowMonth = new Date(row.month_start);
-      return rowMonth >= startOfMonth(start) && rowMonth <= startOfMonth(end);
-    });
+    const { data: worklogs, error } = await worklogsQuery;
+
+    if (error) {
+      // If inner join fails, try without inner join
+      let fallbackQuery = supabase
+        .from('work_logs')
+        .select('hours, created_at, project_id, user_id, tasks(project_id), projects(id, name)')
+        .gte('created_at', start.toISOString())
+        .lte('created_at', end.toISOString());
+
+      if (userId) {
+        fallbackQuery = fallbackQuery.eq('user_id', userId);
+      }
+
+      const { data: fallbackWorklogs, error: fallbackError } = await fallbackQuery;
+      if (fallbackError) throw fallbackError;
+
+      // Use fallback data
+      const filteredWorklogs = userId 
+        ? (fallbackWorklogs || [])
+        : (fallbackWorklogs || []).filter(log => !adminIds.includes(log.user_id));
+
+      // Group by project and sum hours
+      const projectHoursMap = new Map<string, { name: string; hours: number }>();
+
+      filteredWorklogs.forEach(log => {
+        // Get project_id from work_log or from task
+        const projectId = log.project_id || (Array.isArray(log.tasks) ? log.tasks[0]?.project_id : (log.tasks as any)?.project_id);
+        if (!projectId) return;
+        
+        const currentHours = projectHoursMap.get(projectId)?.hours || 0;
+        const logHours = parseHours(log.hours);
+        
+        projectHoursMap.set(projectId, {
+          name: 'Unknown Project', // Will fetch names later
+          hours: currentHours + logHours,
+        });
+      });
+
+      // Fetch all project names
+      const projectIds = Array.from(projectHoursMap.keys());
+      if (projectIds.length > 0) {
+        const { data: projects } = await supabase
+          .from('projects')
+          .select('id, name')
+          .in('id', projectIds);
+
+        if (projects) {
+          projects.forEach(project => {
+            const existing = projectHoursMap.get(project.id);
+            if (existing) {
+              projectHoursMap.set(project.id, {
+                name: project.name,
+                hours: existing.hours,
+              });
+            }
+          });
+        }
+      }
+
+      // Convert to array and sort by hours descending
+      return Array.from(projectHoursMap.entries())
+        .map(([projectId, data]) => ({
+          projectId,
+          projectName: data.name,
+          hours: data.hours,
+        }))
+        .sort((a, b) => b.hours - a.hours);
+    }
+
+    // Filter out admin users if not filtering by specific user
+    const filteredWorklogs = userId 
+      ? (worklogs || [])
+      : (worklogs || []).filter(log => !adminIds.includes(log.user_id));
 
     // Group by project and sum hours
     const projectHoursMap = new Map<string, { name: string; hours: number }>();
 
-    filteredData.forEach(row => {
-      const projectId = row.project_id;
+    filteredWorklogs.forEach(log => {
+      // Get project_id from work_log or from task
+      const projectId = log.project_id || (Array.isArray(log.tasks) ? log.tasks[0]?.project_id : (log.tasks as any)?.project_id);
       if (!projectId) return;
       
-      const projectName = (row.projects as any)?.name || 'Unknown Project';
+      // Get project name
+      let projectName = 'Unknown Project';
+      if (log.projects) {
+        if (Array.isArray(log.projects)) {
+          projectName = log.projects[0]?.name || 'Unknown Project';
+        } else {
+          projectName = (log.projects as any)?.name || 'Unknown Project';
+        }
+      }
+      
       const currentHours = projectHoursMap.get(projectId)?.hours || 0;
+      const logHours = parseHours(log.hours);
       
       projectHoursMap.set(projectId, {
         name: projectName,
-        hours: currentHours + parseFloat(row.total_hours || 0),
+        hours: currentHours + logHours,
       });
     });
 

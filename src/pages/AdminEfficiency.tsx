@@ -4,12 +4,10 @@ import { EfficiencyMetricsCards } from '@/features/efficiency/ui/EfficiencyMetri
 import { UserProfileCard } from '@/features/efficiency/ui/UserProfileCard';
 import { DailyHoursChart } from '@/features/efficiency/ui/DailyHoursChart';
 import { HoursByProjectChart } from '@/features/efficiency/ui/HoursByProjectChart';
-import { RecentWorklogsTable } from '@/features/efficiency/ui/RecentWorklogsTable';
 import {
   useEfficiencyStats,
   useDailyHours,
   useHoursByProject,
-  useRecentWorklogs,
 } from '@/features/efficiency/hooks/useEfficiency';
 import { userService } from '@/features/users/services/userService';
 import { useQuery } from '@tanstack/react-query';
@@ -151,12 +149,6 @@ const AdminEfficiency: React.FC = () => {
     dateRange,
     startDate && endDate ? startDate : undefined,
     startDate && endDate ? endDate : undefined
-  );
-
-  const { data: recentWorklogs, isLoading: isLoadingRecentWorklogs } = useRecentWorklogs(
-    selectedUserId,
-    10,
-    !!selectedUserId
   );
 
   const selectedUser = users.find((u) => u.id === selectedUserId);
@@ -322,8 +314,8 @@ const AdminEfficiency: React.FC = () => {
                 />
               )}
 
-              {/* Charts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+              {/* Charts - Separate Rows */}
+              <div className="space-y-6 sm:space-y-8">
                 {/* Daily Hours Chart (only when user selected) */}
                 {selectedUserId && (
                   <DailyHoursChart
@@ -338,14 +330,6 @@ const AdminEfficiency: React.FC = () => {
                   isLoading={isLoadingHoursByProject}
                 />
               </div>
-
-              {/* Recent Worklogs Table (only when user selected) */}
-              {selectedUserId && (
-                <RecentWorklogsTable
-                  data={recentWorklogs}
-                  isLoading={isLoadingRecentWorklogs}
-                />
-              )}
             </div>
           </div>
         </div>
