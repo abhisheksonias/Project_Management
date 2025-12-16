@@ -164,26 +164,27 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
   }, [users, selectedDepartment, data.assigned_user_ids]);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px]">
+      <DialogContent className="w-[95vw] sm:max-w-[720px] max-h-[90vh] rounded-[14px] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">{description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Task Name *
             </label>
             <Input
               value={data.name}
               onChange={(e) => onChange({ name: e.target.value })}
               placeholder="Task Name"
+              className="text-sm h-9 sm:h-10"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Description
             </label>
             <Textarea
@@ -191,22 +192,23 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
               onChange={(e) => onChange({ description: e.target.value })}
               placeholder="Describe the task..."
               rows={4}
+              className="text-sm resize-none"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Status
               </label>
               <Select
                 value={data.status || 'To Do'}
                 onValueChange={(value) => onChange({ status: value })}
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[14px]">
                   {STATUS_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
                       {option}
@@ -217,7 +219,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Priority
               </label>
               <Select
@@ -226,10 +228,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   onChange({ priority: value === 'none' ? '' : value })
                 }
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[14px]">
                   <SelectItem value="none">None</SelectItem>
                   {PRIORITY_OPTIONS.map((option) => (
                     <SelectItem key={option} value={option}>
@@ -241,17 +243,17 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Billing Type
               </label>
               <Select
                 value={data.type || 'billable'}
                 onValueChange={(value) => onChange({ type: value })}
               >
-                <SelectTrigger className="rounded-[14px] capitalize">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10 capitalize">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[14px]">
                   {BILLING_TYPE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -262,7 +264,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Project *
               </label>
               <Select
@@ -275,10 +277,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   });
                 }}
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select project" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[14px]">
                   {projects.map((project) => (
                     <SelectItem key={project.id} value={project.id}>
                       {project.name}
@@ -290,7 +292,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
 
             {data.project_id && data.project_id !== 'none' && data.project_id !== '' && (
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Milestone
                 </label>
                 <Select
@@ -299,7 +301,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                     onChange({ milestone_id: value === 'none' ? 'none' : value });
                   }}
                 >
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Select milestone" />
                   </SelectTrigger>
                   <SelectContent className="rounded-[14px]">
@@ -323,7 +325,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             )}
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Assigned Users
               </label>
               <Popover>
@@ -331,7 +333,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-between rounded-[14px] font-normal',
+                      'w-full justify-between rounded-[14px] font-normal text-sm h-9 sm:h-10',
                       !data.assigned_user_ids || data.assigned_user_ids.length === 0
                         ? 'text-muted-foreground'
                         : ''
@@ -345,19 +347,19 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                           } selected`
                         : 'Select users'}
                     </span>
-                    <ChevronDown className="h-4 w-4 opacity-50" />
+                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[300px] p-0 rounded-[14px]" align="start">
+                <PopoverContent className="w-[90vw] sm:w-[320px] p-0 rounded-[14px]" align="start">
                   <div className="p-2">
                     {selectedDepartment && data.assigned_user_ids.length > 0 && (
-                      <div className="mb-2 p-2 bg-secondary rounded-md text-xs text-muted-foreground">
+                      <div className="mb-2 p-2 bg-secondary rounded-md text-[11px] sm:text-xs text-muted-foreground">
                         Only showing users from {selectedDepartment.includes('design') ? 'Design' : 'Development'} department
                       </div>
                     )}
                     <div className="max-h-[300px] overflow-y-auto space-y-2">
                       {availableUsers.length === 0 ? (
-                        <div className="p-2 text-sm text-muted-foreground text-center">
+                        <div className="p-2 text-xs sm:text-sm text-muted-foreground text-center">
                           No users available
                         </div>
                       ) : (
@@ -428,7 +430,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div> */}
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Estimate (hours)
               </label>
               <Input
@@ -438,11 +440,12 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 value={data.estimate_hours}
                 onChange={(e) => onChange({ estimate_hours: e.target.value })}
                 placeholder="e.g. 4"
+                className="text-sm h-9 sm:h-10"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Category
               </label>
               <Select
@@ -452,10 +455,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 }
                 disabled={!!selectedDepartment}
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="rounded-[14px]">
                   <SelectItem value="none">None</SelectItem>
                   {categoryOptions.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
@@ -465,14 +468,14 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                 </SelectContent>
               </Select>
               {selectedDepartment && (
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                   Auto-selected based on assigned user's department
                 </p>
               )}
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Deadline
               </label>
               <Popover>
@@ -480,15 +483,17 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal rounded-[14px]',
+                      'w-full justify-start text-left font-normal rounded-[14px] text-sm h-9 sm:h-10',
                       !data.deadline && 'text-muted-foreground'
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {data.deadline ? format(data.deadline, 'PPP') : 'Pick a date'}
+                    <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="truncate">
+                      {data.deadline ? format(data.deadline, 'PPP') : 'Pick a date'}
+                    </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-[14px]">
+                <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
                   <Calendar
                     mode="single"
                     selected={data.deadline || undefined}
@@ -501,11 +506,11 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2 sm:pt-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
             disabled={isSubmitting}
           >
             Cancel
@@ -513,7 +518,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           <Button
             onClick={onSubmit}
             disabled={isSubmitting || !data.name.trim() || !data.type.trim() || !data.project_id || data.project_id === 'none'}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {isSubmitting ? 'Saving...' : submitLabel}
           </Button>

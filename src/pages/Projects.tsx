@@ -176,12 +176,12 @@ const Projects: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen overflow-hidden bg-white">
+      <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
         <UserSidebar currentTab="projects" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading...</p>
           </div>
         </div>
       </div>
@@ -189,16 +189,16 @@ const Projects: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
       <UserSidebar currentTab="projects" onTabChange={handleSidebarNavigation} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
             <div>
-              <h1 className="text-3xl font-bold">My Projects</h1>
-              <p className="text-muted-foreground mt-1">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">My Projects</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-1">
                 Track and manage all your projects in one place.
               </p>
             </div>

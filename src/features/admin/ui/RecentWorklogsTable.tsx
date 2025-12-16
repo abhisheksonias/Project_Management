@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Project } from '@/features/projects/services/projectService';
 import { User as UserType } from '@/features/users/services/userService';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface RecentWorklogsTableProps {
   worklogs: AdminWorklog[];
@@ -47,6 +48,7 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
   projects = [],
   users = [],
 }) => {
+  const isMobile = useIsMobile();
   const defaultStartDate = subDays(new Date(), 7);
   const defaultEndDate = new Date();
   
@@ -138,14 +140,14 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
 
   if (isLoading) {
     return (
-      <Card className="p-6 rounded-[14px] bg-white">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Recent Worklogs</h3>
-          <Skeleton className="h-4 w-20" />
+      <Card className="p-3 sm:p-4 md:p-6 rounded-[14px] bg-white">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
+          <h3 className="text-base sm:text-lg font-semibold">Recent Worklogs</h3>
+          <Skeleton className="h-9 sm:h-10 w-full sm:w-40 rounded-[14px]" />
         </div>
-        <div className="space-y-3">
+        <div className="space-y-2 sm:space-y-3">
           {Array.from({ length: 4 }).map((_, index) => (
-            <Skeleton key={index} className="h-16 rounded-[14px]" />
+            <Skeleton key={index} className="h-16 sm:h-20 rounded-[14px]" />
           ))}
         </div>
       </Card>
@@ -153,21 +155,22 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
   }
 
   return (
-    <Card className="p-6 rounded-[14px] bg-white flex flex-col">
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <h3 className="text-lg font-semibold">Recent Worklogs</h3>
-        <div className="flex items-center gap-2">
+    <Card className="p-3 sm:p-4 md:p-6 rounded-[14px] bg-white flex flex-col">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4 mb-3 sm:mb-4 flex-shrink-0">
+        <h3 className="text-base sm:text-lg font-semibold">Recent Worklogs</h3>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
                 className={cn(
                   'rounded-[14px] border-secondary bg-white hover:bg-secondary',
-                  'justify-start text-left font-normal h-9'
+                  'justify-start text-left font-normal h-9 sm:h-10 text-xs sm:text-sm',
+                  'w-full sm:w-auto'
                 )}
               >
-                <Calendar className="mr-2 h-4 w-4" />
-                {getDateRangeLabel()}
+                <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4 shrink-0" />
+                <span className="truncate">{getDateRangeLabel()}</span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0 rounded-[14px]" align="end">
@@ -177,20 +180,20 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
                 onSelect={handleDateRangeSelect}
-                numberOfMonths={2}
+                numberOfMonths={isMobile ? 1 : 2}
               />
               <div className="border-t p-3 flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="flex-1 rounded-[14px]"
+                  className="flex-1 rounded-[14px] text-xs sm:text-sm"
                   onClick={handleResetDateRange}
                 >
                   Reset
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 rounded-[14px] bg-primary text-white hover:bg-primary/90"
+                  className="flex-1 rounded-[14px] bg-primary text-white hover:bg-primary/90 text-xs sm:text-sm"
                   onClick={handleApplyDateRange}
                   disabled={!dateRange?.from || !dateRange?.to}
                 >
@@ -199,41 +202,134 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
               </div>
             </PopoverContent>
           </Popover>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
             Showing {worklogs.length} {worklogs.length === 1 ? 'log' : 'logs'}
           </span>
         </div>
       </div>
       {worklogs.length === 0 ? (
-        <div className="text-center py-8 text-muted-foreground">
-          <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
-          <p>
+        <div className="text-center py-6 sm:py-8 text-muted-foreground">
+          <User className="h-10 w-10 sm:h-12 sm:w-12 mx-auto mb-2 opacity-50" />
+          <p className="text-xs sm:text-sm px-2">
             {dateRange?.from && dateRange?.to
               ? `No worklogs found for the selected date range`
               : 'No worklogs found in the last 7 days'}
           </p>
+        </div>
+      ) : isMobile ? (
+        <div className="space-y-3 overflow-y-auto max-h-[500px]">
+          {groupedWorklogs.map((group) => (
+            <React.Fragment key={group.label}>
+              <div className="bg-secondary/40 rounded-[14px] p-2">
+                <p className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-wide text-center">
+                  {group.label}
+                </p>
+              </div>
+              {group.items.map((log) => (
+                <Popover
+                  key={log.id}
+                  open={clickedRowId === log.id}
+                  onOpenChange={(open) => {
+                    if (!open) setClickedRowId(null);
+                  }}
+                >
+                  <PopoverTrigger asChild>
+                    <Card
+                      className={cn(
+                        'p-3 rounded-[14px] cursor-pointer hover:shadow-md transition-all',
+                        clickedRowId === log.id && 'bg-secondary/50 border-primary'
+                      )}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setClickedRowId(log.id);
+                      }}
+                    >
+                      <div className="flex items-start gap-2 mb-2">
+                        <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <User className="h-4 w-4 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{log.user?.name || '—'}</p>
+                          <p className="text-xs text-muted-foreground truncate">{log.project?.name || '—'}</p>
+                        </div>
+                        <span className="text-xs sm:text-sm font-semibold text-primary shrink-0">
+                          {formatHours(log.hours)}
+                        </span>
+                      </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="truncate">
+                          <span className="font-medium">Task:</span> {log.task?.name || '—'}
+                        </p>
+                        <p>
+                          <span className="font-medium">Date:</span> {format(new Date(log.created_at), 'dd/MM/yyyy')}
+                        </p>
+                        {log.note && (
+                          <p className="line-clamp-2 mt-1">
+                            <span className="font-medium">Note:</span> {log.note}
+                          </p>
+                        )}
+                      </div>
+                    </Card>
+                  </PopoverTrigger>
+                  <PopoverContent
+                    className="w-[90vw] sm:w-48 p-1 rounded-[14px]"
+                    align="start"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
+                    <div className="space-y-1">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start rounded-[14px] text-xs sm:text-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedWorklog(log);
+                          setIsEditDialogOpen(true);
+                          setClickedRowId(null);
+                        }}
+                      >
+                        <Edit2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start rounded-[14px] text-destructive hover:text-destructive hover:bg-destructive/10 text-xs sm:text-sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingWorklogId(log.id);
+                          setClickedRowId(null);
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        Delete
+                      </Button>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              ))}
+            </React.Fragment>
+          ))}
         </div>
       ) : (
         <div className="overflow-x-auto overflow-y-auto max-h-[500px]">
           <table className="w-full">
             <thead className="bg-secondary sticky top-0 z-10">
               <tr>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide rounded-l-[14px]">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide rounded-l-[14px]">
                   User
                 </th>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide">
                   Project
                 </th>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide">
                   Task Name
                 </th>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide">
                   Date
                 </th>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide">
                   Task Description
                 </th>
-                <th className="text-left p-3 font-semibold text-sm uppercase tracking-wide rounded-r-[14px]">
+                <th className="text-left p-3 font-semibold text-xs sm:text-sm uppercase tracking-wide rounded-r-[14px]">
                   Hours
                 </th>
               </tr>
@@ -242,7 +338,7 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
               {groupedWorklogs.map((group) => (
                 <React.Fragment key={group.label}>
                   <tr className="bg-secondary/40">
-                    <td colSpan={6} className="p-2 text-xs font-bold text-muted-foreground uppercase items-center tracking-wide">
+                    <td colSpan={6} className="p-2 text-[10px] sm:text-xs font-bold text-muted-foreground uppercase items-center tracking-wide">
                       <div className="flex items-center justify-center">
                         {group.label}
                       </div>
@@ -267,27 +363,31 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
                             setClickedRowId(log.id);
                           }}
                         >
-                          <td className="p-3 text-sm">
-                            <div className="flex items-center gap-2">
-                              <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                <User className="h-4 w-4 text-primary" />
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                <User className="h-3 w-3 sm:h-4 sm:w-4 text-primary" />
                               </div>
-                              <span className="font-medium">{log.user?.name || '—'}</span>
+                              <span className="font-medium truncate">{log.user?.name || '—'}</span>
                             </div>
                           </td>
-                          <td className="p-3 text-sm">{log.project?.name || '—'}</td>
-                          <td className="p-3 text-sm">{log.task?.name || '—'}</td>
-                          <td className="p-3 text-sm text-muted-foreground">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                            <span className="truncate block max-w-[120px]">{log.project?.name || '—'}</span>
+                          </td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm">
+                            <span className="truncate block max-w-[120px]">{log.task?.name || '—'}</span>
+                          </td>
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm text-muted-foreground">
                             {format(new Date(log.created_at), 'dd/MM/yyyy')}
                           </td>
-                          <td className="p-3 text-sm max-w-xs">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm max-w-xs">
                             {log.note ? (
-                              <span className="line-clamp-2">{log.note}</span>
+                              <span className="line-clamp-2 break-words">{log.note}</span>
                             ) : (
-                              <span className="text-muted-foreground">{log.task?.name || '—'}</span>
+                              <span className="text-muted-foreground">—</span>
                             )}
                           </td>
-                          <td className="p-3 text-sm font-semibold text-primary">
+                          <td className="p-2 sm:p-3 text-xs sm:text-sm font-semibold text-primary">
                             {formatHours(log.hours)}
                           </td>
                         </tr>
@@ -354,15 +454,15 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
           if (!open) setDeletingWorklogId(null);
         }}
       >
-        <AlertDialogContent className="rounded-[14px]">
+        <AlertDialogContent className="rounded-[14px] w-[95vw] sm:max-w-[425px]">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Worklog</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Delete Worklog</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               Are you sure you want to delete this worklog? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-[14px] w-full sm:w-auto text-xs sm:text-sm">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
                 if (deletingWorklogId) {
@@ -373,7 +473,7 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
                   });
                 }
               }}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+              className="bg-red-600 hover:bg-red-700 rounded-[14px] w-full sm:w-auto text-xs sm:text-sm"
               disabled={deleteWorklogMutation.isPending}
             >
               {deleteWorklogMutation.isPending ? 'Deleting...' : 'Delete'}

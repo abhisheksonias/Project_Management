@@ -53,12 +53,12 @@ const UserDashboard: React.FC = () => {
   const stats = useDashboardStats(worklogs, tasks);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
       <UserSidebar currentTab={currentTab} onTabChange={handleTabChange} />
 
       <div className="flex-1 overflow-y-auto">
         {currentTab === 'dashboard' && (
-          <div className="p-6 space-y-6">
+          <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
             <DashboardHeader 
               userName={profile?.name}
               canEdit={canEdit}
@@ -72,12 +72,12 @@ const UserDashboard: React.FC = () => {
               tasksCompleted={stats.tasksCompleted}
             />
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6">
+              <div className="lg:col-span-2 order-2 lg:order-1">
                 <TopTasksTable tasks={topTasks || []} />
               </div>
 
-              <div className="lg:col-span-1 space-y-6">
+              <div className="lg:col-span-1 space-y-4 sm:space-y-5 md:space-y-6 order-1 lg:order-2">
                 <LoggedCalendar
                   loggedDays={stats.loggedDays}
                   onMonthChange={setSelectedMonth}
@@ -91,13 +91,13 @@ const UserDashboard: React.FC = () => {
         )}
 
         {currentTab !== 'dashboard' && (
-          <div className="flex items-center justify-center h-full">
-            <Card>
-              <CardContent className="p-8">
-                <h2 className="text-2xl font-bold mb-2">
+          <div className="flex items-center justify-center h-full p-4">
+            <Card className="w-full max-w-md">
+              <CardContent className="p-6 sm:p-8">
+                <h2 className="text-xl sm:text-2xl font-bold mb-2">
                   {currentTab.charAt(0).toUpperCase() + currentTab.slice(1)} Tab
                 </h2>
-                <p className="text-muted-foreground">
+                <p className="text-sm sm:text-base text-muted-foreground">
                   This tab will be implemented soon.
                 </p>
               </CardContent>

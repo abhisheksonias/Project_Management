@@ -22,15 +22,15 @@ export const SelectionActionsBar: React.FC<SelectionActionsBarProps> = ({
   if (selectedCount === 0) return null;
 
   return (
-    <div className="flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-4">
+      <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
         {selectedCount} of {totalCount} items selected
       </p>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
         {canEdit && (
           <Button
             variant="outline"
-            className="border-destructive text-destructive hover:bg-destructive/5"
+            className="border-destructive text-destructive hover:bg-destructive/5 w-full sm:w-auto text-sm h-9 sm:h-10"
             onClick={onDelete}
             disabled={isDeleting}
           >
@@ -40,7 +40,7 @@ export const SelectionActionsBar: React.FC<SelectionActionsBarProps> = ({
         )}
         <Button 
           variant="outline" 
-          className="border-secondary"
+          className="border-secondary w-full sm:w-auto text-sm h-9 sm:h-10"
           onClick={onExport}
         >
           <Download className="mr-2 h-4 w-4" />

@@ -113,7 +113,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   return (
     <div className="sticky top-0 z-40 bg-card border-b border-border shadow-sm">
       <div className="px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           {/* Title Section */}
           <div className="flex-1 min-w-0">
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground truncate">
@@ -142,7 +142,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-64 sm:w-80 rounded-[14px]">
+              <DropdownMenuContent align="end" className="w-[90vw] sm:w-64 md:w-80 rounded-[14px] max-h-[80vh] overflow-y-auto">
                 <DropdownMenuLabel>Date Range</DropdownMenuLabel>
                 <div className="px-2 py-1.5 space-y-1">
                   {(['today', 'this-week', 'this-month', 'last-month', 'last-30-days', 'this-quarter', 'this-year'] as DateRangeOption[]).map((option) => (
@@ -150,7 +150,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                       key={option}
                       onClick={() => onDateRangeChange(option)}
                       className={cn(
-                        'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors',
+                        'w-full text-left px-2 py-1.5 text-sm rounded-[12px] transition-colors',
                         dateRange === option
                           ? 'bg-primary/10 text-primary font-medium'
                           : 'hover:bg-secondary text-foreground'
@@ -168,7 +168,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                         onDatePickerOpenChange(true);
                       }}
                       className={cn(
-                        'w-full text-left px-2 py-1.5 text-sm rounded-md transition-colors flex items-center gap-2',
+                        'w-full text-left px-2 py-1.5 text-sm rounded-[12px] transition-colors flex items-center gap-2',
                         dateRange === 'custom'
                           ? 'bg-primary/10 text-primary font-medium'
                           : 'hover:bg-secondary text-foreground'
@@ -219,7 +219,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuLabel>Project</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-sm font-semibold">Project</DropdownMenuLabel>
                 <div className="px-2 py-1.5">
                   <Select
                     value={filters.projectId || 'all'}
@@ -242,7 +242,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
                 <DropdownMenuSeparator />
 
-                <DropdownMenuLabel>Department</DropdownMenuLabel>
+                    <DropdownMenuLabel className="text-sm font-semibold">Department</DropdownMenuLabel>
                 <div className="px-2 py-1.5">
                   <Select
                     value={filters.department || 'all'}
@@ -268,7 +268,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                       <div className="text-xs font-medium text-muted-foreground mb-2">Active Filters</div>
                       <div className="flex flex-wrap gap-2">
                         {dateRange !== 'this-month' && (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-[10px]">
                             {getDateRangeLabel()}
                             <button
                               onClick={() => onDateRangeChange('this-month')}
@@ -279,7 +279,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                           </div>
                         )}
                         {filters.projectId && selectedProject && (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-[10px]">
                             {selectedProject.name}
                             <button
                               onClick={() => handleProjectChange('all')}
@@ -290,7 +290,7 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
                           </div>
                         )}
                         {filters.department && (
-                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
+                          <div className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary text-xs rounded-[10px]">
                             {departmentLabel}
                             <button
                               onClick={() => handleDepartmentChange('all')}

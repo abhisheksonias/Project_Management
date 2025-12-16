@@ -11,13 +11,13 @@ export const WorklogHistoryHeader: React.FC<WorklogHistoryHeaderProps> = ({
   onAddWorklog,
   canEdit = true,
 }) => {
-  if (!canEdit) return <h1 className="text-3xl font-bold">My Time Logs</h1>;
+  if (!canEdit) return <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">My Time Logs</h1>;
 
   return (
-    <div className="flex items-center justify-between">
-      <h1 className="text-3xl font-bold">My Time Logs</h1>
+    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">My Time Logs</h1>
       <Button 
-        className="bg-primary text-white hover:bg-primary/90"
+        className="bg-primary text-white hover:bg-primary/90 w-full sm:w-auto text-sm sm:text-base"
         onClick={onAddWorklog}
       >
         <PlusCircle className="mr-2 h-4 w-4" />

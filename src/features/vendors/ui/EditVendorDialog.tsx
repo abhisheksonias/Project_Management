@@ -82,68 +82,68 @@ export const EditVendorDialog: React.FC<EditVendorDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="w-[95vw] sm:max-w-md max-h-[90vh] rounded-[14px] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl font-bold">Edit Vendor</DialogTitle>
-          <DialogDescription>Update vendor information</DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl font-bold">Edit Vendor</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">Update vendor information</DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Name *</Label>
+            <Label className="text-xs sm:text-sm text-muted-foreground">Name *</Label>
             <Input
               value={formState.name}
               onChange={(e) => handleChange('name', e.target.value)}
               placeholder="Acme Inc."
               required
-              className="rounded-[14px]"
+              className="rounded-[14px] h-9 sm:h-10 text-sm"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Email</Label>
+            <Label className="text-xs sm:text-sm text-muted-foreground">Email</Label>
             <Input
               type="email"
               value={formState.email}
               onChange={(e) => handleChange('email', e.target.value)}
               placeholder="contact@acme.com"
-              className="rounded-[14px]"
+              className="rounded-[14px] h-9 sm:h-10 text-sm"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Phone</Label>
+            <Label className="text-xs sm:text-sm text-muted-foreground">Phone</Label>
             <Input
               value={formState.phone}
               onChange={(e) => handleChange('phone', e.target.value)}
               placeholder="+1 555 123 4567"
-              className="rounded-[14px]"
+              className="rounded-[14px] h-9 sm:h-10 text-sm"
             />
           </div>
 
           <div className="space-y-2">
-            <Label className="text-sm text-muted-foreground">Website</Label>
+            <Label className="text-xs sm:text-sm text-muted-foreground">Website</Label>
             <Input
               value={formState.website}
               onChange={(e) => handleChange('website', e.target.value)}
               placeholder="https://acme.com"
-              className="rounded-[14px]"
+              className="rounded-[14px] h-9 sm:h-10 text-sm"
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 sm:pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={handleCancel}
-              className="flex-1 rounded-[14px]"
+              className="w-full sm:flex-1 rounded-[14px] h-9 sm:h-10 text-sm"
               disabled={updateVendorMutation.isPending}
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              className="flex-1 rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-full sm:flex-1 rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-10 text-sm"
               disabled={updateVendorMutation.isPending || !formState.name.trim()}
             >
               {updateVendorMutation.isPending ? 'Saving...' : 'Save Changes'}

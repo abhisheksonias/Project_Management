@@ -178,29 +178,29 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
 
       {/* Edit Milestone Dialog */}
       <Dialog open={!!editingMilestone} onOpenChange={(open) => !open && handleCancelEdit()}>
-        <DialogContent className="sm:max-w-[600px] rounded-[14px]">
+        <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[14px]">
           <DialogHeader>
-            <DialogTitle>Edit Milestone</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Edit Milestone</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Update milestone details. Fields marked with * are required.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                 Milestone Name *
               </label>
               <Input
                 value={editName}
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="e.g., Phase 1 Payment"
-                className="rounded-[14px]"
+                className="rounded-[14px] text-sm h-9 sm:h-10"
               />
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                 Billing Type
               </label>
               <ToggleGroup
@@ -211,23 +211,23 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
               >
                 <ToggleGroupItem
                   value="fixed"
-                  className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="px-3 sm:px-4 rounded-[12px] text-xs sm:text-sm data-[state=on]:bg-white data-[state=on]:shadow-sm"
                 >
                   Fixed
                 </ToggleGroupItem>
                 <ToggleGroupItem
                   value="hourly"
-                  className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                  className="px-3 sm:px-4 rounded-[12px] text-xs sm:text-sm data-[state=on]:bg-white data-[state=on]:shadow-sm"
                 >
                   Hourly
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               {editBillingType === 'fixed' ? (
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">
+                  <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                     Amount *
                   </label>
                   <Input
@@ -237,12 +237,12 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
                     value={editAmount}
                     onChange={(e) => setEditAmount(e.target.value)}
                     placeholder="0.00"
-                    className="rounded-[14px]"
+                    className="rounded-[14px] text-sm h-9 sm:h-10"
                   />
                 </div>
               ) : (
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">
+                  <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                     Allotted Hours *
                   </label>
                   <Input
@@ -252,17 +252,17 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
                     value={editAllottedHours}
                     onChange={(e) => setEditAllottedHours(e.target.value)}
                     placeholder="0"
-                    className="rounded-[14px]"
+                    className="rounded-[14px] text-sm h-9 sm:h-10"
                   />
                 </div>
               )}
 
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                   Currency *
                 </label>
                 <Select value={editCurrency} onValueChange={setEditCurrency}>
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-[14px]">
@@ -277,9 +277,9 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
             </div>
 
             {editBillingType === 'hourly' && (
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">
+                  <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                     Hourly Rate *
                   </label>
                   <Input
@@ -289,14 +289,14 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
                     value={editHourlyRate}
                     onChange={(e) => setEditHourlyRate(e.target.value)}
                     placeholder="0.00"
-                    className="rounded-[14px]"
+                    className="rounded-[14px] text-sm h-9 sm:h-10"
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-foreground mb-1 block">
+                  <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                     Estimated Cost
                   </label>
-                  <div className="rounded-[14px] border border-dashed border-secondary/60 px-3 py-2 text-sm text-muted-foreground">
+                  <div className="rounded-[14px] border border-dashed border-secondary/60 px-3 py-2 text-xs sm:text-sm text-muted-foreground">
                     {editAllottedHours && editHourlyRate
                       ? new Intl.NumberFormat('en-IN', {
                           style: 'currency',
@@ -312,7 +312,7 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
             )}
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                 Sort Order
               </label>
               <Input
@@ -321,40 +321,40 @@ export const MilestonesTabContent: React.FC<MilestonesTabContentProps> = ({ proj
                 value={editSortOrder}
                 onChange={(e) => setEditSortOrder(e.target.value)}
                 placeholder="Optional - for ordering milestones"
-                className="rounded-[14px]"
+                className="rounded-[14px] text-sm h-9 sm:h-10"
               />
-              <p className="text-xs text-muted-foreground mt-1">
+              <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                 Lower numbers appear first. Leave empty to add at the end.
               </p>
             </div>
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                 Description
               </label>
               <Textarea
                 value={editDescription}
                 onChange={(e) => setEditDescription(e.target.value)}
                 placeholder="Additional details"
-                className="rounded-[14px]"
+                className="rounded-[14px] text-sm resize-none"
                 rows={3}
               />
             </div>
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-2 pt-2 sm:pt-0">
             <Button
               variant="outline"
               onClick={handleCancelEdit}
               disabled={updateMilestone.isPending}
-              className="rounded-[14px]"
+              className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
             >
               Cancel
             </Button>
             <Button
               onClick={handleSaveEdit}
               disabled={isEditDisabled}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
             >
               {updateMilestone.isPending ? 'Saving...' : 'Save Changes'}
             </Button>

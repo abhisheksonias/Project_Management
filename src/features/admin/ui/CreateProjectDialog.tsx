@@ -65,28 +65,29 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
 }) => {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[720px]">
+      <DialogContent className="w-[95vw] sm:max-w-[720px] max-h-[90vh] rounded-[14px] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>New Project</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">New Project</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Add a new project to the system. Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Project Name *
             </label>
             <Input
               value={data.name}
               onChange={(e) => onChange({ name: e.target.value })}
               placeholder="Project Name"
+              className="text-sm h-9 sm:h-10"
             />
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Vendor
             </label>
             <Select
@@ -94,7 +95,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
               onValueChange={(value) => onChange({ vendor_id: value === 'none' ? null : value })}
               disabled={isVendorsLoading}
             >
-              <SelectTrigger className="rounded-[14px]">
+              <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                 <SelectValue placeholder="Select vendor" />
               </SelectTrigger>
               <SelectContent>
@@ -109,7 +110,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
           </div>
 
           <div>
-            <label className="text-sm font-medium text-muted-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Description
             </label>
             <Textarea
@@ -117,19 +118,20 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
               onChange={(e) => onChange({ description: e.target.value })}
               placeholder="Describe the project..."
               rows={4}
+              className="text-sm resize-none"
             />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Status
               </label>
               <Select
                 value={data.status || 'none'}
                 onValueChange={(value) => onChange({ status: value === 'none' ? '' : value })}
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -144,14 +146,14 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Priority
               </label>
               <Select
                 value={data.priority || 'none'}
                 onValueChange={(value) => onChange({ priority: value === 'none' ? '' : value })}
               >
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select priority" />
                 </SelectTrigger>
                 <SelectContent>
@@ -164,7 +166,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Deadline
               </label>
               <Popover>
@@ -172,15 +174,17 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      'w-full justify-start text-left font-normal rounded-[14px]',
+                      'w-full justify-start text-left font-normal rounded-[14px] text-sm h-9 sm:h-10',
                       !data.deadline && 'text-muted-foreground'
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {data.deadline ? format(data.deadline, 'PPP') : 'Pick a date'}
+                    <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="truncate">
+                      {data.deadline ? format(data.deadline, 'PPP') : 'Pick a date'}
+                    </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-[14px]">
+                <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
                   <Calendar
                     mode="single"
                     selected={data.deadline || undefined}
@@ -193,11 +197,11 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-2 sm:pt-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
             disabled={isSubmitting}
           >
             Cancel
@@ -208,7 +212,7 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
               isSubmitting ||
               !data.name.trim()
             }
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {isSubmitting ? 'Creating...' : 'Create Project'}
           </Button>

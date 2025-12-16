@@ -15,22 +15,22 @@ export const WorklogStatsCards: React.FC<WorklogStatsCardsProps> = ({
   entries,
 }) => {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Total Hours</p>
-        <p className="text-2xl font-bold">{totalHours}</p>
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Hours</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{totalHours}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Billable Hours</p>
-        <p className="text-2xl font-bold">{billableHours}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Billable Hours</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{billableHours}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Non-billable Hours</p>
-        <p className="text-2xl font-bold">{nonBillableHours}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Non-billable Hours</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{nonBillableHours}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Entries</p>
-        <p className="text-2xl font-bold">{entries}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Entries</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{entries}</p>
       </Card>
     </div>
   );

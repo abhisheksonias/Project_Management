@@ -346,22 +346,22 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
   return (
     <>
       <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent className="flex h-full w-full flex-col overflow-hidden sm:max-w-2xl">
-          <SheetHeader>
-            <div className="flex items-center justify-between">
+        <SheetContent className="flex h-full w-full flex-col overflow-hidden sm:max-w-2xl p-3 sm:p-4 md:p-6">
+          <SheetHeader className="pb-3 sm:pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-2xl">{activeTask.name}</SheetTitle>
-                <SheetDescription className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                  <span>{activeTask.description || 'No description available'}</span>
+                <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{activeTask.name}</SheetTitle>
+                <SheetDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground mt-1">
+                  <span className="truncate">{activeTask.description || 'No description available'}</span>
                   {isTaskRefreshing && (
-                    <span className="flex items-center gap-1 text-xs">
+                    <span className="flex items-center gap-1 text-[11px] sm:text-xs">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Syncing
                     </span>
                   )}
                 </SheetDescription>
               </div>
-              <div className="flex items-center gap-2 ml-4">
+              <div className="flex items-center gap-2 sm:ml-4">
                 <Button
                   size="sm"
                   variant="outline"
@@ -369,18 +369,19 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
                     setEditForm(buildFormStateFromTask(activeTask));
                     setIsEditDialogOpen(true);
                   }}
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Edit
+                  <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setIsDeleteDialogOpen(true)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 sm:h-9"
                   disabled={deleteTaskMutation.isPending}
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               </div>
             </div>
@@ -389,16 +390,16 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
           <Tabs
             value={activeTab}
             onValueChange={(value) => setActiveTab(value as TaskPanelTab)}
-            className="mt-6 flex h-full flex-col"
+            className="mt-4 sm:mt-6 flex h-full flex-col"
           >
-            <TabsList className="grid w-full grid-cols-3 rounded-[14px]">
-              <TabsTrigger value="details" className="rounded-[14px]">
+            <TabsList className="grid w-full grid-cols-3 rounded-[14px] h-9 sm:h-10">
+              <TabsTrigger value="details" className="rounded-[14px] text-[11px] sm:text-xs md:text-sm">
                 Details
               </TabsTrigger>
-              <TabsTrigger value="status" className="rounded-[14px]">
+              <TabsTrigger value="status" className="rounded-[14px] text-[11px] sm:text-xs md:text-sm">
                 Status Timeline
               </TabsTrigger>
-              <TabsTrigger value="logs" className="rounded-[14px]">
+              <TabsTrigger value="logs" className="rounded-[14px] text-[11px] sm:text-xs md:text-sm">
                 Logs
               </TabsTrigger>
             </TabsList>
@@ -682,21 +683,21 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
       />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[14px]">
+        <AlertDialogContent className="rounded-[14px] max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Task</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Delete Task</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               Are you sure you want to delete &quot;{activeTask.name}&quot;? This action cannot be
               undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]" disabled={deleteTaskMutation.isPending}>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-[14px] w-full sm:w-auto text-sm" disabled={deleteTaskMutation.isPending}>
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteTask}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+              className="bg-red-600 hover:bg-red-700 rounded-[14px] w-full sm:w-auto text-sm"
               disabled={deleteTaskMutation.isPending}
             >
               {deleteTaskMutation.isPending ? 'Deleting...' : 'Delete'}

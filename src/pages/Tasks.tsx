@@ -220,12 +220,12 @@ const Tasks: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen overflow-hidden bg-white">
+      <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
         <UserSidebar currentTab="tasks" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading...</p>
           </div>
         </div>
       </div>
@@ -233,16 +233,16 @@ const Tasks: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
       <UserSidebar currentTab="tasks" onTabChange={handleSidebarNavigation} />
 
-      <div className="flex-1 overflow-hidden">
-        <div className="flex h-full flex-col gap-6 p-6">
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex flex-col gap-3 sm:gap-4 md:gap-6 p-3 sm:p-4 md:p-6">
           {/* Header */}
-          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex flex-col items-start justify-between gap-3 sm:gap-4 sm:flex-row sm:items-center">
             <div>
-              <h1 className="text-3xl font-bold">My Tasks</h1>
-              <p className="mt-1 text-muted-foreground">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">My Tasks</h1>
+              <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
                 Track and manage all your tasks in one place.
               </p>
             </div>
@@ -281,9 +281,9 @@ const Tasks: React.FC = () => {
           </div>
 
           {/* Tasks List */}
-          <div className="flex-1 overflow-hidden">
+          <div>
             {viewMode === 'kanban' ? (
-              <div className="h-full">
+              <div className="h-[500px] sm:h-[600px] md:h-[calc(100vh-400px)]">
                 <TasksKanbanView
                   tasks={filteredTasks}
                   onTaskClick={handleTaskClick}
@@ -291,7 +291,7 @@ const Tasks: React.FC = () => {
                 />
               </div>
             ) : (
-              <div className="h-full overflow-auto rounded-[14px] border border-secondary bg-white">
+              <div className="rounded-[14px] border border-secondary bg-white">
                 <TasksTableView 
                   tasks={filteredTasks}
                   onTaskClick={handleTaskClick}

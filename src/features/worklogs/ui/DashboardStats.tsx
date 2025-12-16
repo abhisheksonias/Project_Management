@@ -23,39 +23,39 @@ export const DashboardStats: React.FC<DashboardStatsProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-2 gap-2 sm:gap-3 md:gap-4 sm:grid-cols-2 lg:grid-cols-5">
       <Card className="bg-secondary">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Total Hours</p>
-          <p className="text-2xl font-bold">{formatHours(totalHours)}</p>
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Total Hours</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">{formatHours(totalHours)}</p>
         </CardContent>
       </Card>
 
       <Card className="bg-secondary">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Billable Hours</p>
-          <p className="text-2xl font-bold">{formatHours(billableHours)}</p>
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Billable Hours</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">{formatHours(billableHours)}</p>
         </CardContent>
       </Card>
 
       <Card className="bg-secondary">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Non-Billable Hours</p>
-          <p className="text-2xl font-bold">{formatHours(nonBillableHours)}</p>
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Non-Billable Hours</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">{formatHours(nonBillableHours)}</p>
         </CardContent>
       </Card>
 
       <Card className="bg-secondary">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Tasks In Progress</p>
-          <p className="text-2xl font-bold">{tasksInProgress}</p>
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Tasks In Progress</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">{tasksInProgress}</p>
         </CardContent>
       </Card>
 
-      <Card className="bg-secondary">
-        <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground">Tasks Completed</p>
-          <p className="text-2xl font-bold">{tasksCompleted}</p>
+      <Card className="bg-secondary col-span-2 sm:col-span-1">
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs sm:text-sm text-muted-foreground mb-1">Tasks Completed</p>
+          <p className="text-lg sm:text-xl md:text-2xl font-bold">{tasksCompleted}</p>
         </CardContent>
       </Card>
     </div>

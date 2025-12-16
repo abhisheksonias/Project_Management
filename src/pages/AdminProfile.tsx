@@ -198,31 +198,32 @@ const AdminProfile: React.FC = () => {
   
   return (
     <AdminLayout>
-      <div className="min-h-screen bg-[#FAFAFA]">
-        <div className="p-8 max-w-6xl mx-auto">
+      <div className="min-h-screen mt-16 sm:mt-0 bg-[#FAFAFA]">
+        <div className="p-4 sm:p-6 lg:p-8 max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-500">Member since {memberSince}</p>
-                <Badge className="bg-green-100 text-green-800 text-xs px-2 py-0.5">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0 mb-6 sm:mb-8">
+            <div className="flex-1">
+              <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                <p className="text-xs sm:text-sm text-gray-500">Member since {memberSince}</p>
+                <Badge className="bg-green-100 text-green-800 text-xs px-2 py-0.5 w-fit">
                   {profile.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 disabled={!hasChanges || updateProfileMutation.isPending}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={!hasChanges || updateProfileMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto"
               >
                 {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -233,15 +234,15 @@ const AdminProfile: React.FC = () => {
             {/* Basic Information - Takes 2 columns */}
             <Card className="lg:col-span-2">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Basic Information</CardTitle>
+                <CardTitle className="text-lg sm:text-xl font-semibold">Basic Information</CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
                 {/* Profile Picture Section */}
-                <div className="flex items-center gap-6 pb-6 border-b">
-                  <div className="relative">
-                    <Avatar className="h-24 w-24">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 pb-6 border-b">
+                  <div className="relative flex-shrink-0">
+                    <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                       <AvatarImage src={avatarPreview || undefined} alt={profile.name} />
-                      <AvatarFallback className="bg-primary text-white text-2xl">
+                      <AvatarFallback className="bg-primary text-white text-xl sm:text-2xl">
                         {profile.name
                           ?.split(' ')
                           .map((n) => n[0])
@@ -262,14 +263,14 @@ const AdminProfile: React.FC = () => {
                         JPG, PNG or GIF. Max size 5MB
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleAvatarClick}
                         disabled={isUploadingAvatar}
-                        className="rounded-[14px]"
+                        className="rounded-[14px] w-full sm:w-auto"
                       >
                         <Camera className="h-4 w-4 mr-2" />
                         {avatarPreview ? 'Change' : 'Upload'}
@@ -281,7 +282,7 @@ const AdminProfile: React.FC = () => {
                           size="sm"
                           onClick={handleRemoveAvatar}
                           disabled={isUploadingAvatar}
-                          className="rounded-[14px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="rounded-[14px] text-red-600 hover:text-red-700 hover:bg-red-50 w-full sm:w-auto"
                         >
                           <X className="h-4 w-4 mr-2" />
                           Remove
@@ -354,18 +355,18 @@ const AdminProfile: React.FC = () => {
               {/* Security Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Security</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl font-semibold">Security</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <Label className="text-sm font-normal">Status</Label>
                     <span className="text-sm text-gray-700">
                       {profile.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <Label className="text-sm font-normal">User ID</Label>
-                    <span className="text-sm text-gray-700 font-mono">
+                    <span className="text-xs sm:text-sm text-gray-700 font-mono break-all sm:break-normal">
                       {profile.id.slice(0, 4)}-{profile.id.slice(4, 8)}-{profile.id.slice(8, 12)}-{profile.id.slice(12, 16)}
                     </span>
                   </div>
@@ -390,14 +391,14 @@ const AdminProfile: React.FC = () => {
               {/* Account Info Card */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Account Info</CardTitle>
+                  <CardTitle className="text-lg sm:text-xl font-semibold">Account Info</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <Label className="text-sm font-normal">Role</Label>
                     <span className="text-sm text-gray-700">{profile.role || 'Admin'}</span>
                   </div>
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-1 sm:gap-0">
                     <Label className="text-sm font-normal">Department</Label>
                     <span className="text-sm text-gray-700">
                       {profile.department || '-'}

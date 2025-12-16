@@ -39,49 +39,49 @@ export const TopProjectsCard: React.FC<TopProjectsCardProps> = () => {
 
   return (
     <Card className="rounded-[14px] border-2 shadow-lg bg-card">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-foreground font-semibold">Top Projects</CardTitle>
-        <p className="text-sm text-muted-foreground">By hours logged</p>
+      <CardHeader className="pb-2 sm:pb-3">
+        <CardTitle className="text-sm sm:text-base md:text-lg text-foreground font-semibold">Top Projects</CardTitle>
+        <p className="text-xs sm:text-sm text-muted-foreground">By hours logged</p>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-2 sm:p-4 md:p-6">
         {isLoading ? (
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             {[1, 2, 3, 4, 5].map((i) => (
               <div key={i} className="flex items-center justify-between py-2">
-                <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-32" />
-                  <Skeleton className="h-3 w-24" />
+                <div className="flex-1 space-y-1.5 sm:space-y-2">
+                  <Skeleton className="h-3 sm:h-4 w-24 sm:w-32" />
+                  <Skeleton className="h-2.5 sm:h-3 w-20 sm:w-24" />
                 </div>
-                <div className="flex items-center gap-4">
-                  <Skeleton className="h-4 w-12" />
-                  <Skeleton className="h-5 w-16 rounded-full" />
+                <div className="flex items-center gap-2 sm:gap-4">
+                  <Skeleton className="h-3 sm:h-4 w-10 sm:w-12" />
+                  <Skeleton className="h-4 sm:h-5 w-14 sm:w-16 rounded-full" />
                 </div>
               </div>
             ))}
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground">
+          <div className="flex items-center justify-center h-24 sm:h-32 text-xs sm:text-sm text-muted-foreground">
             <p>Error loading projects</p>
           </div>
         ) : !projects || projects.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground">
+          <div className="flex items-center justify-center h-24 sm:h-32 text-xs sm:text-sm text-muted-foreground">
             <p>No projects found</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2 sm:space-y-3">
             {projects.map((project) => (
               <div 
                 key={project.id} 
                 className="flex items-center justify-between py-2 px-2 rounded-[8px] hover:bg-muted/50 transition-colors border-b border-border/50 last:border-0"
               >
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground truncate">{project.name}</p>
+                <div className="flex-1 min-w-0 pr-2">
+                  <p className="text-xs sm:text-sm font-medium text-foreground truncate">{project.name}</p>
                   {project.client && (
-                    <p className="text-xs text-muted-foreground truncate">Client: {project.client}</p>
+                    <p className="text-[10px] sm:text-xs text-muted-foreground truncate">Client: {project.client}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-3 flex-shrink-0">
-                  <p className="text-sm font-semibold text-foreground">{formatHoursToHHMM(project.hours)}h</p>
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                  <p className="text-xs sm:text-sm font-semibold text-foreground">{formatHoursToHHMM(project.hours)}h</p>
                   {getStatusBadge(project.status as ProjectStatus)}
                 </div>
               </div>

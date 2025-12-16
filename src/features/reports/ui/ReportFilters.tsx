@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Select,
@@ -9,10 +9,11 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, ChevronDown, ChevronUp, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { ReportFilters as ReportFiltersType } from '../services/reportService';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface ReportFiltersProps {
   filters: ReportFiltersType;
@@ -61,123 +62,193 @@ export const ReportFilters: React.FC<ReportFiltersProps> = ({
     });
   };
 
-  return (
-    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-      {/* Date Range Selector */}
-      <Select
-        value={dateRangeOption}
-        onValueChange={onDateRangeSelect}
-      >
-        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
-          <SelectValue placeholder="Date range" />
-        </SelectTrigger>
-        <SelectContent className="rounded-[14px]">
-          <SelectItem value="this-month">This Month</SelectItem>
-          <SelectItem value="last-month">Last Month</SelectItem>
-          <SelectItem value="custom">Custom</SelectItem>
-        </SelectContent>
-      </Select>
+  const isMobile = useIsMobile();
+  const [isExpanded, setIsExpanded] = useState(false);
 
-      {/* Custom Date Range Picker - Show button when custom is selected */}
-      {dateRangeOption === 'custom' && (
-        <Popover open={isDatePickerOpen} onOpenChange={onDatePickerOpenChange}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                'w-full sm:w-[240px] justify-start text-left font-normal bg-secondary border-secondary rounded-[14px] h-9',
-                !tempStartDate && 'text-muted-foreground'
-              )}
-              onClick={() => {
-                if (!isDatePickerOpen) {
-                  onDatePickerOpenChange?.(true);
-                }
-              }}
-            >
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {tempStartDate && tempEndDate ? (
-                `${format(tempStartDate, 'MMM dd, yyyy')} - ${format(tempEndDate, 'MMM dd, yyyy')}`
-              ) : filters.startDate && filters.endDate ? (
-                `${format(filters.startDate, 'MMM dd, yyyy')} - ${format(filters.endDate, 'MMM dd, yyyy')}`
-              ) : (
-                <span>Pick a date range</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
-            <Calendar
-              initialFocus
-              mode="range"
-              defaultMonth={tempStartDate || new Date()}
-              selected={{
-                from: tempStartDate,
-                to: tempEndDate,
-              }}
-              onSelect={(range) => {
-                onTempDateChange?.({
-                  from: range?.from,
-                  to: range?.to,
-                });
-              }}
-              numberOfMonths={2}
-            />
-            <div className="flex justify-end gap-2 p-3 border-t">
+  const hasActiveFilters = (filters.projectId && filters.projectId !== 'all') || 
+    (filters.billableType && filters.billableType !== 'all') ||
+    dateRangeOption !== 'this-month';
+
+  return (
+    <div className="space-y-3 sm:space-y-0">
+      {/* Date Range - Always Visible */}
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <Select
+          value={dateRangeOption}
+          onValueChange={onDateRangeSelect}
+        >
+          <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9 text-sm">
+            <SelectValue placeholder="Date range" />
+          </SelectTrigger>
+          <SelectContent className="rounded-[14px]">
+            <SelectItem value="this-month">This Month</SelectItem>
+            <SelectItem value="last-month">Last Month</SelectItem>
+            <SelectItem value="custom">Custom</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Custom Date Range Picker - Show button when custom is selected */}
+        {dateRangeOption === 'custom' && (
+          <Popover open={isDatePickerOpen} onOpenChange={onDatePickerOpenChange}>
+            <PopoverTrigger asChild>
               <Button
                 variant="outline"
-                size="sm"
-                className="rounded-[14px]"
+                className={cn(
+                  'w-full sm:w-[240px] justify-start text-left font-normal bg-secondary border-secondary rounded-[14px] h-9 text-sm',
+                  !tempStartDate && 'text-muted-foreground'
+                )}
                 onClick={() => {
-                  onResetDateRange?.();
-                  onDatePickerOpenChange?.(false);
+                  if (!isDatePickerOpen) {
+                    onDatePickerOpenChange?.(true);
+                  }
                 }}
               >
-                Cancel
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                <span className="truncate">
+                  {tempStartDate && tempEndDate ? (
+                    `${format(tempStartDate, 'MMM dd, yyyy')} - ${format(tempEndDate, 'MMM dd, yyyy')}`
+                  ) : filters.startDate && filters.endDate ? (
+                    `${format(filters.startDate, 'MMM dd, yyyy')} - ${format(filters.endDate, 'MMM dd, yyyy')}`
+                  ) : (
+                    'Pick a date range'
+                  )}
+                </span>
               </Button>
-              <Button
-                size="sm"
-                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
-                onClick={() => {
-                  onConfirmDateRange?.();
-                  onDatePickerOpenChange?.(false);
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+              <Calendar
+                initialFocus
+                mode="range"
+                defaultMonth={tempStartDate || new Date()}
+                selected={{
+                  from: tempStartDate,
+                  to: tempEndDate,
                 }}
-                disabled={!tempStartDate || !tempEndDate}
-              >
-                Apply
-              </Button>
+                onSelect={(range) => {
+                  onTempDateChange?.({
+                    from: range?.from,
+                    to: range?.to,
+                  });
+                }}
+                numberOfMonths={2}
+              />
+              <div className="flex justify-end gap-2 p-2 sm:p-3 border-t">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-[14px] text-xs sm:text-sm h-8 sm:h-9"
+                  onClick={() => {
+                    onResetDateRange?.();
+                    onDatePickerOpenChange?.(false);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] text-xs sm:text-sm h-8 sm:h-9"
+                  onClick={() => {
+                    onConfirmDateRange?.();
+                    onDatePickerOpenChange?.(false);
+                  }}
+                  disabled={!tempStartDate || !tempEndDate}
+                >
+                  Apply
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+      </div>
+
+      {/* Mobile: Collapsible Filters */}
+      {isMobile ? (
+        <>
+          <Button
+            variant="outline"
+            className="w-full justify-between"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4" />
+              <span className="text-sm">More Filters</span>
+              {hasActiveFilters && (
+                <span className="h-5 px-1.5 text-xs bg-primary text-white rounded-full">
+                  {[(filters.projectId && filters.projectId !== 'all'), (filters.billableType && filters.billableType !== 'all')].filter(Boolean).length}
+                </span>
+              )}
             </div>
-          </PopoverContent>
-        </Popover>
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </Button>
+
+          {isExpanded && (
+            <div className="space-y-2 border rounded-lg p-3 bg-secondary/30">
+              <Select value={filters.projectId || 'all'} onValueChange={handleProjectChange}>
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Project" />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  <SelectItem value="all">All Projects</SelectItem>
+                  {sortedProjects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={filters.billableType || 'all'}
+                onValueChange={handleBillableTypeChange}
+              >
+                <SelectTrigger className="w-full text-sm">
+                  <SelectValue placeholder="Billable type" />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value="billable">Billable</SelectItem>
+                  <SelectItem value="non-billable">Non-Billable</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </>
+      ) : (
+        /* Desktop: Always Visible Filters */
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <Select value={filters.projectId || 'all'} onValueChange={handleProjectChange}>
+            <SelectTrigger className="w-[140px] bg-secondary border-secondary rounded-[14px] h-9 text-sm">
+              <SelectValue placeholder="Project" />
+            </SelectTrigger>
+            <SelectContent className="rounded-[14px]">
+              <SelectItem value="all">All Projects</SelectItem>
+              {sortedProjects.map((project) => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.billableType || 'all'}
+            onValueChange={handleBillableTypeChange}
+          >
+            <SelectTrigger className="w-[140px] bg-secondary border-secondary rounded-[14px] h-9 text-sm">
+              <SelectValue placeholder="Billable type" />
+            </SelectTrigger>
+            <SelectContent className="rounded-[14px]">
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="billable">Billable</SelectItem>
+              <SelectItem value="non-billable">Non-Billable</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       )}
-
-      {/* Project Filter */}
-      <Select value={filters.projectId || 'all'} onValueChange={handleProjectChange}>
-        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
-          <SelectValue placeholder="Project" />
-        </SelectTrigger>
-        <SelectContent className="rounded-[14px]">
-          <SelectItem value="all">All Projects</SelectItem>
-          {sortedProjects.map((project) => (
-            <SelectItem key={project.id} value={project.id}>
-              {project.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {/* Billable Type Filter */}
-      <Select
-        value={filters.billableType || 'all'}
-        onValueChange={handleBillableTypeChange}
-      >
-        <SelectTrigger className="w-full sm:w-[140px] bg-secondary border-secondary rounded-[14px] h-9">
-          <SelectValue placeholder="Billable type" />
-        </SelectTrigger>
-        <SelectContent className="rounded-[14px]">
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="billable">Billable</SelectItem>
-          <SelectItem value="non-billable">Non-Billable</SelectItem>
-        </SelectContent>
-      </Select>
     </div>
   );
 };

@@ -405,50 +405,52 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   return (
     <>
       <Sheet open={open} onOpenChange={onClose}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader>
-            <div className="flex items-center justify-between">
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-3 sm:p-4 md:p-6">
+          <SheetHeader className="pb-3 sm:pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
-                <SheetTitle className="text-2xl">{project.name}</SheetTitle>
-                <SheetDescription className="mt-2">
+                <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{project.name}</SheetTitle>
+                <SheetDescription className="mt-1 sm:mt-2 text-xs sm:text-sm">
                   {project.description || 'No description available'}
                 </SheetDescription>
               </div>
-              <div className="flex items-center gap-2 ml-4">
+              <div className="flex items-center gap-2 sm:ml-4">
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={handleOpenEditDialog}
+                  className="text-xs sm:text-sm h-8 sm:h-9"
                 >
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Edit
+                  <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Edit</span>
                 </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => setDeleteDialogOpen(true)}
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:text-red-700 hover:bg-red-50 h-8 sm:h-9"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                 </Button>
               </div>
             </div>
           </SheetHeader>
 
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <Tabs defaultValue="overview" className="w-full">
-              <TabsList className="grid w-full grid-cols-4 rounded-[14px]">
-                <TabsTrigger value="overview" className="rounded-[14px]">
+              <TabsList className="grid w-full grid-cols-4 rounded-[14px] h-9 sm:h-10">
+                <TabsTrigger value="overview" className="rounded-[14px] text-[10px] sm:text-xs md:text-sm">
                   Overview
                 </TabsTrigger>
-                <TabsTrigger value="tasks" className="rounded-[14px]">
+                <TabsTrigger value="tasks" className="rounded-[14px] text-[10px] sm:text-xs md:text-sm">
                   Tasks
                 </TabsTrigger>
-                <TabsTrigger value="milestones" className="rounded-[14px]">
+                <TabsTrigger value="milestones" className="rounded-[14px] text-[10px] sm:text-xs md:text-sm">
                   Milestones
                 </TabsTrigger>
-                <TabsTrigger value="status-history" className="rounded-[14px]">
-                  Status History
+                <TabsTrigger value="status-history" className="rounded-[14px] text-[10px] sm:text-xs md:text-sm">
+                  <span className="hidden sm:inline">Status History</span>
+                  <span className="sm:hidden">History</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -840,28 +842,29 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
           }
         }}
       >
-        <DialogContent className="sm:max-w-[720px]">
+        <DialogContent className="w-[95vw] sm:max-w-[720px] max-h-[90vh] rounded-[14px] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Edit Project</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-base sm:text-lg">Edit Project</DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Update the project information. Changes apply immediately after saving.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-3 sm:space-y-4">
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Project Name
               </label>
               <Input
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 placeholder="Project Name"
+                className="text-sm h-9 sm:h-10"
               />
             </div>
 
             <div>
-              <label className="text-sm font-medium text-muted-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Description
               </label>
               <Textarea
@@ -869,12 +872,13 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Describe the project..."
                 rows={4}
+                className="text-sm resize-none"
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Status
                 </label>
                 <Select
@@ -883,7 +887,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                     setFormData({ ...formData, status: value === 'none' ? '' : value })
                   }
                 >
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -898,7 +902,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Priority
                 </label>
                 <Select
@@ -907,7 +911,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                     setFormData({ ...formData, priority: value === 'none' ? '' : value })
                   }
                 >
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -920,7 +924,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
               </div>
 
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Deadline
                 </label>
                 <Popover>
@@ -928,15 +932,17 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-full justify-start text-left font-normal rounded-[14px]',
+                        'w-full justify-start text-left font-normal rounded-[14px] text-sm h-9 sm:h-10',
                         !formData.deadline && 'text-muted-foreground'
                       )}
                     >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {formData.deadline ? format(formData.deadline, 'PPP') : 'Pick a date'}
+                      <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
+                        {formData.deadline ? format(formData.deadline, 'PPP') : 'Pick a date'}
+                      </span>
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0 rounded-[14px]">
+                  <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
                     <CalendarComponent
                       mode="single"
                       selected={formData.deadline || undefined}
@@ -947,7 +953,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 </Popover>
               </div>
               <div>
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Admin
                 </label>
                 <Select
@@ -956,7 +962,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                     setFormData({ ...formData, admin_id: value === 'none' ? '' : value })
                   }
                 >
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Select admin" />
                   </SelectTrigger>
                   <SelectContent>
@@ -972,7 +978,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 </Select>
               </div>
               <div className="sm:col-span-2">
-                <label className="text-sm font-medium text-muted-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                   Vendor
                 </label>
                 <Select
@@ -981,7 +987,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                     setFormData({ ...formData, vendor_id: value === 'none' ? '' : value })
                   }
                 >
-                  <SelectTrigger className="rounded-[14px]">
+                  <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                     <SelectValue placeholder="Select vendor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -997,14 +1003,14 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             </div>
           </div>
 
-          <DialogFooter className="flex justify-end gap-2">
-            <Button variant="outline" onClick={handleCancel} className="rounded-[14px]">
+          <DialogFooter className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-2 pt-2 sm:pt-0">
+            <Button variant="outline" onClick={handleCancel} className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10">
               Cancel
             </Button>
             <Button
               onClick={handleSave}
               disabled={updateProjectMutation.isPending || !formData.name.trim()}
-              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+              className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
             >
               {updateProjectMutation.isPending ? 'Saving...' : 'Save changes'}
             </Button>
@@ -1014,18 +1020,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[14px]">
+        <AlertDialogContent className="rounded-[14px] max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Delete Project</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               Are you sure you want to delete "{project.name}"? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-[14px] w-full sm:w-auto text-sm">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDelete}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+              className="bg-red-600 hover:bg-red-700 rounded-[14px] w-full sm:w-auto text-sm"
               disabled={deleteProjectMutation.isPending}
             >
               {deleteProjectMutation.isPending ? 'Deleting...' : 'Delete'}

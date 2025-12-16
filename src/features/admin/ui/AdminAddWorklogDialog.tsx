@@ -297,18 +297,18 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] rounded-[14px]">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[14px]">
         <DialogHeader>
-          <DialogTitle>Add Worklog</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Add Worklog</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Add a new work log entry
           </DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 py-3 sm:py-4">
           {/* Left Column */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Date *</Label>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="date" className="text-xs sm:text-sm">Date *</Label>
               <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                 <PopoverTrigger asChild>
                   <Button
@@ -318,7 +318,7 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
                       !worklogDate && 'text-muted-foreground'
                     )}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                     {worklogDate ? format(worklogDate, 'dd/MM/yyyy') : 'Select date'}
                   </Button>
                 </PopoverTrigger>
@@ -338,10 +338,10 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
               </Popover>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="user">User *</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="user" className="text-xs sm:text-sm">User *</Label>
               <Select value={userId} onValueChange={setUserId}>
-                <SelectTrigger id="user" className="rounded-[14px]">
+                <SelectTrigger id="user" className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue placeholder="Select a user" />
                 </SelectTrigger>
                 <SelectContent className="rounded-[14px]">
@@ -354,8 +354,8 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="project">Project *</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="project" className="text-xs sm:text-sm">Project *</Label>
               <Select
                 value={projectId}
                 onValueChange={(value) => {
@@ -363,7 +363,7 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
                 }}
                 disabled={!userId}
               >
-                <SelectTrigger id="project" className="rounded-[14px]">
+                <SelectTrigger id="project" className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue 
                     placeholder={
                       !userId
@@ -384,14 +384,14 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="task">Task *</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="task" className="text-xs sm:text-sm">Task *</Label>
               <Select 
                 value={taskId} 
                 onValueChange={setTaskId} 
                 disabled={!userId || !projectId || availableTasks.length === 0}
               >
-                <SelectTrigger id="task" className="rounded-[14px]">
+                <SelectTrigger id="task" className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue 
                     placeholder={
                       !userId 
@@ -416,9 +416,9 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
           </div>
 
           {/* Right Column */}
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="hours">Hours *</Label>
+          <div className="space-y-3 sm:space-y-4">
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="hours" className="text-xs sm:text-sm">Hours *</Label>
               <Input
                 id="hours"
                 type="text"
@@ -444,9 +444,9 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
                   }
                 }}
                 maxLength={5}
-                className="rounded-[14px]"
+                className="rounded-[14px] text-sm h-9 sm:h-10"
               />
-              <p className="text-xs text-muted-foreground">Enter hours in HH:MM format (e.g., 08:00 for 8 hours)</p>
+              <p className="text-[11px] sm:text-xs text-muted-foreground">Enter hours in HH:MM format (e.g., 08:00 for 8 hours)</p>
               <div className="flex gap-2 mt-2">
                 {['04:00', '08:00', '02:00'].map((val) => (
                   <Button
@@ -485,31 +485,31 @@ export const AdminAddWorklogDialog: React.FC<AdminAddWorklogDialogProps> = ({
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="note">Description (optional)</Label>
+            <div className="space-y-1.5 sm:space-y-2">
+              <Label htmlFor="note" className="text-xs sm:text-sm">Description (optional)</Label>
               <Textarea
                 id="note"
                 placeholder="Add a description..."
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 rows={5}
-                className="rounded-[14px]"
+                className="rounded-[14px] text-sm resize-none"
               />
             </div>
           </div>
         </div>
-        <DialogFooter className="flex justify-end gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2 sm:pt-0">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSave}
             disabled={createWorklogMutation.isPending || !userId || !projectId || !taskId || !hours}
-            className="bg-primary text-white hover:bg-primary/90 rounded-[14px]"
+            className="bg-primary text-white hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {createWorklogMutation.isPending ? 'Saving...' : 'Save Log'}
           </Button>

@@ -50,8 +50,10 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const UserManagement: React.FC = () => {
+  const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -66,7 +68,7 @@ const UserManagement: React.FC = () => {
     title: string;
     description: string;
     onConfirm: () => void;
-  }>({ open: false, title: '', description: '', onConfirm: () => {} });
+  }>({ open: false, title: '', description: '', onConfirm: () => { } });
 
   // Debounce search query
   useEffect(() => {
@@ -174,13 +176,13 @@ const UserManagement: React.FC = () => {
     try {
       await createLeaveMutation.mutateAsync({
         user_id: selectedUser.id,
-      ...data,
-    });
-    toast.success('Leave added successfully');
+        ...data,
+      });
+      toast.success('Leave added successfully');
     } catch (error: any) {
       if (error?.code === '23505' || error?.message?.includes('unique')) {
         toast.error('Leave already exists for this date');
-        } else {
+      } else {
         toast.error(error?.message || 'Failed to add leave');
       }
     }
@@ -189,10 +191,10 @@ const UserManagement: React.FC = () => {
   const handleDeleteLeave = async (leaveId: string) => {
     try {
       await deleteLeaveMutation.mutateAsync(leaveId);
-    toast.success('Leave deleted successfully');
+      toast.success('Leave deleted successfully');
     } catch (error: any) {
       toast.error(error?.message || 'Failed to delete leave');
-        }
+    }
   };
 
   const handleNavigateToCalendar = (userId: string) => {
@@ -234,7 +236,7 @@ const UserManagement: React.FC = () => {
               data: { is_active: false },
             });
             toast.success('User deactivated successfully');
-            setConfirmDialog({ open: false, title: '', description: '', onConfirm: () => {} });
+            setConfirmDialog({ open: false, title: '', description: '', onConfirm: () => { } });
           } catch (error: any) {
             toast.error(error?.message || 'Failed to deactivate user');
           }
@@ -261,42 +263,42 @@ const UserManagement: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col min-h-screen bg-muted/30">
-              {/* Header */}
-        <header className="bg-card border-b border-border px-4 py-6 sm:px-6 lg:px-8">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col h-screen overflow-hidden mt-16 sm:mt-0 bg-muted/30">
+        {/* Header */}
+        <header className="bg-card border-b border-border px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <h1 className="text-2xl font-bold text-foreground sm:text-3xl">User Management</h1>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">User Management</h1>
+              <p className="mt-1 text-xs sm:text-sm md:text-base text-muted-foreground">
                 Manage user salaries and leaves
-                  </p>
-                </div>
-              </div>
+              </p>
+            </div>
+          </div>
 
           {/* Filters */}
-          <div className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex flex-1 items-center gap-4">
-              <div className="relative flex-1 max-w-sm">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search users..."
-                    value={searchQuery}
+          <div className="mt-4 sm:mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row flex-1 items-stretch sm:items-center gap-3">
+              <div className="relative flex-1 w-full sm:max-w-sm">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search users..."
+                  value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 rounded-[14px]"
-                  />
+                  className="pl-9 rounded-[14px] text-sm h-9 sm:h-10"
+                />
               </div>
 
-                  <Select
+              <Select
                 value={format(selectedMonth, 'yyyy-MM')}
-                    onValueChange={(value) => {
+                onValueChange={(value) => {
                   const [year, month] = value.split('-').map(Number);
                   setSelectedMonth(new Date(year, month - 1));
-                    }}
-                  >
-                <SelectTrigger className="w-[180px] rounded-[14px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                <SelectContent>
+                }}
+              >
+                <SelectTrigger className="w-full sm:w-[200px] rounded-[14px] text-sm h-9 sm:h-10">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
                   {Array.from({ length: 12 }, (_, i) => {
                     const monthDate = subMonths(new Date(), i);
                     return (
@@ -305,85 +307,301 @@ const UserManagement: React.FC = () => {
                         value={format(monthDate, 'yyyy-MM')}
                       >
                         {format(monthDate, 'MMMM yyyy')}
-                        </SelectItem>
+                      </SelectItem>
                     );
                   }).reverse()}
-                    </SelectContent>
-                  </Select>
-                </div>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
             {isLoadingUsers ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <Skeleton key={i} className="h-16 w-full rounded-[14px]" />
+                  <Skeleton key={i} className="h-16 sm:h-20 w-full rounded-[14px]" />
                 ))}
-                </div>
+              </div>
             ) : filteredUsers.length === 0 ? (
-              <Card className="p-12 rounded-[14px] border-2 border-dashed">
+              <Card className="p-6 sm:p-12 rounded-[14px] border-2 border-dashed">
                 <div className="text-center">
-                  <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                  <h3 className="text-lg font-semibold text-foreground mb-2">
+                  <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mx-auto mb-3 sm:mb-4 opacity-50" />
+                  <h3 className="text-base sm:text-lg font-semibold text-foreground mb-2">
                     {debouncedSearchQuery ? 'No users found' : 'No users available'}
                   </h3>
-                  <p className="text-sm text-muted-foreground mb-4">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-4">
                     {debouncedSearchQuery
                       ? `No users match "${debouncedSearchQuery}". Try adjusting your search.`
                       : 'There are no users in the system yet.'}
                   </p>
                   {debouncedSearchQuery && (
-                      <Button
-                        variant="outline"
+                    <Button
+                      variant="outline"
                       onClick={() => setSearchQuery('')}
-                        className="rounded-[14px]"
-                      >
+                      className="rounded-[14px] text-sm h-9 sm:h-10"
+                    >
                       Clear Search
-                      </Button>
+                    </Button>
                   )}
                 </div>
               </Card>
+            ) : isMobile ? (
+              <Card className="rounded-[14px] border border-border bg-card shadow-sm overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="min-w-[1100px] w-full text-xs">
+                    <thead className="bg-secondary sticky top-0 z-10">
+                      <tr>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide rounded-tl-[14px]">Name</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Email</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Role</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Department</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Status</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Current Salary</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Net Salary</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Hourly Price</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide">Unpaid Leaves</th>
+                        <th className="px-3 py-2 sm:px-4 sm:py-3 text-left font-semibold text-[10px] sm:text-xs uppercase tracking-wide rounded-tr-[14px]">Actions</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredUsers.map((user) => {
+                        const userStats = usersMonthStatsMap?.get(user.id);
+                        const isEditing = editingUser?.id === user.id;
+
+                        return (
+                          <tr key={user.id} className="border-b border-secondary/30 hover:bg-secondary/30 transition-colors">
+                            {/* Name */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                              {isEditing ? (
+                                <Input
+                                  value={editFormData.name ?? user.name}
+                                  onChange={(e) =>
+                                    setEditFormData({ ...editFormData, name: e.target.value })
+                                  }
+                                  className="h-8 sm:h-9 text-xs rounded-[14px]"
+                                />
+                              ) : (
+                                <span className="font-medium">{user.name}</span>
+                              )}
+                            </td>
+
+                            {/* Email */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-muted-foreground">
+                              {user.email}
+                            </td>
+
+                            {/* Role */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
+                              {isEditing ? (
+                                <Select
+                                  value={editFormData.role ?? user.role ?? 'none'}
+                                  onValueChange={(value) =>
+                                    setEditFormData({
+                                      ...editFormData,
+                                      role: value === 'none' ? null : value,
+                                    })
+                                  }
+                                >
+                                  <SelectTrigger className="h-8 sm:h-9 text-xs rounded-[14px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-[14px]">
+                                    <SelectItem value="none">None</SelectItem>
+                                    <SelectItem value="User">User</SelectItem>
+                                    <SelectItem value="Admin">Admin</SelectItem>
+                                    <SelectItem value="Sales">Sales</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] sm:text-xs rounded-[10px]">
+                                  {user.role || '—'}
+                                </Badge>
+                              )}
+                            </td>
+
+                            {/* Department */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                              {isEditing ? (
+                                <Input
+                                  value={editFormData.department ?? user.department ?? ''}
+                                  onChange={(e) =>
+                                    setEditFormData({
+                                      ...editFormData,
+                                      department: e.target.value || null,
+                                    })
+                                  }
+                                  className="h-8 sm:h-9 text-xs rounded-[14px]"
+                                />
+                              ) : (
+                                <span className="text-muted-foreground">{user.department || '—'}</span>
+                              )}
+                            </td>
+
+                            {/* Status */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
+                              {isEditing ? (
+                                <Switch
+                                  checked={editFormData.is_active ?? user.is_active ?? false}
+                                  onCheckedChange={(checked) =>
+                                    setEditFormData({ ...editFormData, is_active: checked })
+                                  }
+                                />
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <Switch
+                                    checked={user.is_active ?? false}
+                                    onCheckedChange={(checked) =>
+                                      handleToggleActive(user, checked)
+                                    }
+                                    disabled={updateUserMutation.isPending}
+                                  />
+                                  <Badge
+                                    variant={user.is_active ? 'default' : 'secondary'}
+                                    className={cn(
+                                      'text-[10px] sm:text-xs rounded-[10px]',
+                                      user.is_active
+                                        ? 'bg-green-100 text-green-800 hover:bg-green-100'
+                                        : 'bg-gray-100 text-gray-800 hover:bg-gray-100'
+                                    )}
+                                  >
+                                    {user.is_active ? 'Active' : 'Inactive'}
+                                  </Badge>
+                                </div>
+                              )}
+                            </td>
+
+                            {/* Current Salary */}
+                            <td
+                              className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap cursor-pointer text-xs sm:text-sm font-medium hover:text-primary transition-colors"
+                              onClick={() => handleOpenSalaryModal(user)}
+                            >
+                              {formatCurrency(user.current_salary)}
+                            </td>
+
+                            {/* Net Salary */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                              {isLoadingStats ? (
+                                <Skeleton className="h-3 w-12" />
+                              ) : (
+                                <span className="font-medium">{formatCurrency(userStats?.net_salary)}</span>
+                              )}
+                            </td>
+
+                            {/* Hourly Price */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                              {isLoadingStats ? (
+                                <Skeleton className="h-3 w-12" />
+                              ) : (
+                                <span className="text-muted-foreground">
+                                  {userStats?.hourly_price
+                                    ? formatCurrency(userStats.hourly_price)
+                                    : '—'}
+                                </span>
+                              )}
+                            </td>
+
+                            {/* Unpaid Leaves */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap text-xs sm:text-sm">
+                              {isLoadingStats ? (
+                                <Skeleton className="h-3 w-8" />
+                              ) : (
+                                <span className="font-medium">{userStats?.unpaid_leaves || '—'}</span>
+                              )}
+                            </td>
+
+                            {/* Actions */}
+                            <td className="px-3 py-2 sm:px-4 sm:py-3 whitespace-nowrap">
+                              {isEditing ? (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSaveUser(user.id)}
+                                    className="rounded-[14px] h-8 w-8 p-0"
+                                    disabled={updateUserMutation.isPending}
+                                  >
+                                    <Save className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={handleCancelEdit}
+                                    className="rounded-[14px] h-8 w-8 p-0"
+                                    disabled={updateUserMutation.isPending}
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenLeavesModal(user)}
+                                    className="rounded-[14px] h-8 w-8 p-0"
+                                  >
+                                    <Calendar className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleNavigateToCalendar(user.id)}
+                                    className="rounded-[14px] h-8 w-8 p-0"
+                                  >
+                                    <CalendarDays className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+
             ) : (
-              <div className="rounded-[14px] border border-border bg-card shadow-sm">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Role</TableHead>
-                        <TableHead>Department</TableHead>
-                        <TableHead>Status</TableHead>
-                      <TableHead>Current Salary</TableHead>
-                        <TableHead>Net Salary</TableHead>
-                        <TableHead>Hourly Price</TableHead>
-                        <TableHead>Unpaid Leaves</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
+              <div className="rounded-[14px] border border-border bg-card shadow-sm overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs sm:text-sm">Name</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Department</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Current Salary</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Net Salary</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Hourly Price</TableHead>
+                      <TableHead className="text-xs sm:text-sm">Unpaid Leaves</TableHead>
+                      <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {filteredUsers.map((user) => {
                       const userStats = usersMonthStatsMap?.get(user.id);
                       const isEditing = editingUser?.id === user.id;
-                        return (
+                      return (
                         <TableRow key={user.id}>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-medium text-xs sm:text-sm">
                             {isEditing ? (
                               <Input
                                 value={editFormData.name ?? user.name}
                                 onChange={(e) => setEditFormData({ ...editFormData, name: e.target.value })}
-                                className="w-full min-w-[150px] h-9"
+                                className="w-full min-w-[150px] h-9 text-sm rounded-[14px]"
                                 autoFocus
                                 placeholder="User name"
                               />
                             ) : (
-                              <div className="flex items-center gap-2 group">
-                                <span className="flex-1">{user.name}</span>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              <div className="flex items-center gap-2 group min-w-0">
+                                <span className="flex-1 truncate">{user.name}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                                   onClick={() => {
                                     setEditingUser(user);
                                     setEditFormData({
@@ -395,22 +613,22 @@ const UserManagement: React.FC = () => {
                                     });
                                   }}
                                   title="Edit user"
-                                    >
+                                >
                                   <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
+                                </Button>
                               </div>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isEditing ? (
                               <Select
                                 value={editFormData.role ?? user.role ?? 'none'}
                                 onValueChange={(value) => setEditFormData({ ...editFormData, role: value === 'none' ? null : value })}
                               >
-                                <SelectTrigger className="w-full min-w-[120px] h-9">
+                                <SelectTrigger className="w-full min-w-[120px] h-9 text-sm rounded-[14px]">
                                   <SelectValue placeholder="Select role" />
                                 </SelectTrigger>
-                                <SelectContent>
+                                <SelectContent className="rounded-[14px]">
                                   <SelectItem value="none">None</SelectItem>
                                   <SelectItem value="User">User</SelectItem>
                                   <SelectItem value="Admin">Admin</SelectItem>
@@ -423,32 +641,32 @@ const UserManagement: React.FC = () => {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isEditing ? (
                               <Input
                                 value={editFormData.department ?? user.department ?? ''}
                                 onChange={(e) => setEditFormData({ ...editFormData, department: e.target.value || null })}
-                                className="w-full min-w-[140px] h-9"
+                                className="w-full min-w-[140px] h-9 text-sm rounded-[14px]"
                                 placeholder="Department"
                               />
                             ) : (
-                              <span className="text-sm">{user.department || '—'}</span>
+                              <span className="text-sm truncate block max-w-[120px]">{user.department || '—'}</span>
                             )}
-                            </TableCell>
-                            <TableCell>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isEditing ? (
-                                <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
                                 <Switch
                                   checked={editFormData.is_active ?? user.is_active ?? false}
                                   onCheckedChange={(checked) =>
                                     setEditFormData({ ...editFormData, is_active: checked })
                                   }
-                                  />
+                                />
                                 <span className="text-xs text-muted-foreground">
                                   {editFormData.is_active ?? user.is_active ? 'Active' : 'Inactive'}
-                                  </span>
-                                </div>
-                              ) : (
+                                </span>
+                              </div>
+                            ) : (
                               <div className="flex items-center gap-2">
                                 <Switch
                                   checked={user.is_active ?? false}
@@ -466,16 +684,16 @@ const UserManagement: React.FC = () => {
                                 >
                                   {user.is_active ? 'Active' : 'Inactive'}
                                 </Badge>
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell>
+                              </div>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             <div
-                              className="flex items-center gap-2 group"
+                              className="flex items-center gap-2 group cursor-pointer"
                               onClick={() => handleOpenSalaryModal(user)}
                             >
                               <span className={cn(
-                                "font-medium",
+                                "font-medium truncate",
                                 user.current_salary === 0 && "text-muted-foreground"
                               )}>
                                 {formatCurrency(user.current_salary)}
@@ -483,7 +701,7 @@ const UserManagement: React.FC = () => {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleOpenSalaryModal(user);
@@ -493,111 +711,115 @@ const UserManagement: React.FC = () => {
                                 <Pencil className="h-3 w-3" />
                               </Button>
                             </div>
-                            </TableCell>
-                            <TableCell>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isLoadingStats ? (
                               <Skeleton className="h-4 w-20" />
                             ) : (
-                              formatCurrency(userStats?.net_salary)
+                              <span className="truncate block">{formatCurrency(userStats?.net_salary)}</span>
                             )}
-                            </TableCell>
-                            <TableCell>
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isLoadingStats ? (
                               <Skeleton className="h-4 w-20" />
                             ) : (
-                              userStats?.hourly_price 
-                                ? formatCurrency(userStats.hourly_price)
-                                : '—'
-                              )}
-                            </TableCell>
-                            <TableCell>
+                              <span className="truncate block">
+                                {userStats?.hourly_price
+                                  ? formatCurrency(userStats.hourly_price)
+                                  : '—'}
+                              </span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-xs sm:text-sm">
                             {isLoadingStats ? (
                               <Skeleton className="h-4 w-12" />
                             ) : (
                               userStats?.unpaid_leaves || '—'
                             )}
                           </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
+                          <TableCell className="text-right text-xs sm:text-sm">
+                            <div className="flex items-center justify-end gap-2 flex-wrap">
                               {isEditing ? (
                                 <>
                                   <Button
                                     size="sm"
                                     onClick={() => handleSaveUser(user.id)}
-                                    className="rounded-[14px]"
+                                    className="rounded-[14px] text-xs h-8"
                                     disabled={updateUserMutation.isPending}
                                   >
-                                    <Save className="h-4 w-4 mr-1" />
+                                    <Save className="h-3 w-3 mr-1" />
                                     {updateUserMutation.isPending ? 'Saving...' : 'Save'}
                                   </Button>
-                                <Button
+                                  <Button
                                     size="sm"
-                                  variant="ghost"
+                                    variant="ghost"
                                     onClick={handleCancelEdit}
-                                    className="rounded-[14px]"
+                                    className="rounded-[14px] text-xs h-8"
                                     disabled={updateUserMutation.isPending}
                                   >
-                                    <X className="h-4 w-4 mr-1" />
+                                    <X className="h-3 w-3 mr-1" />
                                     Cancel
                                   </Button>
                                 </>
                               ) : (
                                 <>
-                              <Button
-                                  size="sm"
-                                variant="outline"
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
                                     onClick={() => handleOpenLeavesModal(user)}
-                                    className="rounded-[14px]"
+                                    className="rounded-[14px] text-xs h-8"
                                   >
-                                    <Calendar className="h-4 w-4 mr-1" />
+                                    <Calendar className="h-3 w-3 mr-1" />
                                     Leaves
-                                </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
                                     onClick={() => handleNavigateToCalendar(user.id)}
-                                className="rounded-[14px]"
-                              >
-                                    <CalendarDays className="h-4 w-4 mr-1" />
+                                    className="rounded-[14px] text-xs h-8"
+                                  >
+                                    <CalendarDays className="h-3 w-3 mr-1" />
                                     Calendar
-                              </Button>
+                                  </Button>
                                 </>
                               )}
                             </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               </div>
-                )}
+            )}
           </div>
-              </div>
+        </div>
 
         {/* Salary Modal */}
         <Dialog open={isSalaryModalOpen} onOpenChange={setIsSalaryModalOpen}>
-          <DialogContent className="sm:max-w-[500px] rounded-[14px]">
+          <DialogContent className="w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto rounded-[14px]">
             <DialogHeader>
-              <DialogTitle>Update Salary</DialogTitle>
-              <DialogDescription>
+              <DialogTitle className="text-base sm:text-lg">Update Salary</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
                 Set salary for {selectedUser?.name} for a specific month
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label>Period Month</Label>
+                <Label className="text-xs sm:text-sm">Period Month</Label>
                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-full justify-start text-left font-normal rounded-[14px]',
+                        'w-full justify-start text-left font-normal rounded-[14px] h-9 sm:h-10 text-sm',
                         !salaryPeriodMonth && 'text-muted-foreground'
                       )}
                     >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {salaryPeriodMonth ? format(salaryPeriodMonth, 'MMMM yyyy') : 'Select month'}
+                      <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
+                        {salaryPeriodMonth ? format(salaryPeriodMonth, 'MMMM yyyy') : 'Select month'}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
@@ -617,7 +839,7 @@ const UserManagement: React.FC = () => {
                 </Popover>
               </div>
               <div className="space-y-2">
-                <Label>Monthly Salary (INR)</Label>
+                <Label className="text-xs sm:text-sm">Monthly Salary (INR)</Label>
                 <Input
                   type="number"
                   value={salaryInputValue}
@@ -625,75 +847,75 @@ const UserManagement: React.FC = () => {
                   placeholder="50000"
                   min="0"
                   step="0.01"
-                  className="rounded-[14px]"
+                  className="rounded-[14px] h-9 sm:h-10 text-sm"
                   autoFocus
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[10px] sm:text-xs text-muted-foreground">
                   Current salary for {format(selectedMonth, 'MMMM yyyy')}: {formatCurrency(selectedUser?.current_salary || 0)}
                 </p>
               </div>
             </div>
-            <DialogFooter>
-                    <Button
-                      variant="outline"
+            <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+              <Button
+                variant="outline"
                 onClick={() => {
                   setIsSalaryModalOpen(false);
                   setSalaryInputValue('');
                 }}
-                      className="rounded-[14px]"
-                    >
+                className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
+              >
                 Cancel
               </Button>
               <Button
                 onClick={handleSaveSalary}
                 disabled={!salaryInputValue || parseFloat(salaryInputValue) < 0 || upsertSalaryMutation.isPending}
-                className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
+                className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto text-sm h-9 sm:h-10"
               >
                 {upsertSalaryMutation.isPending ? 'Saving...' : 'Save Salary'}
-                    </Button>
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
 
-      {/* Leaves Modal */}
+        {/* Leaves Modal */}
         {selectedUser && (
-        <LeavesModal
-          open={isLeavesModalOpen}
-          onOpenChange={setIsLeavesModalOpen}
+          <LeavesModal
+            open={isLeavesModalOpen}
+            onOpenChange={setIsLeavesModalOpen}
             userName={selectedUser.name}
             userId={selectedUser.id}
-          monthDate={selectedMonth}
+            monthDate={selectedMonth}
             leaves={leaves}
-          onAddLeave={handleAddLeave}
-          onDeleteLeave={handleDeleteLeave}
+            onAddLeave={handleAddLeave}
+            onDeleteLeave={handleDeleteLeave}
             isAdding={createLeaveMutation.isPending}
-          isDeleting={deleteLeaveMutation.isPending}
-        />
-      )}
+            isDeleting={deleteLeaveMutation.isPending}
+          />
+        )}
 
         {/* Confirmation Dialog */}
         <AlertDialog open={confirmDialog.open} onOpenChange={(open) => setConfirmDialog({ ...confirmDialog, open })}>
-        <AlertDialogContent className="rounded-[14px]">
-          <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-destructive" />
+          <AlertDialogContent className="rounded-[14px] w-[95vw] sm:max-w-[425px]">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <AlertCircle className="h-4 w-4 sm:h-5 sm:w-5 text-destructive" />
                 {confirmDialog.title}
               </AlertDialogTitle>
-            <AlertDialogDescription>
+              <AlertDialogDescription className="text-xs sm:text-sm">
                 {confirmDialog.description}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
-            <AlertDialogAction
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-0">
+              <AlertDialogCancel className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10">Cancel</AlertDialogCancel>
+              <AlertDialogAction
                 onClick={confirmDialog.onConfirm}
-                className="rounded-[14px] bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
+                className="rounded-[14px] bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto text-sm h-9 sm:h-10"
+              >
                 Confirm
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </AdminLayout>
   );
