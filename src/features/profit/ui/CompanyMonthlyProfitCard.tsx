@@ -82,11 +82,11 @@ export const CompanyMonthlyProfitCard: React.FC = () => {
   if (isLoading) {
     return (
       <Card className="rounded-[14px] border-2 shadow-lg bg-card">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Monthly Company Profit</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base md:text-lg font-semibold">Monthly Company Profit</CardTitle>
         </CardHeader>
-        <CardContent>
-          <Skeleton className="h-[400px] w-full" />
+        <CardContent className="p-2 sm:p-4 md:p-6">
+          <Skeleton className="h-[250px] sm:h-[300px] md:h-[400px] w-full" />
         </CardContent>
       </Card>
     );
@@ -95,12 +95,12 @@ export const CompanyMonthlyProfitCard: React.FC = () => {
   if (!monthlyData || monthlyData.length === 0) {
     return (
       <Card className="rounded-[14px] border-2 shadow-lg bg-card">
-        <CardHeader>
-          <CardTitle className="text-lg font-semibold">Monthly Company Profit</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base md:text-lg font-semibold">Monthly Company Profit</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center h-[400px]">
-            <p className="text-sm text-muted-foreground">No monthly profit data available</p>
+        <CardContent className="p-2 sm:p-4 md:p-6">
+          <div className="flex items-center justify-center h-[250px] sm:h-[300px] md:h-[400px]">
+            <p className="text-xs sm:text-sm text-muted-foreground">No monthly profit data available</p>
           </div>
         </CardContent>
       </Card>
@@ -109,22 +109,22 @@ export const CompanyMonthlyProfitCard: React.FC = () => {
 
   return (
     <Card className="rounded-[14px] border-2 shadow-lg bg-card">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-2 sm:pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
           <div>
-            <CardTitle className="text-lg font-semibold">Monthly Profit Trend</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">Last 12 months</p>
+            <CardTitle className="text-sm sm:text-base md:text-lg font-semibold">Monthly Profit Trend</CardTitle>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">Last 12 months</p>
           </div>
           {totals && (
             <div className="flex items-center gap-2">
               {totals.profit >= 0 ? (
-                <TrendingUp className="h-4 w-4 text-green-700" />
+                <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-700" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-700" />
+                <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-700" />
               )}
               <span
                 className={cn(
-                  'text-base font-bold',
+                  'text-sm sm:text-base font-bold',
                   totals.profit >= 0 ? 'text-green-700' : 'text-red-700'
                 )}
               >
@@ -134,22 +134,22 @@ export const CompanyMonthlyProfitCard: React.FC = () => {
           )}
         </div>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[320px] w-full">
+      <CardContent className="p-2 sm:p-4 md:p-6">
+        <div className="h-[250px] sm:h-[280px] md:h-[320px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 60 }}>
+            <ComposedChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 50 }}>
               <CartesianGrid strokeDasharray="3 3" stroke={GRID_COLOR} />
               <XAxis
                 dataKey="month"
                 stroke={AXIS_COLOR}
-                tick={{ fill: AXIS_COLOR, fontSize: 11 }}
+                tick={{ fill: AXIS_COLOR, fontSize: 10 }}
                 angle={-45}
                 textAnchor="end"
-                height={100}
+                height={80}
               />
               <YAxis
                 stroke={AXIS_COLOR}
-                tick={{ fill: AXIS_COLOR, fontSize: 11 }}
+                tick={{ fill: AXIS_COLOR, fontSize: 10 }}
                 tickFormatter={formatCurrency}
               />
               <ChartTooltip
@@ -237,7 +237,7 @@ export const CompanyMonthlyProfitCard: React.FC = () => {
               />
             </ComposedChart>
           </ResponsiveContainer>
-        </ChartContainer>
+        </div>
       </CardContent>
     </Card>
   );

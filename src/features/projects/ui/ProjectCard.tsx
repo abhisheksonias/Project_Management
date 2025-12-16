@@ -52,16 +52,16 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
       className="cursor-pointer hover:shadow-lg transition-shadow"
       onClick={onClick}
     >
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between mb-3">
-          <h3 className="text-lg font-semibold">{project.name}</h3>
+      <CardContent className="p-3 sm:p-4">
+        <div className="flex items-start justify-between mb-2 sm:mb-3 gap-2">
+          <h3 className="text-base sm:text-lg font-semibold flex-1 min-w-0 truncate">{project.name}</h3>
           {onStatusChange ? (
             <Select
               value={project.status || 'none'}
               onValueChange={(value) => onStatusChange(value === 'none' ? '' : value)}
             >
               <SelectTrigger
-                className="h-8 w-[140px] rounded-[14px] border-secondary bg-secondary text-xs"
+                className="h-7 sm:h-8 w-[100px] sm:w-[140px] rounded-[14px] border-secondary bg-secondary text-[10px] sm:text-xs shrink-0"
                 onClick={(event) => event.stopPropagation()}
               >
                 <SelectValue placeholder="Status" />
@@ -76,26 +76,26 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
               </SelectContent>
             </Select>
           ) : (
-            <Badge className={cn('text-xs', getStatusColor(project.status))}>
+            <Badge className={cn('text-[10px] sm:text-xs shrink-0', getStatusColor(project.status))}>
               {project.status || 'N/A'}
             </Badge>
           )}
         </div>
         {showVendor && project.vendor?.name && (
-          <div className="mb-3 text-xs text-muted-foreground flex items-center gap-1.5">
-            <Building2 className="h-3.5 w-3.5 text-primary" />
-            <span>{project.vendor.name}</span>
+          <div className="mb-2 sm:mb-3 text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1.5">
+            <Building2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-primary" />
+            <span className="truncate">{project.vendor.name}</span>
           </div>
         )}
 
-        <div className="flex flex-wrap gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-2 sm:mb-3">
           {onPriorityChange ? (
             <Select
               value={project.priority ?? 'none'}
               onValueChange={(value) => onPriorityChange(value === 'none' ? '' : value)}
             >
               <SelectTrigger
-                className="h-8 w-[140px] rounded-[14px] border-secondary bg-secondary text-xs"
+                className="h-7 sm:h-8 w-[100px] sm:w-[140px] rounded-[14px] border-secondary bg-secondary text-[10px] sm:text-xs"
                 onClick={(event) => event.stopPropagation()}
               >
                 <SelectValue placeholder="Priority" />
@@ -109,22 +109,22 @@ export const ProjectCard: React.FC<ProjectCardProps> = ({
             </Select>
           ) : (
             project.priority && (
-              <Badge className="text-xs bg-secondary text-foreground">
+              <Badge className="text-[10px] sm:text-xs bg-secondary text-foreground">
                 {project.priority} Priority
               </Badge>
             )
           )}
         </div>
 
-        <div className="mb-3">
+        <div className="mb-2 sm:mb-3">
           <div className="flex items-center justify-between mb-1">
-            <span className="text-sm text-muted-foreground">Progress</span>
-            <span className="text-sm font-medium">{project.progress || 0}%</span>
+            <span className="text-xs sm:text-sm text-muted-foreground">Progress</span>
+            <span className="text-xs sm:text-sm font-medium">{project.progress || 0}%</span>
           </div>
-          <Progress value={project.progress || 0} className="h-2" />
+          <Progress value={project.progress || 0} className="h-1.5 sm:h-2" />
         </div>
 
-        <div className="space-y-2 text-sm">
+        <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Open Tasks:</span>
             <span className="font-medium">{project.openTasks || 0}</span>

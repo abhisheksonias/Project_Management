@@ -260,10 +260,10 @@ const AdminProjects: React.FC = () => {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen mt-16 sm:mt-0">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading projects...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading projects...</p>
           </div>
         </div>
       </AdminLayout>
@@ -272,25 +272,26 @@ const AdminProjects: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
+      <div className="flex flex-col min-h-screen mt-16 sm:mt-0" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="space-y-6 sm:space-y-8">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                 <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold">All Projects</h1>
-                  <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">All Projects</h1>
+                  <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-1">
                     Manage and track all projects in the system.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
                   <Button
                     onClick={handleOpenCreateDialog}
-                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+                    className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] flex-1 sm:flex-initial text-sm h-9 sm:h-10"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    New Project
+                    <span className="hidden sm:inline">New Project</span>
+                    <span className="sm:hidden">New</span>
                   </Button>
                   <ViewToggle view={viewMode} onViewChange={setViewMode} />
                 </div>

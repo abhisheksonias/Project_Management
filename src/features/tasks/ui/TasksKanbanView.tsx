@@ -95,8 +95,8 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
   };
 
   return (
-    <div className="h-full w-full overflow-x-auto pb-4">
-      <div className="flex h-full min-w-full gap-4 px-2">
+    <div className="h-full w-full overflow-x-auto overflow-y-hidden pb-2 sm:pb-4">
+      <div className="flex h-full min-w-full gap-2 sm:gap-3 md:gap-4 px-1 sm:px-2">
         {STATUS_COLUMNS.map((column) => {
           const columnTasks = tasksByStatus[column.id] || [];
           const isDraggedOver = draggedOverColumn === column.id;
@@ -104,7 +104,7 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
           return (
             <div
               key={column.id}
-              className="flex h-full min-h-0 min-w-[280px] max-w-[320px] flex-1 flex-col py-2 xl:min-w-[300px] xl:max-w-[340px]"
+              className="flex h-full min-h-0 min-w-[200px] sm:min-w-[240px] md:min-w-[280px] max-w-[220px] sm:max-w-[260px] md:max-w-[320px] flex-1 flex-col py-1 sm:py-2 xl:min-w-[300px] xl:max-w-[340px]"
               onDragOver={(e) => handleDragOver(e, column.id)}
               onDragLeave={handleDragLeave}
               onDrop={(e) => handleDrop(e, column.id)}
@@ -113,21 +113,21 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                 'flex h-full flex-col transition-colors',
                 isDraggedOver && 'ring-2 ring-primary ring-offset-2'
               )}>
-                <CardContent className="flex h-full flex-col p-3">
-                  <div className="mb-3 flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Badge className={cn('text-xs', column.color)}>
+                <CardContent className="flex h-full flex-col p-2 sm:p-3">
+                  <div className="mb-2 sm:mb-3 flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <Badge className={cn('text-[10px] sm:text-xs', column.color)}>
                         {column.label}
                       </Badge>
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-xs sm:text-sm text-muted-foreground">
                         ({columnTasks.length})
                       </span>
                     </div>
                   </div>
                   
-                  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto pr-1">
+                  <div className="min-h-0 flex-1 space-y-1.5 sm:space-y-2 overflow-y-auto pr-0.5 sm:pr-1">
                     {columnTasks.length === 0 ? (
-                      <div className="rounded-lg border-2 border-dashed border-secondary py-8 text-center text-sm text-muted-foreground">
+                      <div className="rounded-lg border-2 border-dashed border-secondary py-6 sm:py-8 text-center text-xs sm:text-sm text-muted-foreground">
                         Drop tasks here
                       </div>
                     ) : (
@@ -148,31 +148,31 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                             }
                           }}
                         >
-                          <CardContent className="p-2.5">
-                            <div className="flex justify-between items-center">
-                            <h4 className="mb-1.5 line-clamp-2 text-sm font-medium">{task.name}</h4>
+                          <CardContent className="p-2 sm:p-2.5">
+                            <div className="flex justify-between items-center gap-1">
+                            <h4 className="line-clamp-2 text-xs sm:text-sm font-medium flex-1">{task.name}</h4>
                             {task.milestones && (
-                                <span className="text-xs bg-primary px-1.5 py-0 rounded-md text-white">
+                                <span className="text-[10px] sm:text-xs bg-primary px-1 sm:px-1.5 py-0 rounded-md text-white shrink-0">
                                     # {task.milestones.sort_order !== null ? task.milestones.sort_order : task.milestones.name}
                                   </span>
                                 )}
                             </div>
                             {task.projects?.name && (
-                              <p className="mb-1.5 line-clamp-1 text-xs text-muted-foreground">
+                              <p className="mb-1 sm:mb-1.5 line-clamp-1 text-[10px] sm:text-xs text-muted-foreground">
                                 {task.projects.name}
                               </p>
                             )}
                             
-                            <div className="flex flex-wrap items-center gap-1.5">
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
                               {task.priority && (
                                 <Badge
-                                  className={cn('text-xs px-1.5 py-0', getPriorityColor(task.priority))}
+                                  className={cn('text-[10px] sm:text-xs px-1 sm:px-1.5 py-0', getPriorityColor(task.priority))}
                                 >
                                   {task.priority}
                                 </Badge>
                               )}
                               {task.deadline && (
-                                <span className="text-xs text-muted-foreground">
+                                <span className="text-[10px] sm:text-xs text-muted-foreground">
                                   {format(new Date(task.deadline), 'dd MMM')}
                                 </span>
                               )}

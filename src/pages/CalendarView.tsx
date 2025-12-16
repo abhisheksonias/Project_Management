@@ -6,6 +6,7 @@ import { useCalendarWorklogs } from '@/features/calendar/hooks/useCalendarWorklo
 import { useCalendarProjects } from '@/features/calendar/hooks/useCalendarProjects';
 import { useCalendarTasks } from '@/features/calendar/hooks/useCalendarTasks';
 import { useCreateWorklog, useUpdateWorklog, useDeleteWorklog } from '@/features/calendar/hooks/useCalendarMutations';
+import { useUserLeaves } from '@/features/admin/hooks/useUserManagement';
 import { CalendarHeader } from '@/features/calendar/ui/CalendarHeader';
 import { CalendarNavigation } from '@/features/calendar/ui/CalendarNavigation';
 import { CalendarStats } from '@/features/calendar/ui/CalendarStats';
@@ -14,7 +15,7 @@ import { DayDetailsSheet } from '@/features/calendar/ui/DayDetailsSheet';
 import { EditWorklogDialog } from '@/features/calendar/ui/EditWorklogDialog';
 import { AddWorklogDialog } from '@/features/calendar/ui/AddWorklogDialog';
 import { Worklog } from '@/features/worklogs/services/worklogService';
-import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks } from 'date-fns';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, eachDayOfInterval, addWeeks, subWeeks, format } from 'date-fns';
 
 const CalendarView: React.FC = () => {
   const { profile } = useAuth();
@@ -44,6 +45,7 @@ const CalendarView: React.FC = () => {
     profile?.id || '',
     currentMonth
   );
+  const { data: leaves = [] } = useUserLeaves(profile?.id || null, currentMonth);
   const { data: projects = [] } = useCalendarProjects(profile?.id || '');
   const { data: allTasks = [] } = useCalendarTasks();
 
@@ -122,6 +124,21 @@ const CalendarView: React.FC = () => {
 
     return grouped;
   }, [worklogs]);
+
+  // Group leaves by date
+  const leavesByDate = useMemo(() => {
+    const grouped = new Map<string, { is_paid: boolean; leave_type: 'full' | 'half' }>();
+    
+    leaves.forEach((leave) => {
+      const dateStr = leave.leave_date;
+      grouped.set(dateStr, {
+        is_paid: leave.is_paid,
+        leave_type: leave.leave_type,
+      });
+    });
+
+    return grouped;
+  }, [leaves]);
 
   // Get calendar days based on view mode
   const calendarDays = useMemo(() => {
@@ -257,12 +274,12 @@ const CalendarView: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen overflow-hidden bg-white">
+      <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
         <UserSidebar currentTab="calendar" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading...</p>
           </div>
         </div>
       </div>
@@ -270,11 +287,11 @@ const CalendarView: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-white">
+    <div className="flex h-screen overflow-hidden mt-16 sm:mt-0 bg-white">
       <UserSidebar currentTab="calendar" onTabChange={handleSidebarNavigation} />
 
       <div className="flex-1 overflow-y-auto">
-        <div className="p-6 space-y-6">
+        <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
           <CalendarHeader />
           <CalendarNavigation
             currentMonth={currentMonth}
@@ -292,6 +309,7 @@ const CalendarView: React.FC = () => {
             calendarDays={calendarDays}
             currentMonth={currentMonth}
             worklogsByDate={worklogsByDate}
+            leavesByDate={leavesByDate}
             onDateClick={setSelectedDate}
           />
         </div>
@@ -300,6 +318,7 @@ const CalendarView: React.FC = () => {
       <DayDetailsSheet
         selectedDate={selectedDate}
         worklogs={worklogs}
+        leaves={leaves}
         onClose={() => setSelectedDate(null)}
         onEdit={handleEdit}
         onDelete={handleDelete}

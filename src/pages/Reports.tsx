@@ -176,11 +176,11 @@ const Reports: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen mt-16 sm:mt-0">
         <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-muted-foreground">Please log in to view reports</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Please log in to view reports</p>
           </div>
         </div>
       </div>
@@ -189,12 +189,12 @@ const Reports: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen mt-16 sm:mt-0">
         <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading reports...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading reports...</p>
           </div>
         </div>
       </div>
@@ -203,12 +203,12 @@ const Reports: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen mt-16 sm:mt-0">
         <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-destructive mb-2">Error loading reports</p>
-            <p className="text-sm text-muted-foreground">Please try refreshing the page</p>
+            <p className="text-sm sm:text-base text-destructive mb-2">Error loading reports</p>
+            <p className="text-xs sm:text-sm text-muted-foreground">Please try refreshing the page</p>
           </div>
         </div>
       </div>
@@ -216,14 +216,14 @@ const Reports: React.FC = () => {
   }
 
   return (
-    <div className="flex h-screen" style={{ backgroundColor: '#FAFAFA' }}>
+    <div className="flex h-screen mt-16 sm:mt-0" style={{ backgroundColor: '#FAFAFA' }}>
       <UserSidebar currentTab="reports" onTabChange={handleSidebarNavigation} />
       
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 sm:p-6 lg:p-8 w-full">
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 w-full">
           {/* Header */}
-          <div className="mb-4 sm:mb-6">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-foreground mb-2 sm:mb-3">
+          <div className="mb-3 sm:mb-4 md:mb-6">
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground mb-2 sm:mb-3">
               My Reports
             </h1>
             <p className="text-xs sm:text-sm text-muted-foreground mb-3 sm:mb-4 hidden sm:block">
@@ -250,13 +250,13 @@ const Reports: React.FC = () => {
 
           {/* Stats Cards */}
           {reportData?.stats && (
-            <div className="mb-4 sm:mb-6">
+            <div className="mb-3 sm:mb-4 md:mb-6">
               <ReportStatsCards stats={reportData.stats} />
             </div>
           )}
 
           {/* Charts Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 mb-3 sm:mb-4 md:mb-6">
             {reportData?.hoursOverTime && (
               <HoursOverTimeChart data={reportData.hoursOverTime} />
             )}
@@ -266,14 +266,14 @@ const Reports: React.FC = () => {
           </div>
 
           {/* Table and Insights Row */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {reportData?.estimateVsLogged && (
-              <div className="lg:col-span-2">
+              <div className="lg:col-span-2 order-2 lg:order-1">
                 <EstimateVsLoggedTable data={reportData.estimateVsLogged} />
               </div>
             )}
             {reportData?.insights && (
-              <div className="lg:col-span-1">
+              <div className="lg:col-span-1 order-1 lg:order-2">
                 <InsightsCard insights={reportData.insights} />
               </div>
             )}

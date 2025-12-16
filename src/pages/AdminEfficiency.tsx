@@ -25,8 +25,10 @@ import { Users, Calendar } from 'lucide-react';
 import { startOfMonth, endOfMonth, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter, startOfYear, endOfYear, subMonths, subDays, format } from 'date-fns';
 import { DateRangeOption } from '@/features/admin/services/adminService';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const AdminEfficiency: React.FC = () => {
+  const isMobile = useIsMobile();
   const currentMonth = new Date();
   const [dateRange, setDateRange] = useState<DateRangeOption>('last-30-days');
   const [selectedUserId, setSelectedUserId] = useState<string | undefined>(undefined);
@@ -163,28 +165,31 @@ const AdminEfficiency: React.FC = () => {
     { value: 'this-year', label: 'This Year' },
   ];
 
-  const selectedDateRangeLabel = dateRangeOptions.find(opt => opt.value === dateRange)?.label || 'Custom Range';
+  const selectedDateRangeLabel =
+    dateRangeOptions.find((opt) => opt.value === dateRange)?.label || 'Custom Range';
 
   return (
     <AdminLayout>
-      <div className="flex flex-col min-h-screen bg-muted/30">
+      <div className="flex flex-col h-screen overflow-hidden mt-16 sm:mt-0 bg-muted/30">
         {/* Header Section */}
-        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-3 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="h-8 w-1 rounded-full bg-primary" />
-                <h1 className="text-2xl font-bold text-foreground sm:text-3xl">Efficiency Overview</h1>
+              <div className="flex items-center gap-2 sm:gap-3 mb-1.5 sm:mb-2">
+                <div className="h-7 w-1 rounded-full bg-primary" />
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-foreground">
+                  Efficiency Overview
+                </h1>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground sm:text-base ml-4">
+              <p className="mt-1 text-xs sm:text-sm md:text-base text-muted-foreground sm:ml-4">
                 Review team and individual user efficiency based on worklogs and performance metrics.
               </p>
             </div>
-            <div className="flex flex-col gap-3 items-start sm:flex-row sm:items-end">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-stretch sm:items-end w-full sm:w-auto">
               {/* Date Range Filter */}
-              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
-                <Calendar className="h-4 w-4 text-primary" />
-                <div className="relative">
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50 w-full sm:w-auto">
+                <Calendar className="h-3 w-3 sm:h-4 sm:w-4 text-primary shrink-0" />
+                <div className="relative flex-1">
                   <Select
                     value={dateRange === 'custom' ? 'custom' : dateRange}
                     onValueChange={(value) => {
@@ -196,16 +201,16 @@ const AdminEfficiency: React.FC = () => {
                       }
                     }}
                   >
-                    <SelectTrigger className="h-9 w-[180px] rounded-[14px] border-2 hover:border-primary/50 transition-colors">
+                    <SelectTrigger className="h-9 sm:h-10 w-full sm:w-[200px] rounded-[14px] border-2 hover:border-primary/50 transition-colors text-xs sm:text-sm">
                       {dateRange === 'custom' && tempStartDate && tempEndDate ? (
-                        <span className="text-sm font-medium">
+                        <span className="font-medium truncate">
                           {format(tempStartDate, 'MMM d')} - {format(tempEndDate, 'MMM d')}
                         </span>
                       ) : (
                         <SelectValue placeholder="Select date range" />
                       )}
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-[14px]">
                       {dateRangeOptions.map((option) => (
                         <SelectItem key={option.value} value={option.value}>
                           {option.label}
@@ -215,77 +220,82 @@ const AdminEfficiency: React.FC = () => {
                     </SelectContent>
                   </Select>
                 </div>
-                {dateRange === 'custom' && (
-                  <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          'rounded-[14px] h-9 text-sm border',
-                          'border-primary text-primary bg-primary/5'
-                        )}
-                      >
-                        <Calendar className="mr-2 h-4 w-4" />
+              </div>
+
+              {dateRange === 'custom' && (
+                <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        'rounded-[14px] h-9 sm:h-10 text-xs sm:text-sm border',
+                        'border-primary text-primary bg-primary/5 w-full sm:w-auto'
+                      )}
+                    >
+                      <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
                         {tempStartDate && tempEndDate
                           ? `${format(tempStartDate, 'MMM d')} - ${format(tempEndDate, 'MMM d')}`
                           : 'Select Dates'}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <CalendarComponent
-                        initialFocus
-                        mode="range"
-                        defaultMonth={currentMonth}
-                        selected={{
-                          from: tempStartDate,
-                          to: tempEndDate,
-                        }}
-                        onSelect={(range) => {
-                          if (range?.from === undefined && range?.to === undefined) {
-                            setTempStartDate(undefined);
-                            setTempEndDate(undefined);
-                          } else {
-                            setTempStartDate(range?.from);
-                            setTempEndDate(range?.to);
-                          }
-                        }}
-                        numberOfMonths={2}
-                      />
-                      {(tempStartDate || tempEndDate) && (
-                        <div className="border-t p-3 flex gap-2">
-                          <Button
-                            variant="outline"
-                            className="flex-1"
-                            onClick={handleResetDateRange}
-                          >
-                            Reset
-                          </Button>
-                          <Button
-                            className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                            onClick={handleConfirmDateRange}
-                            disabled={!tempStartDate || !tempEndDate}
-                          >
-                            Apply
-                          </Button>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                )}
-              </div>
+                      </span>
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+                    <CalendarComponent
+                      initialFocus
+                      mode="range"
+                      defaultMonth={currentMonth}
+                      selected={{
+                        from: tempStartDate,
+                        to: tempEndDate,
+                      }}
+                      onSelect={(range) => {
+                        if (range?.from === undefined && range?.to === undefined) {
+                          setTempStartDate(undefined);
+                          setTempEndDate(undefined);
+                        } else {
+                          setTempStartDate(range?.from);
+                          setTempEndDate(range?.to);
+                        }
+                      }}
+                      numberOfMonths={isMobile ? 1 : 2}
+                    />
+                    {(tempStartDate || tempEndDate) && (
+                      <div className="border-t p-3 flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 rounded-[14px] text-xs sm:text-sm"
+                          onClick={handleResetDateRange}
+                        >
+                          Reset
+                        </Button>
+                        <Button
+                          className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] text-xs sm:text-sm"
+                          onClick={handleConfirmDateRange}
+                          disabled={!tempStartDate || !tempEndDate}
+                        >
+                          Apply
+                        </Button>
+                      </div>
+                    )}
+                  </PopoverContent>
+                </Popover>
+              )}
 
               {/* User Filter */}
-              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50">
-                <Users className="h-4 w-4 text-primary" />
+              <div className="flex items-center gap-2 bg-muted/50 px-3 py-2 rounded-[14px] border border-border/50 w-full sm:w-auto">
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 text-primary shrink-0" />
                 <Select
                   value={selectedUserId || 'all'}
-                  onValueChange={(value) => setSelectedUserId(value === 'all' ? undefined : value)}
+                  onValueChange={(value) =>
+                    setSelectedUserId(value === 'all' ? undefined : value)
+                  }
                 >
-                  <SelectTrigger className="h-9 w-[180px] rounded-[14px] border-2 hover:border-primary/50 transition-colors">
+                  <SelectTrigger className="h-9 sm:h-10 w-full sm:w-[200px] rounded-[14px] border-2 hover:border-primary/50 transition-colors text-xs sm:text-sm">
                     <SelectValue placeholder="All users" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-[14px]">
                     <SelectItem value="all">All users</SelectItem>
                     {users.map((user) => (
                       <SelectItem key={user.id} value={user.id}>
@@ -300,9 +310,9 @@ const AdminEfficiency: React.FC = () => {
         </header>
 
         {/* Main Content */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="space-y-6 sm:space-y-8">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="space-y-4 sm:space-y-6 md:space-y-8">
               {/* Key Metrics Cards */}
               <EfficiencyMetricsCards stats={stats} isLoading={isLoadingStats} />
 

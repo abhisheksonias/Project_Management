@@ -15,6 +15,7 @@ import { Calendar as CalendarIcon, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Select,
   SelectContent,
@@ -66,6 +67,7 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
   isAdding,
   isDeleting,
 }) => {
+  const isMobile = useIsMobile();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [isPaid, setIsPaid] = useState(false);
   const [leaveType, setLeaveType] = useState<'full' | 'half'>('full');
@@ -121,32 +123,34 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[700px] rounded-[14px]">
+      <DialogContent className="w-[95vw] sm:max-w-[700px] max-h-[90vh] overflow-y-auto rounded-[14px]">
         <DialogHeader>
-          <DialogTitle>Leaves - {userName}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Leaves - {userName}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Manage leaves for {format(monthDate, 'MMMM yyyy')}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
           {/* Add Leave Form */}
-          <div className="border rounded-[14px] p-4 space-y-4">
-            <h3 className="font-semibold">Add Leave</h3>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="border rounded-[14px] p-3 sm:p-4 space-y-3 sm:space-y-4">
+            <h3 className="font-semibold text-sm sm:text-base">Add Leave</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div className="space-y-2">
-                <Label>Leave Date</Label>
+                <Label className="text-xs sm:text-sm">Leave Date</Label>
                 <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
                       className={cn(
-                        'w-full justify-start text-left font-normal rounded-[14px]',
+                        'w-full justify-start text-left font-normal rounded-[14px] h-9 sm:h-10 text-sm',
                         !selectedDate && 'text-muted-foreground'
                       )}
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Select date'}
+                      <CalendarIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      <span className="truncate">
+                        {selectedDate ? format(selectedDate, 'dd/MM/yyyy') : 'Select date'}
+                      </span>
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
@@ -164,20 +168,10 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                 </Popover>
               </div>
 
-              <div className="flex items-center space-x-2 pt-6">
-                <Checkbox
-                  id="isPaid"
-                  checked={isPaid}
-                  onCheckedChange={(checked) => setIsPaid(checked === true)}
-                />
-                <Label htmlFor="isPaid" className="cursor-pointer">
-                  Paid Leave
-                </Label>
-              </div>
               <div className="space-y-2">
-                <Label htmlFor="leaveType">Leave Type</Label>
+                <Label htmlFor="leaveType" className="text-xs sm:text-sm">Leave Type</Label>
                 <Select value={leaveType} onValueChange={(value) => setLeaveType(value as 'full' | 'half')}>
-                  <SelectTrigger id="leaveType" className="rounded-[14px]">
+                  <SelectTrigger id="leaveType" className="rounded-[14px] h-9 sm:h-10 text-sm">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent className="rounded-[14px]">
@@ -186,44 +180,55 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              <div className="flex items-center space-x-2 sm:pt-6">
+                <Checkbox
+                  id="isPaid"
+                  checked={isPaid}
+                  onCheckedChange={(checked) => setIsPaid(checked === true)}
+                />
+                <Label htmlFor="isPaid" className="cursor-pointer text-xs sm:text-sm">
+                  Paid Leave
+                </Label>
+              </div>
             </div>
 
             <Button
               onClick={handleAddLeave}
               disabled={!selectedDate || isAdding}
-              className="w-full bg-primary text-white hover:bg-primary/90 rounded-[14px]"
+              className="w-full bg-primary text-white hover:bg-primary/90 rounded-[14px] text-sm h-9 sm:h-10"
             >
               {isAdding ? 'Adding...' : 'Add Leave'}
             </Button>
           </div>
 
           {/* Leaves Table */}
-          <div className="border rounded-[14px]">
+          <div className="border rounded-[14px] overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Leave Date</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Paid?</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Leave Date</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Type</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Paid?</TableHead>
+                  <TableHead className="text-right text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {leaves.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                    <TableCell colSpan={4} className="text-center text-muted-foreground py-6 sm:py-8 text-xs sm:text-sm">
                       No leaves recorded for this month
                     </TableCell>
                   </TableRow>
                 ) : (
                   leaves.map((leave) => (
                     <TableRow key={leave.id}>
-                      <TableCell>{format(new Date(leave.leave_date), 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="capitalize">{leave.leave_type || 'full'}</TableCell>
-                      <TableCell>
+                      <TableCell className="text-xs sm:text-sm">{format(new Date(leave.leave_date), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="capitalize text-xs sm:text-sm">{leave.leave_type || 'full'}</TableCell>
+                      <TableCell className="text-xs sm:text-sm">
                         <span
                           className={cn(
-                            'px-2 py-1 rounded-full text-xs font-medium',
+                            'px-2 py-1 rounded-full text-[10px] sm:text-xs font-medium',
                             leave.is_paid
                               ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
@@ -238,9 +243,9 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
                           size="sm"
                           onClick={() => handleDeleteLeave(leave.id)}
                           disabled={isDeleting}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-[14px] h-8 w-8"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4" />
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -255,7 +260,7 @@ export const LeavesModal: React.FC<LeavesModalProps> = ({
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             Close
           </Button>

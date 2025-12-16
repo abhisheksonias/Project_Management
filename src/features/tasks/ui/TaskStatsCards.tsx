@@ -30,26 +30,26 @@ export const TaskStatsCards: React.FC<TaskStatsCardsProps> = ({
   }, [tasks]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">To Do</p>
-        <p className="text-2xl font-bold">{stats.toDo}</p>
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">To Do</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{stats.toDo}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">In Progress</p>
-        <p className="text-2xl font-bold">{stats.inProgress}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">In Progress</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{stats.inProgress}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Completed</p>
-        <p className="text-2xl font-bold">{stats.completed}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Completed</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{stats.completed}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Blocked</p>
-        <p className="text-2xl font-bold">{stats.blocked}</p>
+      <Card className="p-3 sm:p-4">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Blocked</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{stats.blocked}</p>
       </Card>
-      <Card className="p-4">
-        <p className="text-sm text-muted-foreground mb-1">Review</p>
-        <p className="text-2xl font-bold">{stats.review}</p>
+      <Card className="p-3 sm:p-4 col-span-2 sm:col-span-1">
+        <p className="text-xs sm:text-sm text-muted-foreground mb-1">Review</p>
+        <p className="text-lg sm:text-xl md:text-2xl font-bold">{stats.review}</p>
       </Card>
     </div>
   );

@@ -39,11 +39,11 @@ const SidebarContentInternal: React.FC<{
   return (
     <div className="flex h-full flex-col py-4">
       {/* User Profile */}
-      <div className={cn('mb-6 flex items-center gap-3 px-4', isCollapsed && 'justify-center')}>
+      <div className={cn('mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 px-3 sm:px-4', isCollapsed && 'justify-center')}>
         {!isCollapsed && (
-          <Avatar className="h-10 w-10">
+          <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
             <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.name} />
-            <AvatarFallback className="bg-primary text-white">
+            <AvatarFallback className="bg-primary text-white text-xs sm:text-sm">
               {profile?.name
                 ?.split(' ')
                 .map((n) => n[0])
@@ -53,15 +53,15 @@ const SidebarContentInternal: React.FC<{
           </Avatar>
         )}
         {!isCollapsed && (
-          <div className="flex flex-col">
-            <span className="text-sm font-semibold">{profile?.name}</span>
-            <span className="text-xs text-muted-foreground">{profile?.rank}</span>
+          <div className="flex flex-col min-w-0 flex-1">
+            <span className="text-xs sm:text-sm font-semibold truncate">{profile?.name}</span>
+            <span className="text-[10px] sm:text-xs text-muted-foreground truncate">{profile?.rank}</span>
           </div>
         )}
       </div>
 
       {/* Navigation Menu */}
-      <nav className="flex-1 space-y-1 px-2">
+      <nav className="flex-1 space-y-0.5 sm:space-y-1 px-1.5 sm:px-2">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentTab === item.id;
@@ -70,14 +70,14 @@ const SidebarContentInternal: React.FC<{
               key={item.id}
               variant="ghost"
               className={cn(
-                'w-full justify-start gap-3',
+                'w-full justify-start gap-2 sm:gap-3 h-9 sm:h-10 text-xs sm:text-sm',
                 isActive && 'bg-white text-primary hover:bg-white hover:text-primary',
                 !isActive && 'hover:bg-white/50'
               )}
               onClick={() => onTabChange(item.id)}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
-              {!isCollapsed && <span>{item.label}</span>}
+              <Icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
+              {!isCollapsed && <span className="truncate">{item.label}</span>}
             </Button>
           );
         })}
@@ -85,9 +85,9 @@ const SidebarContentInternal: React.FC<{
 
       {/* Add Worklog Button */}
       {!isCollapsed && (
-        <div className="px-2 pb-2">
+        <div className="px-1.5 sm:px-2 pb-2">
           <Button
-            className="w-full bg-primary text-white hover:bg-primary/90"
+            className="w-full bg-primary text-white hover:bg-primary/90 h-9 sm:h-10 text-xs sm:text-sm"
             onClick={() => onTabChange('worklog-history')}
           >
             Add Worklog
@@ -96,14 +96,14 @@ const SidebarContentInternal: React.FC<{
       )}
 
       {/* Settings */}
-      <div className="mt-auto space-y-1 border-t px-2 pt-2">
+      <div className="mt-auto space-y-0.5 sm:space-y-1 border-t px-1.5 sm:px-2 pt-2">
         <Button
           variant="ghost"
-          className="w-full justify-start gap-3 hover:bg-white/50"
+          className="w-full justify-start gap-2 sm:gap-3 hover:bg-white/50 h-9 sm:h-10 text-xs sm:text-sm"
           onClick={() => onTabChange('settings')}
         >
-          <Settings className="h-5 w-5" />
-          {!isCollapsed && <span>Profile</span>}
+          <Settings className="h-4 w-4 sm:h-5 sm:w-5" />
+          {!isCollapsed && <span className="truncate">Profile</span>}
         </Button>
       </div>
     </div>
@@ -119,12 +119,12 @@ export const UserSidebar: React.FC<UserSidebarProps> = ({ currentTab, onTabChang
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild className="fixed top-4 left-4 z-50">
-          <Button variant="ghost" size="icon" className="bg-white shadow-md">
+        <SheetTrigger asChild>
+          <Button variant="ghost" size="icon" className="fixed top-3 left-3 z-50 h-9 w-9 bg-white shadow-lg hover:bg-gray-100">
             <Menu className="h-5 w-5" />
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="w-64 p-0 bg-secondary">
+        <SheetContent side="left" className="w-[280px] sm:w-64 p-0 bg-secondary">
           <SidebarContentInternal
             currentTab={currentTab}
             onTabChange={(tab) => {

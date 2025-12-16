@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import { useUpdateTaskStatus } from '@/features/tasks/hooks/useUpdateTaskStatus';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Task {
   id: string;
@@ -26,6 +27,7 @@ interface TopTasksTableProps {
 
 export const TopTasksTable: React.FC<TopTasksTableProps> = ({ tasks }) => {
   const updateTaskStatusMutation = useUpdateTaskStatus();
+  const isMobile = useIsMobile();
 
   const handleStatusChange = (taskId: string, newStatus: string) => {
     updateTaskStatusMutation.mutate({ taskId, status: newStatus });
@@ -55,37 +57,92 @@ export const TopTasksTable: React.FC<TopTasksTableProps> = ({ tasks }) => {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  // Mobile Card Layout
+  if (isMobile) {
+    return (
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base sm:text-lg">Top 8 Assigned Tasks</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {tasks.length === 0 ? (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              No tasks available
+            </div>
+          ) : (
+            tasks.map((task) => (
+              <div
+                key={task.id}
+                className="border rounded-lg p-3 space-y-2 bg-white hover:bg-gray-50 transition-colors"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-medium text-sm flex-1">{task.name}</h3>
+                  <Select
+                    value={task.status}
+                    onValueChange={(value) => handleStatusChange(task.id, value)}
+                  >
+                    <SelectTrigger className={cn('w-28 text-xs border-none shadow-none h-7', getStatusColor(task.status))}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="To Do">To Do</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                      <SelectItem value="Blocked">Blocked</SelectItem>
+                      <SelectItem value="Review">Review</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Project:</span>
+                    <span>{task.projects?.name || 'No project'}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="font-medium">Due:</span>
+                    <span>{formatDate(task.deadline)}</span>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Desktop Table Layout
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Top 8 Assigned Tasks</CardTitle>
+        <CardTitle className="text-base sm:text-lg">Top 8 Assigned Tasks</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-2 font-semibold">Task Name</th>
-                <th className="text-left p-2 font-semibold">Project</th>
-                <th className="text-left p-2 font-semibold">Due Date</th>
-                <th className="text-left p-2 font-semibold">Status</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-semibold">Task Name</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-semibold">Project</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-semibold">Due Date</th>
+                <th className="text-left p-2 text-xs sm:text-sm font-semibold">Status</th>
               </tr>
             </thead>
             <tbody>
               {tasks.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center p-8 text-muted-foreground">
+                  <td colSpan={4} className="text-center p-8 text-sm text-muted-foreground">
                     No tasks available
                   </td>
                 </tr>
               ) : (
                 tasks.map((task) => (
                   <tr key={task.id} className="border-b hover:bg-gray-50">
-                    <td className="p-2">{task.name}</td>
-                    <td className="p-2 text-muted-foreground">
+                    <td className="p-2 text-xs sm:text-sm">{task.name}</td>
+                    <td className="p-2 text-xs sm:text-sm text-muted-foreground">
                       {task.projects?.name || 'No project'}
                     </td>
-                    <td className="p-2 text-muted-foreground">{formatDate(task.deadline)}</td>
+                    <td className="p-2 text-xs sm:text-sm text-muted-foreground">{formatDate(task.deadline)}</td>
                     <td className="p-2">
                       <Select
                         value={task.status}

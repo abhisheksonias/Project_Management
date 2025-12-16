@@ -140,29 +140,29 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[600px] rounded-[14px]">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[14px]">
         <DialogHeader>
-          <DialogTitle>Create Milestone</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">Create Milestone</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             Add a new milestone to track project progress. Fields marked with * are required.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
               Milestone Name *
             </label>
             <Input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Phase 1 Payment"
-              className="rounded-[14px]"
+              className="rounded-[14px] text-sm h-9 sm:h-10"
             />
           </div>
 
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
               Billing Type
             </label>
             <ToggleGroup
@@ -173,23 +173,23 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
             >
               <ToggleGroupItem
                 value="fixed"
-                className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                className="px-3 sm:px-4 rounded-[12px] text-xs sm:text-sm data-[state=on]:bg-white data-[state=on]:shadow-sm"
               >
                 Fixed
               </ToggleGroupItem>
               <ToggleGroupItem
                 value="hourly"
-                className="px-4 rounded-[12px] data-[state=on]:bg-white data-[state=on]:shadow-sm"
+                className="px-3 sm:px-4 rounded-[12px] text-xs sm:text-sm data-[state=on]:bg-white data-[state=on]:shadow-sm"
               >
                 Hourly
               </ToggleGroupItem>
             </ToggleGroup>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 sm:gap-4">
             {billingType === 'fixed' ? (
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                   Amount *
                 </label>
                 <Input
@@ -199,12 +199,12 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="0.00"
-                  className="rounded-[14px]"
+                  className="rounded-[14px] text-sm h-9 sm:h-10"
                 />
               </div>
             ) : (
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                   Allotted Hours *
                 </label>
                 <Input
@@ -214,17 +214,17 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
                   value={allottedHours}
                   onChange={(e) => setAllottedHours(e.target.value)}
                   placeholder="0"
-                  className="rounded-[14px]"
+                  className="rounded-[14px] text-sm h-9 sm:h-10"
                 />
               </div>
             )}
 
             <div>
-              <label className="text-sm font-medium text-foreground mb-1 block">
+              <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                 Currency *
               </label>
               <Select value={currency} onValueChange={setCurrency}>
-                <SelectTrigger className="rounded-[14px]">
+                <SelectTrigger className="rounded-[14px] text-sm h-9 sm:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-[14px]">
@@ -239,9 +239,9 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
           </div>
 
           {billingType === 'hourly' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-3 sm:gap-4">
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                   Hourly Rate *
                 </label>
                 <Input
@@ -251,14 +251,14 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
                   value={hourlyRate}
                   onChange={(e) => setHourlyRate(e.target.value)}
                   placeholder="0.00"
-                  className="rounded-[14px]"
+                  className="rounded-[14px] text-sm h-9 sm:h-10"
                 />
               </div>
               <div>
-                <label className="text-sm font-medium text-foreground mb-1 block">
+                <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
                   Estimated Cost
                 </label>
-                <div className="rounded-[14px] border border-dashed border-secondary/60 px-3 py-2 text-sm text-muted-foreground">
+                <div className="rounded-[14px] border border-dashed border-secondary/60 px-3 py-2 text-xs sm:text-sm text-muted-foreground">
                   {allottedHours && hourlyRate
                     ? new Intl.NumberFormat('en-IN', {
                         style: 'currency',
@@ -274,7 +274,7 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
           )}
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
               Sort Order
             </label>
             <Input
@@ -283,40 +283,40 @@ export const CreateMilestoneDialog: React.FC<CreateMilestoneDialogProps> = ({
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
               placeholder="Optional - for ordering milestones"
-              className="rounded-[14px]"
+              className="rounded-[14px] text-sm h-9 sm:h-10"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
               Lower numbers appear first. Leave empty to add at the end.
             </p>
           </div>
 
           <div>
-            <label className="text-sm font-medium text-foreground mb-1 block">
+            <label className="text-xs sm:text-sm font-medium text-foreground mb-1 block">
               Description
             </label>
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Additional details or payment schedule"
-              className="rounded-[14px]"
+              className="rounded-[14px] text-sm resize-none"
               rows={3}
             />
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:gap-2 pt-2 sm:pt-0">
           <Button
             variant="outline"
             onClick={() => handleOpenChange(false)}
             disabled={createMilestone.isPending}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isSubmitDisabled}
-            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px]"
+            className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {createMilestone.isPending ? 'Creating...' : 'Create Milestone'}
           </Button>

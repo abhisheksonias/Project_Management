@@ -76,22 +76,22 @@ export const CompanyPerformanceSummary: React.FC<CompanyPerformanceSummaryProps>
   const isLoading = isLoadingStats || isLoadingMonthly;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
       {/* Active Projects */}
       <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           {isLoading ? (
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-14 sm:h-16 w-full" />
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <Briefcase className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Briefcase className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Active Projects
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-1">
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
                   {stats?.activeProjects ?? 0}
                 </p>
               </div>
@@ -102,30 +102,30 @@ export const CompanyPerformanceSummary: React.FC<CompanyPerformanceSummaryProps>
 
       {/* Period Profit (filtered) */}
       <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           {isLoading ? (
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-14 sm:h-16 w-full" />
           ) : periodProfit ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <div
                 className={cn(
-                  'h-10 w-10 rounded-full flex items-center justify-center flex-shrink-0',
+                  'h-8 w-8 sm:h-10 sm:w-10 rounded-full flex items-center justify-center flex-shrink-0',
                   periodProfit.profit >= 0 ? 'bg-green-100' : 'bg-red-100'
                 )}
               >
                 {periodProfit.profit >= 0 ? (
-                  <TrendingUp className="h-5 w-5 text-green-700" />
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-700" />
                 ) : (
-                  <TrendingDown className="h-5 w-5 text-red-700" />
+                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-700" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Period Profit
                 </p>
                 <p
                   className={cn(
-                    'text-2xl font-bold mt-1',
+                    'text-lg sm:text-xl md:text-2xl font-bold mt-0.5 sm:mt-1 truncate',
                     periodProfit.profit >= 0 ? 'text-green-700' : 'text-red-700'
                   )}
                 >
@@ -134,15 +134,15 @@ export const CompanyPerformanceSummary: React.FC<CompanyPerformanceSummaryProps>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-5 w-5 text-muted-foreground" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Period Profit
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-1">—</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">—</p>
               </div>
             </div>
           )}
@@ -151,33 +151,33 @@ export const CompanyPerformanceSummary: React.FC<CompanyPerformanceSummaryProps>
 
       {/* Period Revenue (filtered) */}
       <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           {isLoading ? (
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-14 sm:h-16 w-full" />
           ) : periodProfit ? (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Period Revenue
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-1">
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mt-0.5 sm:mt-1 truncate">
                   {formatCurrency(periodProfit.revenue)}
                 </p>
               </div>
             </div>
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                <DollarSign className="h-5 w-5 text-muted-foreground" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                <DollarSign className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Period Revenue
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-1">—</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">—</p>
               </div>
             </div>
           )}
@@ -186,19 +186,19 @@ export const CompanyPerformanceSummary: React.FC<CompanyPerformanceSummaryProps>
 
       {/* Active Tasks */}
       <Card className="rounded-[14px] border-2 shadow-lg bg-gradient-to-br from-card to-muted/30">
-        <CardContent className="p-4">
+        <CardContent className="p-3 sm:p-4">
           {isLoading ? (
-            <Skeleton className="h-16 w-full" />
+            <Skeleton className="h-14 sm:h-16 w-full" />
           ) : (
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                <Users className="h-5 w-5 text-blue-700" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                <Users className="h-4 w-4 sm:h-5 sm:w-5 text-blue-700" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                   Active Tasks
                 </p>
-                <p className="text-2xl font-bold text-foreground mt-1">
+                <p className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mt-0.5 sm:mt-1">
                   {stats?.inProgressTasks ?? 0}
                 </p>
               </div>

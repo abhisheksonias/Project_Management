@@ -299,10 +299,10 @@ const AdminTasks: React.FC = () => {
   if (isLoading) {
     return (
       <AdminLayout>
-        <div className="flex items-center justify-center min-h-screen">
+        <div className="flex items-center justify-center min-h-screen mt-16 sm:mt-0">
           <div className="text-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4" />
-            <p className="text-muted-foreground">Loading tasks...</p>
+            <p className="text-sm sm:text-base text-muted-foreground">Loading tasks...</p>
           </div>
         </div>
       </AdminLayout>
@@ -312,25 +312,26 @@ const AdminTasks: React.FC = () => {
   return (
     <AdminLayout>
       <div
-        className="flex h-screen flex-col overflow-hidden"
+        className="flex h-screen flex-col overflow-hidden mt-16 sm:mt-0"
         style={{ backgroundColor: '#FAFAFA' }}
       >
         <div className="flex-1 overflow-hidden">
-          <div className="flex h-full flex-col gap-6 p-4 sm:gap-8 sm:p-6 lg:p-8">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex h-full flex-col gap-4 sm:gap-6 md:gap-8 p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h1 className="text-2xl font-bold sm:text-3xl">All Tasks</h1>
-                <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+                <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">All Tasks</h1>
+                <p className="mt-1 text-xs sm:text-sm md:text-base text-muted-foreground">
                   Manage and track all tasks across the organization.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <Button
                   onClick={handleOpenCreateDialog}
-                  className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90"
+                  className="rounded-[14px] bg-primary text-primary-foreground hover:bg-primary/90 w-full sm:w-auto text-sm h-9 sm:h-10"
                 >
                   <Plus className="mr-2 h-4 w-4" />
-                  New Task
+                  <span className="hidden sm:inline">New Task</span>
+                  <span className="sm:hidden">New</span>
                 </Button>
                 <TaskViewToggle view={viewMode} onViewChange={setViewMode} />
               </div>

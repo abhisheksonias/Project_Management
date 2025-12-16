@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PaginationControlsProps {
   currentPage: number;
@@ -29,26 +30,32 @@ export const PaginationControls: React.FC<PaginationControlsProps> = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6">
+    <div className="flex items-center justify-center gap-3 sm:gap-4 mt-4 sm:mt-6">
+      {/* Mobile: Circular arrow button, Desktop: Text button */}
       <Button
         variant="outline"
-        className="rounded-[14px] w-full sm:w-auto"
+        size="icon"
+        className="rounded-full h-10 w-10 sm:rounded-[14px] sm:h-auto sm:w-auto sm:px-4"
         onClick={handlePrevious}
         disabled={currentPage === 1}
       >
-        Previous
+        <ChevronLeft className="h-5 w-5 sm:hidden" />
+        <span className="hidden sm:inline text-sm">Previous</span>
       </Button>
 
-      <p className="text-sm text-muted-foreground">
+      <p className="text-xs sm:text-sm text-muted-foreground text-center min-w-[80px] sm:min-w-auto">
         Page {currentPage} of {totalPages}
       </p>
 
+      {/* Mobile: Circular arrow button, Desktop: Text button */}
       <Button
-        className="rounded-[14px] w-full sm:w-auto"
+        size="icon"
+        className="rounded-full h-10 w-10 sm:rounded-[14px] sm:h-auto sm:w-auto sm:px-4"
         onClick={handleNext}
         disabled={currentPage === totalPages}
       >
-        Next
+        <ChevronRight className="h-5 w-5 sm:hidden" />
+        <span className="hidden sm:inline text-sm">Next</span>
       </Button>
     </div>
   );

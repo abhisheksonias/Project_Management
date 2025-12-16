@@ -142,26 +142,26 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-2xl">{task.name}</SheetTitle>
-          <SheetDescription>
+          <SheetTitle className="text-lg sm:text-xl md:text-2xl">{task.name}</SheetTitle>
+          <SheetDescription className="text-xs sm:text-sm">
             {task.description || 'No description available'}
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
           {/* Task Info - Compact */}
-          <div className="flex flex-wrap items-center gap-3 text-sm">
-            <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs sm:text-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-muted-foreground">Status:</span>
-              <Badge className={cn('text-xs', getStatusColor(task.status))}>
+              <Badge className={cn('text-[10px] sm:text-xs', getStatusColor(task.status))}>
                 {task.status || 'To Do'}
               </Badge>
             </div>
-            <Separator orientation="vertical" className="h-4" />
-            <div className="flex items-center gap-2">
+            <Separator orientation="vertical" className="h-3 sm:h-4" />
+            <div className="flex items-center gap-1.5 sm:gap-2">
               <span className="text-muted-foreground">Priority:</span>
               {task.priority ? (
-                <Badge className={cn('text-xs', getPriorityColor(task.priority))}>
+                <Badge className={cn('text-[10px] sm:text-xs', getPriorityColor(task.priority))}>
                   {task.priority}
                 </Badge>
               ) : (
@@ -170,8 +170,8 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             </div>
             {task.type && (
               <>
-                <Separator orientation="vertical" className="h-4" />
-                <div className="flex items-center gap-2">
+                <Separator orientation="vertical" className="h-3 sm:h-4" />
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-muted-foreground">Type:</span>
                   <span className="font-medium capitalize">{task.type}</span>
                 </div>
@@ -179,8 +179,8 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             )}
             {task.category && (
               <>
-                <Separator orientation="vertical" className="h-4" />
-                <div className="flex items-center gap-2">
+                <Separator orientation="vertical" className="h-3 sm:h-4" />
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <span className="text-muted-foreground">Category:</span>
                   <span className="font-medium capitalize">{task.category}</span>
                 </div>
@@ -191,23 +191,23 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
           <Separator />
 
           {/* Additional Details */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             {task.projects?.name && (
-              <div className="flex items-center gap-2">
-                <Folder className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Folder className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Project</p>
-                  <p className="text-sm font-medium">{task.projects.name}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Project</p>
+                  <p className="text-xs sm:text-sm font-medium">{task.projects.name}</p>
                 </div>
               </div>
             )}
 
             {task.deadline && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Deadline</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Deadline</p>
+                  <p className="text-xs sm:text-sm font-medium">
                     {format(new Date(task.deadline), 'dd MMM yyyy')}
                   </p>
                 </div>
@@ -215,21 +215,21 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             )}
 
             {task.estimate_hours && (
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Estimate</p>
-                  <p className="text-sm font-medium">{task.estimate_hours} hours</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Estimate</p>
+                  <p className="text-xs sm:text-sm font-medium">{task.estimate_hours} hours</p>
                 </div>
               </div>
             )}
 
             {task.created_at && (
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Created</p>
-                  <p className="text-sm font-medium">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Created</p>
+                  <p className="text-xs sm:text-sm font-medium">
                     {format(new Date(task.created_at), 'dd MMM yyyy')}
                   </p>
                 </div>
@@ -241,17 +241,17 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
 
           {/* Comments Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Comments</h3>
+            <h3 className="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Comments</h3>
             
             {/* Add Comment Form */}
-            <div className="space-y-2 mb-4 relative">
+            <div className="space-y-2 mb-3 sm:mb-4 relative">
               <Textarea
                 ref={textareaRef}
                 placeholder="Add a comment... Use @ to mention someone"
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 rows={3}
-                className="resize-none"
+                className="resize-none text-sm"
               />
               <MentionAutocomplete
                 users={allUsers}
@@ -263,41 +263,41 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
               <Button
                 onClick={handleAddComment}
                 disabled={!commentText.trim() || addCommentMutation.isPending}
-                className="w-full bg-primary text-white hover:bg-primary/90"
+                className="w-full bg-primary text-white hover:bg-primary/90 text-sm h-9 sm:h-10"
               >
-                <Send className="mr-2 h-4 w-4" />
+                <Send className="mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 {addCommentMutation.isPending ? 'Posting...' : 'Post Comment'}
               </Button>
             </div>
 
             {/* Comments List */}
-            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+            <div className="space-y-2 max-h-[300px] sm:max-h-[400px] overflow-y-auto">
               {sortedComments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No comments yet</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">No comments yet</p>
               ) : (
                 sortedComments.map((comment: TaskComment, index: number) => (
-                  <div key={comment.id || index} className="flex items-start gap-2">
+                  <div key={comment.id || index} className="flex items-start gap-1.5 sm:gap-2">
                     <Checkbox
                       checked={comment.acknowledged || false}
                       onCheckedChange={(checked) =>
                         handleAcknowledgmentChange(comment.id, checked === true)
                       }
                       disabled={updateAcknowledgmentMutation.isPending}
-                      className="mt-1"
+                      className="mt-0.5 sm:mt-1 h-4 w-4"
                     />
-                    <div className="flex-1 bg-secondary rounded-lg p-2.5 min-w-0">
-                      <div className="flex items-center justify-between mb-1 gap-2">
-                        <span className="font-medium text-sm">{comment.user_name}</span>
-                        <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-secondary rounded-lg p-2 sm:p-2.5 min-w-0">
+                      <div className="flex items-center justify-between mb-1 gap-1.5 sm:gap-2">
+                        <span className="font-medium text-xs sm:text-sm">{comment.user_name}</span>
+                        <div className="flex items-center gap-1.5 sm:gap-2">
                           {comment.acknowledged && (
-                            <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600" />
                           )}
-                          <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
                             {format(new Date(comment.created_at), 'MMM dd, HH:mm')}
                           </span>
                         </div>
                       </div>
-                      <p className="text-sm">{comment.message}</p>
+                      <p className="text-xs sm:text-sm">{comment.message}</p>
                     </div>
                   </div>
                 ))

@@ -77,7 +77,7 @@ const AdminVendors: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="flex min-h-screen flex-col bg-muted/30">
+      <div className="flex min-h-screen mt-16 sm:mt-0 flex-col bg-muted/30">
         <header className="bg-card/95 backdrop-blur-sm border-b border-border/50 shadow-sm px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex-1">
@@ -89,8 +89,8 @@ const AdminVendors: React.FC = () => {
                 Manage vendors, view profit metrics, and project details.
               </p>
             </div>
-            <div className="flex flex-col items-end gap-2">
-              <div className="text-sm text-muted-foreground">{vendorCountText}</div>
+            <div className="flex flex-col sm:items-end gap-2">
+              <div className="text-xs sm:text-sm text-muted-foreground">{vendorCountText}</div>
               {!isLoadingProfits && vendorProfits.length > 0 && (
                 <div className="text-xs text-muted-foreground">
                   Total Profit:{' '}
@@ -268,25 +268,25 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, profit, onVendorClick, on
       <div className="px-4 py-4">
         <div className="flex flex-col gap-4">
           {/* Header Row */}
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <p className="text-base font-semibold text-foreground">{vendor.name}</p>
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                <p className="text-sm sm:text-base font-semibold text-foreground truncate">{vendor.name}</p>
                 {profit && profit.project_count > 0 && (
-                  <span className="text-xs px-2 py-1 rounded-[8px] bg-muted text-muted-foreground">
+                  <span className="text-xs px-2 py-1 rounded-[8px] bg-muted text-muted-foreground flex-shrink-0">
                     {profit.project_count} project{profit.project_count > 1 ? 's' : ''}
                   </span>
                 )}
               </div>
-              <div className="mt-1 text-sm text-muted-foreground space-y-1">
-                {vendor.email && <p>Email: {vendor.email}</p>}
-                {vendor.phone && <p>Phone: {vendor.phone}</p>}
+              <div className="mt-1 text-xs sm:text-sm text-muted-foreground space-y-1">
+                {vendor.email && <p className="break-words">Email: {vendor.email}</p>}
+                {vendor.phone && <p className="break-words">Phone: {vendor.phone}</p>}
                 {vendor.website && (
-                  <p>
+                  <p className="break-words">
                     Website:{' '}
                     <a
                       href={vendor.website.startsWith('http') ? vendor.website : `https://${vendor.website}`}
-                      className="text-primary underline"
+                      className="text-primary underline break-all"
                       target="_blank"
                       rel="noreferrer"
                       onClick={(e) => e.stopPropagation()}
@@ -297,7 +297,7 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, profit, onVendorClick, on
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
@@ -315,24 +315,24 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, profit, onVendorClick, on
           {/* Profit Row */}
           {profit && profit.project_count > 0 ? (
             <div
-              className="flex items-center justify-between p-3 rounded-[8px] bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
+              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 p-3 rounded-[8px] bg-muted/50 cursor-pointer hover:bg-muted transition-colors"
               onClick={onVendorClick}
             >
               <div className="flex items-center gap-2">
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <DollarSign className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   Net Profit
                 </span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                 {isPositive ? (
-                  <TrendingUp className="h-4 w-4 text-green-700" />
+                  <TrendingUp className="h-4 w-4 text-green-700 flex-shrink-0" />
                 ) : (
-                  <TrendingDown className="h-4 w-4 text-red-700" />
+                  <TrendingDown className="h-4 w-4 text-red-700 flex-shrink-0" />
                 )}
                 <span
                   className={cn(
-                    'text-base font-bold',
+                    'text-sm sm:text-base font-bold',
                     isPositive ? 'text-green-700' : 'text-red-700'
                   )}
                 >
@@ -341,7 +341,7 @@ const VendorRow: React.FC<VendorRowProps> = ({ vendor, profit, onVendorClick, on
                 {profit.profit_margin_percent !== null && (
                   <span
                     className={cn(
-                      'text-xs font-medium px-2 py-1 rounded-[6px]',
+                      'text-xs font-medium px-2 py-1 rounded-[6px] flex-shrink-0',
                       profit.profit_margin_percent >= 0
                         ? 'bg-green-100 text-green-700'
                         : 'bg-red-100 text-red-700'

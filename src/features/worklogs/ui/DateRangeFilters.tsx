@@ -31,13 +31,13 @@ export const DateRangeFilters: React.FC<DateRangeFiltersProps> = ({
   currentMonth,
 }) => {
   return (
-    <div className="flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-1.5 sm:gap-2">
       {['Today', 'This Week', 'This Month', 'Last Month'].map((range) => (
         <Button
           key={range}
           variant={dateRange === range ? 'outline' : 'ghost'}
           className={cn(
-            'rounded-full border',
+            'rounded-full border text-xs sm:text-sm h-8 sm:h-9',
             dateRange === range 
               ? 'border-primary text-primary bg-primary/5' 
               : 'border-secondary text-muted-foreground hover:bg-secondary'
@@ -52,7 +52,7 @@ export const DateRangeFilters: React.FC<DateRangeFiltersProps> = ({
           <Button
             variant={dateRange === 'Date Range' ? 'outline' : 'ghost'}
             className={cn(
-              'rounded-full border',
+              'rounded-full border text-xs sm:text-sm h-8 sm:h-9',
               dateRange === 'Date Range'
                 ? 'border-primary text-primary bg-primary/5'
                 : 'border-secondary text-muted-foreground hover:bg-secondary'
@@ -62,8 +62,9 @@ export const DateRangeFilters: React.FC<DateRangeFiltersProps> = ({
               onDatePickerOpenChange(true);
             }}
           >
-            <Calendar className="mr-2 h-4 w-4" />
-            Date Range
+            <Calendar className="mr-1.5 sm:mr-2 h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Date Range</span>
+            <span className="sm:hidden">Range</span>
           </Button>
         </PopoverTrigger>
         {dateRange === 'Date Range' && (
@@ -86,16 +87,16 @@ export const DateRangeFilters: React.FC<DateRangeFiltersProps> = ({
               numberOfMonths={2}
             />
             {(tempStartDate || tempEndDate) && (
-              <div className="border-t p-3 flex gap-2">
+              <div className="border-t p-2 sm:p-3 flex gap-2">
                 <Button
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-xs sm:text-sm h-8 sm:h-9"
                   onClick={onResetDateRange}
                 >
                   Reset
                 </Button>
                 <Button
-                  className="flex-1 bg-primary text-white hover:bg-primary/90"
+                  className="flex-1 bg-primary text-white hover:bg-primary/90 text-xs sm:text-sm h-8 sm:h-9"
                   onClick={onConfirmDateRange}
                   disabled={!tempStartDate || !tempEndDate}
                 >

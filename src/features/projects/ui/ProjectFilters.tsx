@@ -37,21 +37,21 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({
   onReset,
 }) => {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-wrap gap-2 items-end">
-        <div className="relative flex-1 min-w-[200px]">
+    <div className="space-y-3 sm:space-y-4">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:items-end">
+        <div className="relative flex-1 w-full sm:min-w-[200px]">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
             placeholder="Search by name"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-sm"
           />
         </div>
 
         <Select value={status} onValueChange={onStatusChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px] text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -65,7 +65,7 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({
         </Select>
 
         <Select value={priority} onValueChange={onPriorityChange}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px] text-sm">
             <SelectValue placeholder="Priority" />
           </SelectTrigger>
           <SelectContent>
@@ -78,9 +78,9 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({
 
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="border-secondary">
+            <Button variant="outline" className="border-secondary w-full sm:w-auto text-sm">
               <Calendar className="mr-2 h-4 w-4" />
-              {deadline ? format(deadline, 'PPP') : 'Deadline'}
+              <span className="truncate">{deadline ? format(deadline, 'PPP') : 'Deadline'}</span>
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0">
@@ -95,7 +95,7 @@ export const ProjectFilters: React.FC<ProjectFiltersProps> = ({
 
         <Button
           variant="outline"
-          className="border-primary text-primary hover:bg-primary/5"
+          className="border-primary text-primary hover:bg-primary/5 w-full sm:w-auto text-sm"
           onClick={onReset}
         >
           <X className="mr-2 h-4 w-4" />

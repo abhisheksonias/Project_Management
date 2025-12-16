@@ -159,29 +159,29 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] rounded-[14px]">
+      <DialogContent className="w-[95vw] sm:max-w-[600px] max-h-[90vh] overflow-y-auto rounded-[14px]">
         <DialogHeader>
-          <DialogTitle>{user ? 'Edit User' : 'Add User'}</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-base sm:text-lg">{user ? 'Edit User' : 'Add User'}</DialogTitle>
+          <DialogDescription className="text-xs sm:text-sm">
             {user ? 'Update user information below.' : 'Add a new user to the system.'}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="grid grid-cols-2 gap-4 py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Name *</Label>
+              <Label htmlFor="name" className="text-xs sm:text-sm">Name *</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="John Doe"
-                className="rounded-[14px]"
+                className="rounded-[14px] h-9 sm:h-10 text-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email" className="text-xs sm:text-sm">Email *</Label>
               <Input
                 id="email"
                 type="email"
@@ -189,14 +189,14 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="john@example.com"
                 disabled={!!user} // Email cannot be changed after creation
-                className="rounded-[14px]"
+                className="rounded-[14px] h-9 sm:h-10 text-sm"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role">Role</Label>
+              <Label htmlFor="role" className="text-xs sm:text-sm">Role</Label>
               <Select value={role} onValueChange={setRole}>
-                <SelectTrigger id="role" className="rounded-[14px]">
+                <SelectTrigger id="role" className="rounded-[14px] h-9 sm:h-10 text-sm">
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
                 <SelectContent className="rounded-[14px]">
@@ -211,20 +211,20 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
+              <Label htmlFor="department" className="text-xs sm:text-sm">Department</Label>
               <Input
                 id="department"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
                 placeholder="Engineering"
-                className="rounded-[14px]"
+                className="rounded-[14px] h-9 sm:h-10 text-sm"
               />
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="monthlySalary">Monthly Salary</Label>
+              <Label htmlFor="monthlySalary" className="text-xs sm:text-sm">Monthly Salary</Label>
               <div className="flex gap-2">
                 <Input
                   id="monthlySalary"
@@ -234,10 +234,10 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
                   placeholder="50000"
                   min="0"
                   step="0.01"
-                  className="rounded-[14px]"
+                  className="rounded-[14px] h-9 sm:h-10 text-sm"
                 />
                 <Select value={salaryCurrency} onValueChange={setSalaryCurrency}>
-                  <SelectTrigger className="w-[100px] rounded-[14px]">
+                  <SelectTrigger className="w-[100px] rounded-[14px] h-9 sm:h-10 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-[14px]">
@@ -252,41 +252,41 @@ export const UserFormModal: React.FC<UserFormModalProps> = ({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="rank">Rank</Label>
+              <Label htmlFor="rank" className="text-xs sm:text-sm">Rank</Label>
               <Input
                 id="rank"
                 value={rank}
                 onChange={(e) => setRank(e.target.value)}
                 placeholder="Senior"
-                className="rounded-[14px]"
+                className="rounded-[14px] h-9 sm:h-10 text-sm"
               />
             </div>
 
-            <div className="flex items-center space-x-2 pt-6">
+            <div className="flex items-center space-x-2 pt-4 sm:pt-6">
               <Checkbox
                 id="isActive"
                 checked={isActive}
                 onCheckedChange={(checked) => setIsActive(checked === true)}
               />
-              <Label htmlFor="isActive" className="cursor-pointer">
+              <Label htmlFor="isActive" className="cursor-pointer text-xs sm:text-sm">
                 Active
               </Label>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex justify-end gap-2">
+        <DialogFooter className="flex flex-col sm:flex-row gap-2 sm:justify-end">
           <Button
             variant="ghost"
             onClick={() => onOpenChange(false)}
-            className="rounded-[14px]"
+            className="rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
             disabled={isSaving}
-            className="bg-primary text-white hover:bg-primary/90 rounded-[14px]"
+            className="bg-primary text-white hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {isSaving ? 'Saving...' : user ? 'Update User' : 'Create User'}
           </Button>

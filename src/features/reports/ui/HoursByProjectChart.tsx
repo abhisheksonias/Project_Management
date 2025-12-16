@@ -46,12 +46,12 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }
   if (!data || data.length === 0) {
     return (
       <Card className="rounded-[14px]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base font-semibold text-foreground">Hours by Project</CardTitle>
+        <CardHeader className="pb-2 sm:pb-3">
+          <CardTitle className="text-sm sm:text-base font-semibold text-foreground">Hours by Project</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center h-[240px]">
-            <p className="text-sm text-muted-foreground">No data available for the selected period</p>
+          <div className="flex items-center justify-center h-[200px] sm:h-[240px]">
+            <p className="text-xs sm:text-sm text-muted-foreground">No data available for the selected period</p>
           </div>
         </CardContent>
       </Card>
@@ -60,25 +60,27 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }
 
   return (
     <Card className="rounded-[14px]">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base font-semibold text-foreground">Hours by Project</CardTitle>
+      <CardHeader className="pb-2 sm:pb-3">
+        <CardTitle className="text-sm sm:text-base font-semibold text-foreground">Hours by Project</CardTitle>
       </CardHeader>
-      <CardContent>
-        <ResponsiveContainer width="100%" height={240}>
-          <BarChart data={data}>
+      <CardContent className="p-2 sm:p-4">
+        <div className="h-[200px] sm:h-[240px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E7E7E7" />
             <XAxis 
               dataKey="projectName" 
               stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 11 }}
+              tick={{ fill: '#6B7280', fontSize: 10 }}
               angle={-45}
               textAnchor="end"
-              height={80}
+              height={60}
+              className="sm:h-[80px]"
             />
             <YAxis 
               stroke="#6B7280"
-              tick={{ fill: '#6B7280', fontSize: 12 }}
-              label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 12 } }}
+              tick={{ fill: '#6B7280', fontSize: 10 }}
+              label={{ value: 'Hours', angle: -90, position: 'insideLeft', style: { textAnchor: 'middle', fill: '#6B7280', fontSize: 10 } }}
             />
             <Tooltip 
               content={<CustomProjectTooltip />}
@@ -92,7 +94,8 @@ export const HoursByProjectChart: React.FC<HoursByProjectChartProps> = ({ data }
               radius={[14, 14, 0, 0]}
             />
           </BarChart>
-        </ResponsiveContainer>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );

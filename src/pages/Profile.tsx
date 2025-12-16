@@ -202,10 +202,10 @@ const Profile: React.FC = () => {
 
   if (!profile) {
     return (
-      <div className="flex h-screen">
+      <div className="flex h-screen mt-16 sm:mt-0">
         <UserSidebar currentTab="settings" onTabChange={handleSidebarNavigation} />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-muted-foreground">Loading profile...</p>
+          <p className="text-sm sm:text-base text-muted-foreground">Loading profile...</p>
         </div>
       </div>
     );
@@ -218,53 +218,54 @@ const Profile: React.FC = () => {
 
   
   return (
-    <div className="flex h-screen bg-[#FAFAFA]">
+    <div className="flex h-screen mt-16 sm:mt-0 bg-[#FAFAFA]">
       <UserSidebar currentTab="settings" onTabChange={handleSidebarNavigation} />
       
       <div className="flex-1 overflow-y-auto">
-        <div className="p-8 max-w-6xl mx-auto">
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex items-start justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-0 mb-4 sm:mb-6 md:mb-8">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
-              <div className="flex items-center gap-3">
-                <p className="text-sm text-gray-500">Member since {memberSince}</p>
-                <Badge className="bg-green-100 text-green-800 text-xs px-2 py-0.5">
+              <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 mb-2">Profile & Settings</h1>
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+                <p className="text-xs sm:text-sm text-gray-500">Member since {memberSince}</p>
+                <Badge className="bg-green-100 text-green-800 text-[10px] sm:text-xs px-2 py-0.5">
                   {profile.is_active ? 'Active' : 'Inactive'}
                 </Badge>
               </div>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
               <Button
                 variant="outline"
                 onClick={handleCancel}
                 disabled={!hasChanges || updateProfileMutation.isPending}
+                className="w-full sm:w-auto text-sm"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={!hasChanges || updateProfileMutation.isPending}
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto text-sm"
               >
                 {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-6">
             {/* Basic Information - Takes 2 columns */}
             <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle className="text-xl font-semibold">Basic Information</CardTitle>
+              <CardHeader className="pb-3 sm:pb-4">
+                <CardTitle className="text-base sm:text-lg md:text-xl font-semibold">Basic Information</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-4 sm:space-y-6 p-3 sm:p-6">
                 {/* Profile Picture Section */}
-                <div className="flex items-center gap-6 pb-6 border-b">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6 pb-4 sm:pb-6 border-b">
                   <div className="relative">
-                    <Avatar className="h-24 w-24">
+                    <Avatar className="h-20 w-20 sm:h-24 sm:w-24">
                       <AvatarImage src={avatarPreview || undefined} alt={profile.name} />
-                      <AvatarFallback className="bg-primary text-white text-2xl">
+                      <AvatarFallback className="bg-primary text-white text-xl sm:text-2xl">
                         {profile.name
                           ?.split(' ')
                           .map((n) => n[0])
@@ -274,27 +275,27 @@ const Profile: React.FC = () => {
                     </Avatar>
                     {isUploadingAvatar && (
                       <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 sm:h-6 sm:w-6 border-b-2 border-white"></div>
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 space-y-2">
+                  <div className="flex-1 space-y-2 w-full">
                     <div>
-                      <Label className="text-sm font-semibold">Profile Picture</Label>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <Label className="text-xs sm:text-sm font-semibold">Profile Picture</Label>
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-1">
                         JPG, PNG or GIF. Max size 5MB
                       </p>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
                         onClick={handleAvatarClick}
                         disabled={isUploadingAvatar}
-                        className="rounded-[14px]"
+                        className="rounded-[14px] text-xs sm:text-sm w-full sm:w-auto"
                       >
-                        <Camera className="h-4 w-4 mr-2" />
+                        <Camera className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                         {avatarPreview ? 'Change' : 'Upload'}
                       </Button>
                       {avatarPreview && (
@@ -304,9 +305,9 @@ const Profile: React.FC = () => {
                           size="sm"
                           onClick={handleRemoveAvatar}
                           disabled={isUploadingAvatar}
-                          className="rounded-[14px] text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="rounded-[14px] text-red-600 hover:text-red-700 hover:bg-red-50 text-xs sm:text-sm w-full sm:w-auto"
                         >
-                          <X className="h-4 w-4 mr-2" />
+                          <X className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                           Remove
                         </Button>
                       )}
@@ -321,51 +322,51 @@ const Profile: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="fullName" className="text-xs sm:text-sm">Full Name</Label>
                     <Input
                       id="fullName"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      className="bg-gray-50"
+                      className="bg-gray-50 text-sm h-9 sm:h-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="email" className="text-xs sm:text-sm">Email Address</Label>
                     <Input
                       id="email"
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="bg-gray-50"
+                      className="bg-gray-50 text-sm h-9 sm:h-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="department">Department</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="department" className="text-xs sm:text-sm">Department</Label>
                     <Input
                       id="department"
                       value={department}
                       onChange={(e) => setDepartment(e.target.value)}
-                      className="bg-gray-50"
+                      className="bg-gray-50 text-sm h-9 sm:h-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="rank">Rank</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="rank" className="text-xs sm:text-sm">Rank</Label>
                     <Input
                       id="rank"
                       value={rank}
                       onChange={(e) => setRank(e.target.value)}
-                      className="bg-gray-50"
+                      className="bg-gray-50 text-sm h-9 sm:h-10"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
+                  <div className="space-y-1.5 sm:space-y-2">
+                    <Label htmlFor="role" className="text-xs sm:text-sm">Role</Label>
                     <Input
                       id="role"
                       value={profile.role || 'User'}
                       disabled
-                      className="bg-gray-100 text-gray-600"
+                      className="bg-gray-100 text-gray-600 text-sm h-9 sm:h-10"
                     />
                   </div>
                 </div>
@@ -373,38 +374,38 @@ const Profile: React.FC = () => {
             </Card>
 
             {/* Security and Account Info - Right Column */}
-            <div className="space-y-6">
+            <div className="space-y-3 sm:space-y-4 md:space-y-6">
               {/* Security Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Security</CardTitle>
+                <CardHeader className="pb-3 sm:pb-4">
+                  <CardTitle className="text-base sm:text-lg md:text-xl font-semibold">Security</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6">
                   <div className="flex justify-between items-center">
-                    <Label className="text-sm font-normal">Status</Label>
-                    <span className="text-sm text-gray-700">
+                    <Label className="text-xs sm:text-sm font-normal">Status</Label>
+                    <span className="text-xs sm:text-sm text-gray-700">
                       {profile.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <Label className="text-sm font-normal">User ID</Label>
-                    <span className="text-sm text-gray-700 font-mono">
+                    <Label className="text-xs sm:text-sm font-normal">User ID</Label>
+                    <span className="text-[10px] sm:text-xs text-gray-700 font-mono break-all text-right ml-2">
                       {profile.id.slice(0, 4)}-{profile.id.slice(4, 8)}-{profile.id.slice(8, 12)}-{profile.id.slice(12, 16)}
                     </span>
                   </div>
                   <Button
                     onClick={handleChangePassword}
                     disabled={changePasswordMutation.isPending}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-4"
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white mt-3 sm:mt-4 text-sm h-9 sm:h-10"
                   >
                     {changePasswordMutation.isPending ? 'Sending...' : 'Change Password'}
                   </Button>
                   <Button
                     onClick={() => setIsLogoutDialogOpen(true)}
                     variant="outline"
-                    className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2"
+                    className="w-full border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700 mt-2 text-sm h-9 sm:h-10"
                   >
-                    <LogOut className="h-4 w-4 mr-2" />
+                    <LogOut className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                     Logout
                   </Button>
                 </CardContent>
@@ -412,17 +413,17 @@ const Profile: React.FC = () => {
 
               {/* Account Info Card */}
               <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Account Info</CardTitle>
+                <CardHeader className="pb-3 sm:pb-4">
+                  <CardTitle className="text-base sm:text-lg md:text-xl font-semibold">Account Info</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-3 sm:space-y-4 p-3 sm:p-6">
                   <div className="flex justify-between items-center">
-                    <Label className="text-sm font-normal">Role</Label>
-                    <span className="text-sm text-gray-700">{profile.role || 'User'}</span>
+                    <Label className="text-xs sm:text-sm font-normal">Role</Label>
+                    <span className="text-xs sm:text-sm text-gray-700">{profile.role || 'User'}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <Label className="text-sm font-normal">Department</Label>
-                    <span className="text-sm text-gray-700">
+                    <Label className="text-xs sm:text-sm font-normal">Department</Label>
+                    <span className="text-xs sm:text-sm text-gray-700">
                       {profile.department || '-'}
                     </span>
                   </div>
@@ -435,18 +436,18 @@ const Profile: React.FC = () => {
 
       {/* Logout Confirmation Dialog */}
       <AlertDialog open={isLogoutDialogOpen} onOpenChange={setIsLogoutDialogOpen}>
-        <AlertDialogContent className="rounded-[14px]">
+        <AlertDialogContent className="rounded-[14px] max-w-[90vw] sm:max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>Logout</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-base sm:text-lg">Logout</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs sm:text-sm">
               Are you sure you want to logout? You will need to sign in again to access your account.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-[14px]">Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-[14px] w-full sm:w-auto text-sm">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 rounded-[14px]"
+              className="bg-red-600 hover:bg-red-700 rounded-[14px] w-full sm:w-auto text-sm"
             >
               Logout
             </AlertDialogAction>

@@ -85,30 +85,30 @@ const AdminWorklogs: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col h-screen overflow-hidden" style={{ backgroundColor: '#FAFAFA' }}>
+      <div className="flex flex-col h-screen overflow-hidden mt-16 sm:mt-0" style={{ backgroundColor: '#FAFAFA' }}>
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="space-y-6 sm:space-y-8">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8">
               {/* Header Section */}
-              <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <header className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-start sm:justify-between">
                 <div className="flex-1">
-                  <h1 className="text-2xl sm:text-3xl font-bold">Worklog Management</h1>
-                  <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-bold">Worklog Management</h1>
+                  <p className="text-muted-foreground mt-1 text-xs sm:text-sm md:text-base">
                     Monitor daily time entries and add logs on behalf of team members.
                   </p>
                 </div>
-                <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
+                <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 items-start sm:items-end w-full sm:w-auto">
                   {/* Date Picker */}
                   <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          'rounded-[14px] border-secondary bg-white hover:bg-secondary',
+                          'rounded-[14px] border-secondary bg-white hover:bg-secondary text-sm h-9 sm:h-10',
                           'w-full sm:w-auto justify-start text-left font-normal'
                         )}
                       >
-                        <Calendar className="mr-2 h-4 w-4" />
+                        <Calendar className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                         {format(selectedDate, 'dd/MM/yyyy')}
                       </Button>
                     </PopoverTrigger>
@@ -132,8 +132,8 @@ const AdminWorklogs: React.FC = () => {
                     value={selectedProjectId || 'all'}
                     onValueChange={(value) => setSelectedProjectId(value === 'all' ? null : value)}
                   >
-                    <SelectTrigger className="rounded-[14px] border-secondary bg-white w-full sm:w-[180px]">
-                      <Folder className="mr-2 h-4 w-4" />
+                    <SelectTrigger className="rounded-[14px] border-secondary bg-white w-full sm:w-[180px] text-sm h-9 sm:h-10">
+                      <Folder className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       <SelectValue placeholder="All Projects" />
                     </SelectTrigger>
                     <SelectContent className="rounded-[14px]">
@@ -151,8 +151,8 @@ const AdminWorklogs: React.FC = () => {
                     value={selectedUserId || 'all'}
                     onValueChange={(value) => setSelectedUserId(value === 'all' ? null : value)}
                   >
-                    <SelectTrigger className="rounded-[14px] border-secondary bg-white w-full sm:w-[180px]">
-                      <UserIcon className="mr-2 h-4 w-4" />
+                    <SelectTrigger className="rounded-[14px] border-secondary bg-white w-full sm:w-[180px] text-sm h-9 sm:h-10">
+                      <UserIcon className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
                       <SelectValue placeholder="All Users" />
                     </SelectTrigger>
                     <SelectContent className="rounded-[14px]">
@@ -168,16 +168,17 @@ const AdminWorklogs: React.FC = () => {
                   {/* Add Worklog Button */}
                   <Button
                     onClick={() => handleAddWorklog()}
-                    className="rounded-[14px] bg-primary text-white hover:bg-primary/90 w-full sm:w-auto"
+                    className="rounded-[14px] bg-primary text-white hover:bg-primary/90 w-full sm:w-auto text-sm h-9 sm:h-10"
                   >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Worklog
+                    <Plus className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Add Worklog</span>
+                    <span className="sm:hidden">Add</span>
                   </Button>
                 </div>
               </header>
 
               {/* Main Content Grid */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 min-h-0">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 min-h-0">
                 {/* Left: Users with No Logs */}
                 <div className="lg:col-span-1 min-h-0">
                   <UsersWithNoLogsCard

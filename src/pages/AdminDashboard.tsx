@@ -110,7 +110,7 @@ const AdminDashboard: React.FC = () => {
 
   return (
     <AdminLayout>
-      <div className="flex flex-col min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
+      <div className="flex mt-16 sm:mt-0 flex-col min-h-screen" style={{ backgroundColor: '#FAFAFA' }}>
         <AdminHeader
           filters={filters}
           onFiltersChange={setFilters}
@@ -129,13 +129,13 @@ const AdminDashboard: React.FC = () => {
         />
         
         <div className="flex-1">
-          <div className="p-4 sm:p-6 lg:p-8">
-            <div className="space-y-6 sm:space-y-8">
+          <div className="p-3 sm:p-4 md:p-6 lg:p-8">
+            <div className="space-y-4 sm:space-y-5 md:space-y-6 lg:space-y-8">
               {/* Company Performance Summary - Key Metrics */}
               <CompanyPerformanceSummary filters={filters} />
               
               {/* Charts Row */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
                 <DailyHoursCard filters={filters} />
                 <TopProjectsCard />
               </div>
