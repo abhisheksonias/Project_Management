@@ -158,37 +158,38 @@ export const AuthForm: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Project Management</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+      <Card className="w-full max-w-md rounded-[14px] shadow-lg">
+        <CardHeader className="text-center p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl font-bold">Project Management</CardTitle>
+          <CardDescription className="text-sm sm:text-base mt-2">
             Sign in to your account or create a new one
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 pt-0">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="signin">Sign In</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              <TabsTrigger value="reset">Reset Password</TabsTrigger>
+            <TabsList className="grid w-full grid-cols-3 rounded-[14px]">
+              <TabsTrigger value="signin" className="text-xs sm:text-sm rounded-[14px]">Sign In</TabsTrigger>
+              <TabsTrigger value="signup" className="text-xs sm:text-sm rounded-[14px]">Sign Up</TabsTrigger>
+              <TabsTrigger value="reset" className="text-xs sm:text-sm rounded-[14px]">Reset</TabsTrigger>
             </TabsList>
             
-            <TabsContent value="signin" className="space-y-4">
+            <TabsContent value="signin" className="space-y-3 sm:space-y-4 mt-4">
               <Form {...signInForm}>
-                <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-4">
+                <form onSubmit={signInForm.handleSubmit(handleSignIn)} className="space-y-3 sm:space-y-4">
                   <FormField
                     control={signInForm.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Email</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter your email" 
                             type="email" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
@@ -200,20 +201,21 @@ export const AuthForm: React.FC = () => {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Password</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter your password" 
                             type="password" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -221,7 +223,7 @@ export const AuthForm: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveTab('reset')}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 underline"
                     >
                       Forgot your password?
                     </button>
@@ -230,20 +232,21 @@ export const AuthForm: React.FC = () => {
               </Form>
             </TabsContent>
             
-            <TabsContent value="signup" className="space-y-4">
+            <TabsContent value="signup" className="space-y-3 sm:space-y-4 mt-4">
               <Form {...signUpForm}>
-                <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-4">
+                <form onSubmit={signUpForm.handleSubmit(handleSignUp)} className="space-y-3 sm:space-y-4">
                   <FormField
                     control={signUpForm.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Full Name</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Full Name</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter your full name" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
@@ -255,13 +258,14 @@ export const AuthForm: React.FC = () => {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Email</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter your email" 
                             type="email" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
@@ -273,13 +277,14 @@ export const AuthForm: React.FC = () => {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Password</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Create a password" 
                             type="password" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
@@ -291,20 +296,21 @@ export const AuthForm: React.FC = () => {
                     name="confirmPassword"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Confirm Password</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Confirm Password</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Confirm your password" 
                             type="password" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
@@ -312,12 +318,12 @@ export const AuthForm: React.FC = () => {
               </Form>
             </TabsContent>
             
-            <TabsContent value="reset" className="space-y-4">
+            <TabsContent value="reset" className="space-y-3 sm:space-y-4 mt-4">
               <Form {...resetPasswordForm}>
-                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4">
-                  <div className="text-center mb-4">
-                    <h3 className="text-lg font-semibold">Reset Password</h3>
-                    <p className="text-sm text-muted-foreground">
+                <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-3 sm:space-y-4">
+                  <div className="text-center mb-3 sm:mb-4">
+                    <h3 className="text-base sm:text-lg font-semibold">Reset Password</h3>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-1 sm:mt-2">
                       Enter your email address and we'll send you a link to reset your password.
                     </p>
                   </div>
@@ -326,20 +332,21 @@ export const AuthForm: React.FC = () => {
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Email</FormLabel>
+                        <FormLabel className="text-sm sm:text-base">Email</FormLabel>
                         <FormControl>
                           <Input 
                             placeholder="Enter your email address" 
                             type="email" 
                             {...field} 
                             disabled={isLoading}
+                            className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={isLoading}>
+                  <Button type="submit" className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base" disabled={isLoading}>
                     {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Send Reset Email
                   </Button>
@@ -347,7 +354,7 @@ export const AuthForm: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => setActiveTab('signin')}
-                      className="text-sm text-blue-600 hover:text-blue-800 underline"
+                      className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 underline"
                     >
                       Back to Sign In
                     </button>

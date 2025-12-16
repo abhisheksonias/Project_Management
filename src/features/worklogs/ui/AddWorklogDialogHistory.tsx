@@ -25,6 +25,7 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Project } from '@/features/projects/services/projectService';
 import { Task } from '@/features/tasks/services/taskService';
+import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
 
 interface AddWorklogDialogHistoryProps {
   open: boolean;
@@ -177,7 +178,25 @@ export const AddWorklogDialogHistory: React.FC<AddWorklogDialogHistoryProps> = (
                 type="text"
                 placeholder="08:00"
                 value={worklogHours}
-                onChange={(e) => onHoursChange(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  // Allow typing HH:MM format (e.g., 08:30, 8:30) or decimal (e.g., 8.5)
+                  // Pattern: HH:MM format - up to 2 digits, colon, up to 2 digits
+                  // Or decimal format - digits with optional decimal point
+                  const hhmmPattern = /^\d{0,2}:?\d{0,2}$/;
+                  const decimalPattern = /^\d*\.?\d*$/;
+                  
+                  if (value === '' || hhmmPattern.test(value) || decimalPattern.test(value)) {
+                    onHoursChange(value);
+                  }
+                }}
+                onBlur={(e) => {
+                  // Normalize to HH:MM format on blur
+                  if (e.target.value.trim()) {
+                    const normalized = normalizeHoursToHHMM(e.target.value);
+                    onHoursChange(normalized);
+                  }
+                }}
                 maxLength={5}
               />
               <div className="flex gap-2 mt-2">

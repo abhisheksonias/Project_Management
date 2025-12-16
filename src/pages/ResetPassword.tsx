@@ -87,18 +87,18 @@ export const ResetPassword: React.FC = () => {
 
   if (!isValidSession) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl font-bold text-destructive">Invalid Link</CardTitle>
-            <CardDescription>
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+        <Card className="w-full max-w-md rounded-[14px] shadow-lg">
+          <CardHeader className="text-center p-4 sm:p-6">
+            <CardTitle className="text-xl sm:text-2xl font-bold text-destructive">Invalid Link</CardTitle>
+            <CardDescription className="text-sm sm:text-base mt-2">
               This password reset link is invalid or has expired.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center p-4 sm:p-6 pt-0">
             <Button 
               onClick={() => window.location.href = '/'}
-              className="w-full"
+              className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
             >
               Go to Login
             </Button>
@@ -110,21 +110,21 @@ export const ResetPassword: React.FC = () => {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-              <CheckCircle className="h-6 w-6 text-green-600" />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+        <Card className="w-full max-w-md rounded-[14px] shadow-lg">
+          <CardHeader className="text-center p-4 sm:p-6">
+            <div className="mx-auto mb-3 sm:mb-4 flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-green-100">
+              <CheckCircle className="h-5 w-5 sm:h-6 sm:w-6 text-green-600" />
             </div>
-            <CardTitle className="text-2xl font-bold text-green-600">Success!</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-xl sm:text-2xl font-bold text-green-600">Success!</CardTitle>
+            <CardDescription className="text-sm sm:text-base mt-2">
               Your password has been successfully updated.
             </CardDescription>
           </CardHeader>
-          <CardContent className="text-center">
+          <CardContent className="text-center p-4 sm:p-6 pt-0">
             <Button 
               onClick={() => window.location.href = '/'}
-              className="w-full"
+              className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
             >
               Go to Login
             </Button>
@@ -135,29 +135,30 @@ export const ResetPassword: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">Reset Password</CardTitle>
-          <CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 sm:p-6">
+      <Card className="w-full max-w-md rounded-[14px] shadow-lg">
+        <CardHeader className="text-center p-4 sm:p-6">
+          <CardTitle className="text-xl sm:text-2xl font-bold">Reset Password</CardTitle>
+          <CardDescription className="text-sm sm:text-base mt-2">
             Enter your new password below
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-4 sm:p-6 pt-0">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleResetPassword)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleResetPassword)} className="space-y-3 sm:space-y-4">
               <FormField
                 control={form.control}
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>New Password</FormLabel>
+                    <FormLabel className="text-sm sm:text-base">New Password</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Enter your new password" 
                         type="password" 
                         {...field} 
                         disabled={isLoading}
+                        className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                       />
                     </FormControl>
                     <FormMessage />
@@ -169,20 +170,25 @@ export const ResetPassword: React.FC = () => {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm New Password</FormLabel>
+                    <FormLabel className="text-sm sm:text-base">Confirm New Password</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Confirm your new password" 
                         type="password" 
                         {...field} 
                         disabled={isLoading}
+                        className="rounded-[14px] h-9 sm:h-10 text-sm sm:text-base"
                       />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button type="submit" className="w-full" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                className="w-full rounded-[14px] h-9 sm:h-10 text-sm sm:text-base" 
+                disabled={isLoading}
+              >
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Update Password
               </Button>
