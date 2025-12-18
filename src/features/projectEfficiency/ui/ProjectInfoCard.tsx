@@ -4,6 +4,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Project } from '@/features/projects/services/projectService';
 import { FolderOpen, Calendar, Target, Building2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { stripHtml } from '@/shared/utils/htmlUtils';
 
 interface ProjectInfoCardProps {
   project: Project | undefined;
@@ -42,7 +43,9 @@ export const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, isLoa
           <div className="space-y-1 flex-1">
             <h3 className="text-lg font-semibold text-foreground">{project.name}</h3>
             {project.description && (
-              <p className="text-sm text-muted-foreground line-clamp-2">{project.description}</p>
+              <p className="text-sm text-muted-foreground line-clamp-2">
+                {stripHtml(project.description)}
+              </p>
             )}
             {project.vendor && (
               <div className="flex items-center gap-2 text-sm text-muted-foreground pt-1">

@@ -8,7 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import {
   Select,
   SelectContent,
@@ -113,12 +113,12 @@ export const CreateProjectDialog: React.FC<CreateProjectDialogProps> = ({
             <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
               Description
             </label>
-            <Textarea
+            <RichTextEditor
               value={data.description}
-              onChange={(e) => onChange({ description: e.target.value })}
+              onChange={(html) => onChange({ description: html })}
               placeholder="Describe the project..."
-              rows={4}
-              className="text-sm resize-none"
+              className="text-sm"
+              showToolbar={false}
             />
           </div>
 

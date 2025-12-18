@@ -8,19 +8,22 @@ import {
 } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Task, TaskComment } from '../services/taskService';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAddTaskComment, useUpdateTaskCommentAcknowledgment } from '../hooks/useTaskComments';
+import { useAddTaskComment, useUpdateTaskCommentAcknowledgment, useUpdateTaskComment } from '../hooks/useTaskComments';
 import { format } from 'date-fns';
-import { Calendar, Clock, Folder, Send, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Folder, Send, CheckCircle2, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
+import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/features/users/services/userService';
 import { parseMentions, extractMentionedUserIds } from '@/shared/utils/mentionParser';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
+import { stripHtml } from '@/shared/utils/htmlUtils';
+import { useEditor, Editor } from '@tiptap/react';
 
 interface TaskDetailsPanelProps {
   task: Task | null;
@@ -35,9 +38,14 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
 }) => {
   const { profile } = useAuth();
   const [commentText, setCommentText] = useState('');
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const commentEditorRef = React.useRef<Editor | null>(null);
+  const editCommentEditorRef = React.useRef<Editor | null>(null);
   const addCommentMutation = useAddTaskComment();
   const updateAcknowledgmentMutation = useUpdateTaskCommentAcknowledgment();
+  const updateCommentMutation = useUpdateTaskComment();
 
   // Fetch all users for mention autocomplete
   const { data: allUsers = [] } = useQuery({
@@ -100,17 +108,18 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
   const handleAddComment = () => {
     if (!commentText.trim() || !profile || !task) return;
 
-    // Parse mentions from comment text
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(commentText);
     const userMap = new Map(
       allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
     );
-    const mentions = parseMentions(commentText, userMap);
+    const mentions = parseMentions(plainText, userMap);
     const mentionedUserIds = extractMentionedUserIds(mentions);
 
     addCommentMutation.mutate(
       {
         taskId: task.id,
-        message: commentText.trim(),
+        message: commentText.trim(), // Store HTML
         userId: profile.id,
         userName: profile.name || 'Unknown User',
         mentions: mentionedUserIds,
@@ -118,15 +127,12 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
       {
         onSuccess: () => {
           setCommentText('');
+          commentEditorRef.current?.commands.clearContent();
         },
       }
     );
   };
 
-  const handleMentionSelect = (userId: string, userName: string) => {
-    // Mention is already inserted by MentionAutocomplete
-    // This is just for tracking if needed
-  };
 
   const handleAcknowledgmentChange = (commentId: string, acknowledged: boolean) => {
     if (!profile || !task) return;
@@ -138,14 +144,82 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
     });
   };
 
+  const handleStartEditComment = (comment: TaskComment) => {
+    if (!profile || !task || comment.user_id !== profile.id) return;
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.message);
+    setTimeout(() => {
+      editCommentEditorRef.current?.commands.focus();
+    }, 0);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = () => {
+    if (!profile || !task || !editingCommentId) return;
+    const trimmed = editingCommentText.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(trimmed);
+    const userMap = new Map(
+      allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
+    );
+    const mentions = parseMentions(plainText, userMap);
+    const mentionedUserIds = extractMentionedUserIds(mentions);
+
+    updateCommentMutation.mutate(
+      {
+        taskId: task.id,
+        commentId: editingCommentId,
+        message: trimmed, // Store HTML
+        mentions: mentionedUserIds,
+      },
+      {
+        onSuccess: () => {
+          handleCancelEditComment();
+        },
+      }
+    );
+  };
+
   return (
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-lg sm:text-xl md:text-2xl">{task.name}</SheetTitle>
-          <SheetDescription className="text-xs sm:text-sm">
-            {task.description || 'No description available'}
-          </SheetDescription>
+          {task.description && (
+            <div className="mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                className="h-auto p-0 text-xs sm:text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Hide Description</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Show Description</span>
+                  </>
+                )}
+              </Button>
+              {isDescriptionExpanded && (
+                <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                  <HtmlContent content={task.description} className="text-xs sm:text-sm" />
+                </div>
+              )}
+            </div>
+          )}
         </SheetHeader>
 
         <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
@@ -245,20 +319,19 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             
             {/* Add Comment Form */}
             <div className="space-y-2 mb-3 sm:mb-4 relative">
-              <Textarea
-                ref={textareaRef}
-                placeholder="Add a comment... Use @ to mention someone"
+              <RichTextEditor
                 value={commentText}
-                onChange={(e) => setCommentText(e.target.value)}
-                rows={3}
-                className="resize-none text-sm"
+                onChange={setCommentText}
+                placeholder="Add a comment... Use @ to mention someone"
+                showToolbar={false}
+                className="text-sm"
+                onEditorReady={(editor) => {
+                  commentEditorRef.current = editor;
+                }}
               />
-              <MentionAutocomplete
+              <MentionAutocompleteForEditor
                 users={allUsers}
-                text={commentText}
-                onTextChange={setCommentText}
-                onMentionSelect={handleMentionSelect}
-                textareaRef={textareaRef}
+                editor={commentEditorRef.current}
               />
               <Button
                 onClick={handleAddComment}
@@ -275,32 +348,86 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
               {sortedComments.length === 0 ? (
                 <p className="text-xs sm:text-sm text-muted-foreground">No comments yet</p>
               ) : (
-                sortedComments.map((comment: TaskComment, index: number) => (
-                  <div key={comment.id || index} className="flex items-start gap-1.5 sm:gap-2">
-                    <Checkbox
-                      checked={comment.acknowledged || false}
-                      onCheckedChange={(checked) =>
-                        handleAcknowledgmentChange(comment.id, checked === true)
-                      }
-                      disabled={updateAcknowledgmentMutation.isPending}
-                      className="mt-0.5 sm:mt-1 h-4 w-4"
-                    />
-                    <div className="flex-1 bg-secondary rounded-lg p-2 sm:p-2.5 min-w-0">
-                      <div className="flex items-center justify-between mb-1 gap-1.5 sm:gap-2">
-                        <span className="font-medium text-xs sm:text-sm">{comment.user_name}</span>
-                        <div className="flex items-center gap-1.5 sm:gap-2">
-                          {comment.acknowledged && (
-                            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600" />
-                          )}
-                          <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
-                            {format(new Date(comment.created_at), 'MMM dd, HH:mm')}
-                          </span>
+                sortedComments.map((comment: TaskComment, index: number) => {
+                  const isOwnComment = profile?.id === comment.user_id;
+                  const isEditing = editingCommentId === comment.id;
+                  return (
+                    <div key={comment.id || index} className="flex items-start gap-1.5 sm:gap-2">
+                      <Checkbox
+                        checked={comment.acknowledged || false}
+                        onCheckedChange={(checked) =>
+                          handleAcknowledgmentChange(comment.id, checked === true)
+                        }
+                        disabled={updateAcknowledgmentMutation.isPending}
+                        className="mt-0.5 sm:mt-1 h-4 w-4"
+                      />
+                      <div className="flex-1 bg-secondary rounded-lg p-2 sm:p-2.5 min-w-0">
+                        <div className="flex items-center justify-between mb-1 gap-1.5 sm:gap-2">
+                          <span className="font-medium text-xs sm:text-sm">{comment.user_name}</span>
+                          <div className="flex items-center gap-1.5 sm:gap-2">
+                            {comment.acknowledged && (
+                              <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-green-600" />
+                            )}
+                            {isOwnComment && !isEditing && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 sm:h-7 sm:w-7 rounded-full"
+                                onClick={() => handleStartEditComment(comment)}
+                              >
+                                <Edit2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                              </Button>
+                            )}
+                            <span className="text-[10px] sm:text-xs text-muted-foreground whitespace-nowrap">
+                              {format(new Date(comment.created_at), 'MMM dd, HH:mm')}
+                            </span>
+                          </div>
                         </div>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <RichTextEditor
+                              value={editingCommentText}
+                              onChange={setEditingCommentText}
+                              placeholder="Edit comment... Use @ to mention someone"
+                              showToolbar={false}
+                              className="text-sm"
+                              onEditorReady={(editor) => {
+                                editCommentEditorRef.current = editor;
+                              }}
+                            />
+                            <MentionAutocompleteForEditor
+                              users={allUsers}
+                              editor={editCommentEditorRef.current}
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={handleCancelEditComment}
+                                className="rounded-[8px] text-xs sm:text-sm"
+                                disabled={updateCommentMutation.isPending}
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={handleSaveEditComment}
+                                disabled={!editingCommentText.trim() || updateCommentMutation.isPending}
+                                className="rounded-[8px] bg-primary text-white hover:bg-primary/90 text-xs sm:text-sm"
+                              >
+                                {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-xs sm:text-sm">
+                            <HtmlContent content={comment.message} className="text-xs sm:text-sm" />
+                          </div>
+                        )}
                       </div>
-                      <p className="text-xs sm:text-sm">{comment.message}</p>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>

@@ -199,6 +199,7 @@ class ProjectService {
     const newComment: ProjectComment = {
       id: crypto.randomUUID(),
       message: data.message,
+      user_id: data.userId,
       user_name: data.userName,
       created_at: new Date().toISOString(),
       acknowledged: false,
@@ -212,6 +213,49 @@ class ProjectService {
       .from('projects')
       .update({ comments: updatedComments })
       .eq('id', data.projectId);
+
+    if (updateError) throw updateError;
+  }
+
+  async updateCommentMessage(
+    projectId: string,
+    commentId: string,
+    message: string,
+    userId: string,
+    mentions?: string[]
+  ): Promise<void> {
+    // Get current project
+    const { data: project, error: fetchError } = await supabase
+      .from('projects')
+      .select('comments')
+      .eq('id', projectId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Parse existing comments
+    const existingComments = project.comments 
+      ? (Array.isArray(project.comments) ? project.comments : [])
+      : [];
+
+    // Update the specific comment
+    const updatedComments = existingComments.map((comment: any) => {
+      if (comment.id === commentId && comment.user_id === userId) {
+        return {
+          ...comment,
+          message,
+          mentions: mentions ?? comment.mentions,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return comment;
+    });
+
+    // Update project with updated comments array
+    const { error: updateError } = await supabase
+      .from('projects')
+      .update({ comments: updatedComments })
+      .eq('id', projectId);
 
     if (updateError) throw updateError;
   }

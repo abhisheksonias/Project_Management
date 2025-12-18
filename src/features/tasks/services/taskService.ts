@@ -288,6 +288,50 @@ class TaskService {
 
     if (updateError) throw updateError;
   }
+
+  async updateTaskCommentMessage(
+    taskId: string,
+    commentId: string,
+    message: string,
+    userId: string,
+    mentions?: string[]
+  ): Promise<void> {
+    // Get current task
+    const { data: task, error: fetchError } = await supabase
+      .from('tasks')
+      .select('comment')
+      .eq('id', taskId)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    // Parse existing comments
+    const existingComments: TaskComment[] = task.comment 
+      ? (Array.isArray(task.comment) ? task.comment : [])
+      : [];
+
+    // Update the specific comment
+    const updatedComments = existingComments.map((comment) => {
+      if (comment.id === commentId && comment.user_id === userId) {
+        return {
+          ...comment,
+          message,
+          mentions: mentions ?? comment.mentions,
+          is_edited: true,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return comment;
+    });
+
+    // Update task with updated comments array
+    const { error: updateError } = await supabase
+      .from('tasks')
+      .update({ comment: updatedComments })
+      .eq('id', taskId);
+
+    if (updateError) throw updateError;
+  }
 }
 
 export const taskService = new TaskService();

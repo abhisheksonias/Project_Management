@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
@@ -233,12 +233,11 @@ export const AddWorklogDialog: React.FC<AddWorklogDialogProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="note">Description (optional)</Label>
-              <Textarea
-                id="note"
-                placeholder="Add a description..."
+              <RichTextEditor
                 value={worklogNote}
-                onChange={(e) => onNoteChange(e.target.value)}
-                rows={5}
+                onChange={onNoteChange}
+                placeholder="Add a description..."
+                showToolbar={false}
               />
             </div>
           </div>

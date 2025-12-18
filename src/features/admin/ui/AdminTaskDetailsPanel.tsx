@@ -14,11 +14,15 @@ import { Task, TaskComment } from '@/features/tasks/services/taskService';
 import {
   useAddTaskComment,
   useUpdateTaskCommentAcknowledgment,
+  useUpdateTaskComment,
 } from '@/features/tasks/hooks/useTaskComments';
 import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/features/users/services/userService';
-import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
+import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
 import { parseMentions, extractMentionedUserIds } from '@/shared/utils/mentionParser';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
+import { stripHtml } from '@/shared/utils/htmlUtils';
+import { useEditor, Editor } from '@tiptap/react';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import {
@@ -32,6 +36,8 @@ import {
   User,
   ClipboardList,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDeleteTask, useUpdateTask } from '@/features/admin/hooks/useAdminTaskMutations';
@@ -52,7 +58,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -73,6 +78,7 @@ import { StatusHistory } from '@/components/ui/status-history';
 import { useAdminTaskDetails } from '@/features/admin/hooks/useAdminTaskDetails';
 import { useAllMilestones } from '@/features/milestones/hooks/useMilestones';
 import { useTaskWorklogs } from '@/features/admin/hooks/useTaskWorklogs';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
 
 const STATUS_OPTIONS = ['To Do', 'In Progress', 'Completed', 'Blocked', 'Review'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High'];
@@ -98,9 +104,14 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
 }) => {
   const { profile } = useAuth();
   const [commentText, setCommentText] = useState('');
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const commentEditorRef = useRef<Editor | null>(null);
+  const editCommentEditorRef = useRef<Editor | null>(null);
   const addCommentMutation = useAddTaskComment();
   const updateAcknowledgmentMutation = useUpdateTaskCommentAcknowledgment();
+  const updateCommentMutation = useUpdateTaskComment();
   const updateTaskMutation = useUpdateTask();
   const deleteTaskMutation = useDeleteTask();
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -239,14 +250,16 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
   const handleAddComment = () => {
     if (!commentText.trim() || !profile || !activeTask) return;
 
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(commentText);
     const userMap = new Map(allUsers.map((user) => [user.id, { id: user.id, name: user.name }]));
-    const mentions = parseMentions(commentText, userMap);
+    const mentions = parseMentions(plainText, userMap);
     const mentionedUserIds = extractMentionedUserIds(mentions);
 
     addCommentMutation.mutate(
       {
         taskId: activeTask.id,
-        message: commentText.trim(),
+        message: commentText.trim(), // Store HTML
         userId: profile.id,
         userName: profile.name || 'Unknown User',
         mentions: mentionedUserIds,
@@ -254,6 +267,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
       {
         onSuccess: () => {
           setCommentText('');
+          commentEditorRef.current?.commands.clearContent();
         },
       }
     );
@@ -267,6 +281,48 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
       acknowledged,
       acknowledgedBy: profile.id,
     });
+  };
+
+  const handleStartEditComment = (comment: TaskComment) => {
+    if (!profile || !activeTask || comment.user_id !== profile.id) return;
+    setEditingCommentId(comment.id);
+    setEditingCommentText(comment.message);
+    setTimeout(() => {
+      editCommentEditorRef.current?.commands.focus();
+    }, 0);
+  };
+
+  const handleCancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentText('');
+  };
+
+  const handleSaveEditComment = () => {
+    if (!profile || !activeTask || !editingCommentId) return;
+    const trimmed = editingCommentText.trim();
+    if (!trimmed) {
+      return;
+    }
+
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(trimmed);
+    const userMap = new Map(allUsers.map((user) => [user.id, { id: user.id, name: user.name }]));
+    const mentions = parseMentions(plainText, userMap);
+    const mentionedUserIds = extractMentionedUserIds(mentions);
+
+    updateCommentMutation.mutate(
+      {
+        taskId: activeTask.id,
+        commentId: editingCommentId,
+        message: trimmed, // Store HTML
+        mentions: mentionedUserIds,
+      },
+      {
+        onSuccess: () => {
+          handleCancelEditComment();
+        },
+      }
+    );
   };
 
   const getStatusColor = (status: string | null) => {
@@ -351,15 +407,41 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{activeTask.name}</SheetTitle>
-                <SheetDescription className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground mt-1">
-                  <span className="truncate">{activeTask.description || 'No description available'}</span>
+                <div className="mt-1 sm:mt-2">
+                  {activeTask.description && (
+                    <div className="mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                        className="h-auto p-0 text-xs sm:text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                      >
+                        {isDescriptionExpanded ? (
+                          <>
+                            <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span>Hide Description</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span>Show Description</span>
+                          </>
+                        )}
+                      </Button>
+                      {isDescriptionExpanded && (
+                        <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                          <HtmlContent content={activeTask.description} className="text-xs sm:text-sm" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   {isTaskRefreshing && (
-                    <span className="flex items-center gap-1 text-[11px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Syncing
                     </span>
                   )}
-                </SheetDescription>
+                </div>
               </div>
               <div className="flex items-center gap-2 sm:ml-4">
                 <Button
@@ -513,20 +595,19 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
                   <h3 className="mb-4 text-lg font-semibold">Comments</h3>
 
                   <div className="relative mb-4 space-y-2">
-                    <Textarea
-                      ref={textareaRef}
-                      placeholder="Add a comment... Use @ to mention someone"
+                    <RichTextEditor
                       value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
-                      rows={3}
-                      className="resize-none rounded-[14px]"
+                      onChange={setCommentText}
+                      placeholder="Add a comment... Use @ to mention someone"
+                      showToolbar={false}
+                      className="text-sm"
+                      onEditorReady={(editor) => {
+                        commentEditorRef.current = editor;
+                      }}
                     />
-                    <MentionAutocomplete
+                    <MentionAutocompleteForEditor
                       users={allUsers}
-                      text={commentText}
-                      onTextChange={setCommentText}
-                      onMentionSelect={() => {}}
-                      textareaRef={textareaRef}
+                      editor={commentEditorRef.current}
                     />
                     <Button
                       onClick={handleAddComment}
@@ -542,32 +623,86 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
                     {sortedComments.length === 0 ? (
                       <p className="text-sm text-muted-foreground">No comments yet</p>
                     ) : (
-                      sortedComments.map((comment: TaskComment, index: number) => (
-                        <div key={comment.id || index} className="flex items-start gap-2">
-                          <Checkbox
-                            checked={comment.acknowledged || false}
-                            onCheckedChange={(checked) =>
-                              handleAcknowledgmentChange(comment.id, checked === true)
-                            }
-                            disabled={updateAcknowledgmentMutation.isPending}
-                            className="mt-1"
-                          />
-                          <div className="min-w-0 flex-1 rounded-[14px] bg-secondary p-2.5">
-                            <div className="mb-1 flex items-center justify-between gap-2">
-                              <span className="text-sm font-medium">{comment.user_name}</span>
-                              <div className="flex items-center gap-2">
-                                {comment.acknowledged && (
-                                  <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                )}
-                                <span className="whitespace-nowrap text-xs text-muted-foreground">
-                                  {format(new Date(comment.created_at), 'MMM dd, HH:mm')}
-                                </span>
+                      sortedComments.map((comment: TaskComment, index: number) => {
+                        const isOwnComment = profile?.id === comment.user_id;
+                        const isEditing = editingCommentId === comment.id;
+                        return (
+                          <div key={comment.id || index} className="flex items-start gap-2">
+                            <Checkbox
+                              checked={comment.acknowledged || false}
+                              onCheckedChange={(checked) =>
+                                handleAcknowledgmentChange(comment.id, checked === true)
+                              }
+                              disabled={updateAcknowledgmentMutation.isPending}
+                              className="mt-1"
+                            />
+                            <div className="min-w-0 flex-1 rounded-[14px] bg-secondary p-2.5">
+                              <div className="mb-1 flex items-center justify-between gap-2">
+                                <span className="text-sm font-medium">{comment.user_name}</span>
+                                <div className="flex items-center gap-2">
+                                  {comment.acknowledged && (
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
+                                  )}
+                                  {isOwnComment && !isEditing && (
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-7 w-7 rounded-full"
+                                      onClick={() => handleStartEditComment(comment)}
+                                    >
+                                      <Edit2 className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  <span className="whitespace-nowrap text-xs text-muted-foreground">
+                                    {format(new Date(comment.created_at), 'MMM dd, HH:mm')}
+                                  </span>
+                                </div>
                               </div>
+                              {isEditing ? (
+                                <div className="space-y-2">
+                                  <RichTextEditor
+                                    value={editingCommentText}
+                                    onChange={setEditingCommentText}
+                                    placeholder="Edit comment... Use @ to mention someone"
+                                    showToolbar={false}
+                                    className="text-sm"
+                                    onEditorReady={(editor) => {
+                                      editCommentEditorRef.current = editor;
+                                    }}
+                                  />
+                                  <MentionAutocompleteForEditor
+                                    users={allUsers}
+                                    editor={editCommentEditorRef.current}
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={handleCancelEditComment}
+                                      className="rounded-[8px]"
+                                      disabled={updateCommentMutation.isPending}
+                                    >
+                                      Cancel
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      onClick={handleSaveEditComment}
+                                      disabled={!editingCommentText.trim() || updateCommentMutation.isPending}
+                                      className="rounded-[8px] bg-primary text-white hover:bg-primary/90"
+                                    >
+                                      {updateCommentMutation.isPending ? 'Saving...' : 'Save'}
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="text-sm">
+                                  <HtmlContent content={comment.message} className="text-sm" />
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm">{comment.message}</p>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </div>
@@ -643,7 +778,9 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
                         </div>
                         
                         {log.note && (
-                          <p className="mt-2 text-sm text-muted-foreground">{log.note}</p>
+                          <div className="mt-2 text-sm text-muted-foreground">
+                            <HtmlContent content={log.note} className="text-sm" />
+                          </div>
                         )}
                       </div>
                     ))}

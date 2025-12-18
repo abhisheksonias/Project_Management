@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import { Project } from '@/features/projects/services/projectService';
 import { User } from '@/features/users/services/userService';
@@ -414,13 +414,11 @@ export const AdminEditWorklogDialog: React.FC<AdminEditWorklogDialogProps> = ({
 
             <div className="space-y-2">
               <Label htmlFor="edit-note">Description (optional)</Label>
-              <Textarea
-                id="edit-note"
-                placeholder="Add a description..."
+              <RichTextEditor
                 value={note}
-                onChange={(e) => setNote(e.target.value)}
-                rows={5}
-                className="rounded-[14px]"
+                onChange={setNote}
+                placeholder="Add a description..."
+                showToolbar={false}
               />
             </div>
           </div>
