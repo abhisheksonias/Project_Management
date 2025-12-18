@@ -9,6 +9,7 @@ import { useUpdateCommentAcknowledgment } from '@/features/dashboard/hooks/usePr
 import { useUpdateTaskCommentAcknowledgment } from '@/features/tasks/hooks/useTaskComments';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
 
 interface MentionsCardProps {
   mentions: Mention[];
@@ -88,7 +89,9 @@ export const ProjectMentionsCard: React.FC<MentionsCardProps> = ({ mentions }) =
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm font-medium mb-1">{mention.user_name}</p>
-                <p className="text-xs sm:text-sm text-gray-700">{mention.message}</p>
+                <div className="text-xs sm:text-sm text-gray-700">
+                  <HtmlContent content={mention.message} className="text-xs sm:text-sm" />
+                </div>
               </div>
               <Button
                 variant="ghost"

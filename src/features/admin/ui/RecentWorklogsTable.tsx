@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { subDays, startOfDay, endOfDay } from 'date-fns';
 import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+import { stripHtml } from '@/shared/utils/htmlUtils';
 import { AdminEditWorklogDialog } from './AdminEditWorklogDialog';
 import { useDeleteWorklog } from '../hooks/useAdminWorklogs';
 import {
@@ -382,7 +383,7 @@ export const RecentWorklogsTable: React.FC<RecentWorklogsTableProps> = ({
                           </td>
                           <td className="p-2 sm:p-3 text-xs sm:text-sm max-w-xs">
                             {log.note ? (
-                              <span className="line-clamp-2 break-words">{log.note}</span>
+                              <span className="line-clamp-2 break-words">{stripHtml(log.note)}</span>
                             ) : (
                               <span className="text-muted-foreground">—</span>
                             )}

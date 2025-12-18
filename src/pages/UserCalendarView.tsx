@@ -14,6 +14,7 @@ import {
 import { ArrowLeft, ChevronLeft, ChevronRight, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import { format, startOfMonth, getDaysInMonth, parse, subMonths, addMonths } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
 import {
   Dialog,
   DialogContent,
@@ -382,7 +383,9 @@ const UserCalendarView: React.FC = () => {
                           </span>
                         </div>
                         {log.note && (
-                          <p className="text-[10px] sm:text-xs text-muted-foreground mt-2 leading-relaxed break-words">{log.note}</p>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground mt-2 leading-relaxed break-words">
+                            <HtmlContent content={log.note} className="text-[10px] sm:text-xs" />
+                          </div>
                         )}
                       </div>
                     ))}

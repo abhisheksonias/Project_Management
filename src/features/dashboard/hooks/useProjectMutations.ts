@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { projectService, AddCommentData } from '@/features/projects/services/projectService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useAddProjectComment = () => {
   const queryClient = useQueryClient();
@@ -107,6 +108,39 @@ export const useUpdateCommentAcknowledgment = () => {
       console.error(error);
       // Rollback on error
       queryClient.invalidateQueries({ queryKey: ['dashboard-projects'] });
+    },
+  });
+};
+
+export const useUpdateProjectComment = () => {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+
+  return useMutation({
+    mutationFn: (data: {
+      projectId: string;
+      commentId: string;
+      message: string;
+      mentions?: string[];
+    }) => {
+      if (!profile?.id) throw new Error('User not authenticated');
+      return projectService.updateCommentMessage(
+        data.projectId,
+        data.commentId,
+        data.message,
+        profile.id,
+        data.mentions
+      );
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['dashboard-projects'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-project-stats'] });
+      // Invalidate mentions when comment is updated
+      queryClient.invalidateQueries({ queryKey: ['user-mentions'] });
+      toast.success('Comment updated');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update comment: ${error.message}`);
     },
   });
 };

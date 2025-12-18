@@ -5,6 +5,7 @@ import { AdminWorklog } from '../services/adminWorklogService';
 import { Skeleton } from '@/components/ui/skeleton';
 import { User, Edit2, Trash2 } from 'lucide-react';
 import { normalizeHoursToHHMM } from '@/shared/utils/formatHours';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
@@ -288,9 +289,9 @@ export const TodaysWorklogsTable: React.FC<TodaysWorklogsTableProps> = ({
             >
               <div className="flex items-start gap-2">
                 <div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                <p className="text-sm text-foreground whitespace-pre-wrap break-words leading-relaxed">
-                  {hasNote ? log.note : <span className="text-muted-foreground italic">Note not added</span>}
-                </p>
+                <div className="text-sm text-foreground break-words leading-relaxed">
+                  {hasNote ? <HtmlContent content={log.note} className="text-sm" /> : <span className="text-muted-foreground italic">Note not added</span>}
+                </div>
               </div>
             </div>
           );

@@ -12,6 +12,7 @@ import { Task } from '../services/taskService';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { stripHtml } from '@/shared/utils/htmlUtils';
 
 type TaskCategory = 'design' | 'development';
 
@@ -174,7 +175,7 @@ export const TasksTableView: React.FC<TasksTableViewProps> = ({
                     <div className="font-medium text-xs sm:text-sm">{task.name}</div>
                     {task.description && (
                       <div className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-1">
-                        {task.description}
+                        {stripHtml(task.description)}
                       </div>
                     )}
                   </div>

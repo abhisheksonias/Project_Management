@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { taskService, AddTaskCommentData } from '../services/taskService';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const useAddTaskComment = () => {
   const queryClient = useQueryClient();
@@ -165,6 +166,48 @@ export const useUpdateTaskCommentAcknowledgment = () => {
       });
       // Invalidate mentions when acknowledgment changes
       queryClient.invalidateQueries({ queryKey: ['user-mentions'] });
+    },
+  });
+};
+
+export const useUpdateTaskComment = () => {
+  const queryClient = useQueryClient();
+  const { profile } = useAuth();
+
+  return useMutation({
+    mutationFn: (data: {
+      taskId: string;
+      commentId: string;
+      message: string;
+      mentions?: string[];
+    }) => {
+      if (!profile?.id) throw new Error('User not authenticated');
+      return taskService.updateTaskCommentMessage(
+        data.taskId,
+        data.commentId,
+        data.message,
+        profile.id,
+        data.mentions
+      );
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate all task queries
+      queryClient.invalidateQueries({
+        predicate: (query) =>
+          Array.isArray(query.queryKey) && query.queryKey[0] === 'tasks',
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tasks', variables.taskId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['admin', 'tasks'],
+      });
+      // Invalidate mentions when comment is updated
+      queryClient.invalidateQueries({ queryKey: ['user-mentions'] });
+      toast.success('Comment updated');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to update comment: ${error.message}`);
     },
   });
 };

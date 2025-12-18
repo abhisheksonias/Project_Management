@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { stripHtml } from '@/shared/utils/htmlUtils';
 import { cn } from '@/lib/utils';
 import { Worklog } from '@/features/worklogs/services/worklogService';
 import { useAuth } from '@/contexts/AuthContext';
@@ -84,7 +85,7 @@ export const WorklogTable: React.FC<WorklogTableProps> = ({
                   <span className="font-semibold text-foreground">{log.hours}</span>
                 </div>
                 {log.note && (
-                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{log.note}</p>
+                  <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{stripHtml(log.note)}</p>
                 )}
                 {!isSales && (
                   <div className="flex items-center gap-2 pt-2 border-t" onClick={(e) => e.stopPropagation()}>

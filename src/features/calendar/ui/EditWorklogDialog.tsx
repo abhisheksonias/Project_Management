@@ -109,12 +109,11 @@ export const EditWorklogDialog: React.FC<EditWorklogDialogProps> = ({
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-note">Description</Label>
-            <Textarea
-              id="edit-note"
-              placeholder="Add a description..."
+            <RichTextEditor
               value={editedNote}
-              onChange={(e) => onNoteChange(e.target.value)}
-              rows={4}
+              onChange={onNoteChange}
+              placeholder="Add a description..."
+              showToolbar={false}
             />
           </div>
         </div>

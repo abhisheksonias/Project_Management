@@ -10,6 +10,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
+import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -64,6 +66,9 @@ import { useStatusHistory } from '@/features/statusHistory/hooks/useStatusHistor
 import { Skeleton } from '@/components/ui/skeleton';
 import { MilestonesTabContent } from './MilestonesTabContent';
 import { useVendors } from '@/features/vendors/hooks/useVendors';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
+import { stripHtml } from '@/shared/utils/htmlUtils';
+import { useEditor } from '@tiptap/react';
 
 interface AdminProjectDetailsPanelProps {
   project: Project | null;
@@ -86,7 +91,8 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const [editingCommentText, setEditingCommentText] = useState('');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const editCommentTextareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const editCommentEditorRef = React.useRef<Editor | null>(null);
+  const commentEditorRef = React.useRef<Editor | null>(null);
   const addCommentMutation = useAddProjectComment();
   const updateAcknowledgmentMutation = useUpdateCommentAcknowledgment();
   const updateCommentMutation = useUpdateProjectComment();
@@ -294,16 +300,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const handleAddComment = () => {
     if (!commentText.trim() || !profile) return;
 
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(commentText);
     const userMap = new Map(
       allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
     );
-    const mentions = parseMentions(commentText, userMap);
+    const mentions = parseMentions(plainText, userMap);
     const mentionedUserIds = extractMentionedUserIds(mentions);
 
     addCommentMutation.mutate(
       {
         projectId: project.id,
-        message: commentText.trim(),
+        message: commentText.trim(), // Store HTML
         userId: profile.id,
         userName: profile.name || 'Unknown User',
         mentions: mentionedUserIds,
@@ -311,6 +319,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
       {
         onSuccess: () => {
           setCommentText('');
+          commentEditorRef.current?.commands.clearContent();
         },
       }
     );
@@ -321,7 +330,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
     setEditingCommentId(comment.id);
     setEditingCommentText(comment.message);
     setTimeout(() => {
-      editCommentTextareaRef.current?.focus();
+      editCommentEditorRef.current?.commands.focus();
     }, 0);
   };
 
@@ -338,17 +347,19 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
       return;
     }
 
+    // Extract plain text from HTML for mention parsing
+    const plainText = stripHtml(trimmed);
     const userMap = new Map(
       allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
     );
-    const mentions = parseMentions(trimmed, userMap);
+    const mentions = parseMentions(plainText, userMap);
     const mentionedUserIds = extractMentionedUserIds(mentions);
 
     updateCommentMutation.mutate(
       {
         projectId: project.id,
         commentId: editingCommentId,
-        message: trimmed,
+        message: trimmed, // Store HTML
         mentions: mentionedUserIds,
       },
       {
@@ -410,9 +421,13 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{project.name}</SheetTitle>
-                <SheetDescription className="mt-1 sm:mt-2 text-xs sm:text-sm">
-                  {project.description || 'No description available'}
-                </SheetDescription>
+                <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
+                  {project.description ? (
+                    <HtmlContent content={project.description} className="text-xs sm:text-sm" />
+                  ) : (
+                    <span>No description available</span>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-2 sm:ml-4">
                 <Button
@@ -551,20 +566,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
               {/* Add Comment Form */}
               <div className="space-y-2 mb-4 relative">
-                <Textarea
-                  ref={textareaRef}
-                  placeholder="Add a comment... Use @ to mention someone"
+                <RichTextEditor
                   value={commentText}
-                  onChange={(e) => setCommentText(e.target.value)}
-                  rows={3}
-                  className="resize-none rounded-[14px]"
+                  onChange={setCommentText}
+                  placeholder="Add a comment... Use @ to mention someone"
+                  showToolbar={false}
+                  onEditorReady={(editor) => {
+                    commentEditorRef.current = editor;
+                  }}
                 />
-                <MentionAutocomplete
+                <MentionAutocompleteForEditor
                   users={allUsers}
-                  text={commentText}
-                  onTextChange={setCommentText}
-                  onMentionSelect={() => {}}
-                  textareaRef={textareaRef}
+                  editor={commentEditorRef.current}
                 />
                 <Button
                   onClick={handleAddComment}
@@ -622,19 +635,18 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
                           {isEditing ? (
                             <div className="space-y-2">
-                              <Textarea
-                                ref={editCommentTextareaRef}
+                              <RichTextEditor
                                 value={editingCommentText}
-                                onChange={(e) => setEditingCommentText(e.target.value)}
-                                rows={3}
-                                className="resize-none rounded-[14px]"
+                                onChange={setEditingCommentText}
+                                placeholder="Edit comment... Use @ to mention someone"
+                                showToolbar={false}
+                                onEditorReady={(editor) => {
+                                  editCommentEditorRef.current = editor;
+                                }}
                               />
-                              <MentionAutocomplete
+                              <MentionAutocompleteForEditor
                                 users={allUsers}
-                                text={editingCommentText}
-                                onTextChange={setEditingCommentText}
-                                onMentionSelect={() => {}}
-                                textareaRef={editCommentTextareaRef}
+                                editor={editCommentEditorRef.current}
                               />
                               <div className="flex justify-end gap-2">
                                 <Button
@@ -657,7 +669,9 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                               </div>
                             </div>
                           ) : (
-                            <p className="text-sm">{comment.message}</p>
+                            <div className="text-sm">
+                              <HtmlContent content={comment.message} className="text-sm" />
+                            </div>
                           )}
                         </div>
                       </div>
@@ -720,7 +734,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                                       </div>
                                       {task.description && (
                                         <p className="text-sm text-muted-foreground line-clamp-2 mb-2">
-                                          {task.description}
+                                          {stripHtml(task.description)}
                                         </p>
                                       )}
                                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
@@ -867,12 +881,12 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
               <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
                 Description
               </label>
-              <Textarea
+              <RichTextEditor
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(html) => setFormData({ ...formData, description: html })}
                 placeholder="Describe the project..."
-                rows={4}
-                className="text-sm resize-none"
+                className="text-sm"
+                showToolbar={false}
               />
             </div>
 

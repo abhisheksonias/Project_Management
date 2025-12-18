@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -127,12 +127,11 @@ export const EditWorklogDialogHistory: React.FC<EditWorklogDialogHistoryProps> =
           </div>
           <div className="space-y-2">
             <Label htmlFor="edit-note">Description</Label>
-            <Textarea
-              id="edit-note"
-              placeholder="Add a description..."
+            <RichTextEditor
               value={editedNote}
-              onChange={(e) => onNoteChange(e.target.value)}
-              rows={4}
+              onChange={onNoteChange}
+              placeholder="Add a description..."
+              showToolbar={false}
             />
           </div>
         </div>
