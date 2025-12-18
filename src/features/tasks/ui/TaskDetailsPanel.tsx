@@ -353,14 +353,6 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
                   const isEditing = editingCommentId === comment.id;
                   return (
                     <div key={comment.id || index} className="flex items-start gap-1.5 sm:gap-2">
-                      <Checkbox
-                        checked={comment.acknowledged || false}
-                        onCheckedChange={(checked) =>
-                          handleAcknowledgmentChange(comment.id, checked === true)
-                        }
-                        disabled={updateAcknowledgmentMutation.isPending}
-                        className="mt-0.5 sm:mt-1 h-4 w-4"
-                      />
                       <div className="flex-1 bg-secondary rounded-lg p-2 sm:p-2.5 min-w-0">
                         <div className="flex items-center justify-between mb-1 gap-1.5 sm:gap-2">
                           <span className="font-medium text-xs sm:text-sm">{comment.user_name}</span>

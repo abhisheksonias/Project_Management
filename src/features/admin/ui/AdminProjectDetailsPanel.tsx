@@ -621,14 +621,6 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
 
                     return (
                       <div key={comment.id || index} className="flex items-start gap-2">
-                        <Checkbox
-                          checked={comment.acknowledged || false}
-                          onCheckedChange={(checked) =>
-                            handleAcknowledgmentChange(comment.id, checked === true)
-                          }
-                          disabled={updateAcknowledgmentMutation.isPending}
-                          className="mt-1"
-                        />
                         <div className="flex-1 bg-secondary rounded-lg p-2.5 min-w-0 rounded-[14px]">
                           <div className="flex items-start justify-between mb-1 gap-2">
                             <div>
