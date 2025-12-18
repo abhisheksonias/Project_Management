@@ -45,6 +45,7 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Calendar, Plus, Edit, Trash2, Search, CalendarDays, Save, X, Users, AlertCircle, Pencil } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { format, startOfMonth, subMonths, addMonths } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -385,7 +386,19 @@ const UserManagement: React.FC = () => {
                                   className="h-8 sm:h-9 text-xs rounded-[14px]"
                                 />
                               ) : (
-                                <span className="font-medium">{user.name}</span>
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="h-6 w-6 sm:h-7 sm:w-7">
+                                    <AvatarImage src={user.avatar_url || undefined} alt={user.name} />
+                                    <AvatarFallback className="bg-primary text-white text-[10px] sm:text-xs">
+                                      {user.name
+                                        ?.split(' ')
+                                        .map((n) => n[0])
+                                        .join('')
+                                        .toUpperCase() || 'U'}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                  <span className="font-medium">{user.name}</span>
+                                </div>
                               )}
                             </td>
 
@@ -597,6 +610,16 @@ const UserManagement: React.FC = () => {
                               />
                             ) : (
                               <div className="flex items-center gap-2 group min-w-0">
+                                <Avatar className="h-7 w-7 sm:h-8 sm:w-8 shrink-0">
+                                  <AvatarImage src={user.avatar_url || undefined} alt={user.name} />
+                                  <AvatarFallback className="bg-primary text-white text-xs">
+                                    {user.name
+                                      ?.split(' ')
+                                      .map((n) => n[0])
+                                      .join('')
+                                      .toUpperCase() || 'U'}
+                                  </AvatarFallback>
+                                </Avatar>
                                 <span className="flex-1 truncate">{user.name}</span>
                                 <Button
                                   variant="ghost"

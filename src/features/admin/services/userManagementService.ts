@@ -28,6 +28,7 @@ export interface UserWithDetails {
   is_active: boolean | null;
   rank: string | null;
   created_at: string | null;
+  avatar_url: string | null;
   current_salary: number | null; // Latest salary from user_salary_periods
 }
 
@@ -74,7 +75,7 @@ class UserManagementService {
   async getAllUsers(month?: Date): Promise<UserWithDetails[]> {
     const { data: users, error } = await supabase
       .from('users')
-      .select('id, name, email, role, department, is_active, rank, created_at')
+      .select('id, name, email, role, department, is_active, rank, created_at, avatar_url')
       .not('role', 'eq', 'admin')
       .not('role', 'eq', 'Admin')
       .order('name', { ascending: true });
