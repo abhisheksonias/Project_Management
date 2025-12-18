@@ -14,7 +14,7 @@ import { Task, TaskComment } from '../services/taskService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddTaskComment, useUpdateTaskCommentAcknowledgment, useUpdateTaskComment } from '../hooks/useTaskComments';
 import { format } from 'date-fns';
-import { Calendar, Clock, Folder, Send, CheckCircle2, Edit2 } from 'lucide-react';
+import { Calendar, Clock, Folder, Send, CheckCircle2, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
 import { useQuery } from '@tanstack/react-query';
@@ -40,6 +40,7 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const commentEditorRef = React.useRef<Editor | null>(null);
   const editCommentEditorRef = React.useRef<Editor | null>(null);
   const addCommentMutation = useAddTaskComment();
@@ -192,13 +193,33 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="text-lg sm:text-xl md:text-2xl">{task.name}</SheetTitle>
-          <div className="text-xs sm:text-sm text-muted-foreground">
-            {task.description ? (
-              <HtmlContent content={task.description} className="text-xs sm:text-sm" />
-            ) : (
-              <span>No description available</span>
-            )}
-          </div>
+          {task.description && (
+            <div className="mt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                className="h-auto p-0 text-xs sm:text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+              >
+                {isDescriptionExpanded ? (
+                  <>
+                    <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Hide Description</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span>Show Description</span>
+                  </>
+                )}
+              </Button>
+              {isDescriptionExpanded && (
+                <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                  <HtmlContent content={task.description} className="text-xs sm:text-sm" />
+                </div>
+              )}
+            </div>
+          )}
         </SheetHeader>
 
         <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">

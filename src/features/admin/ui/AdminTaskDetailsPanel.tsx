@@ -36,6 +36,8 @@ import {
   User,
   ClipboardList,
   Loader2,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useDeleteTask, useUpdateTask } from '@/features/admin/hooks/useAdminTaskMutations';
@@ -104,6 +106,7 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const commentEditorRef = useRef<Editor | null>(null);
   const editCommentEditorRef = useRef<Editor | null>(null);
   const addCommentMutation = useAddTaskComment();
@@ -404,14 +407,36 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{activeTask.name}</SheetTitle>
-                <div className="flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground mt-1">
-                  {activeTask.description ? (
-                    <HtmlContent content={activeTask.description} className="text-xs sm:text-sm" />
-                  ) : (
-                    <span>No description available</span>
+                <div className="mt-1 sm:mt-2">
+                  {activeTask.description && (
+                    <div className="mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                        className="h-auto p-0 text-xs sm:text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                      >
+                        {isDescriptionExpanded ? (
+                          <>
+                            <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span>Hide Description</span>
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                            <span>Show Description</span>
+                          </>
+                        )}
+                      </Button>
+                      {isDescriptionExpanded && (
+                        <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                          <HtmlContent content={activeTask.description} className="text-xs sm:text-sm" />
+                        </div>
+                      )}
+                    </div>
                   )}
                   {isTaskRefreshing && (
-                    <span className="flex items-center gap-1 text-[11px] sm:text-xs">
+                    <span className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                       Syncing
                     </span>

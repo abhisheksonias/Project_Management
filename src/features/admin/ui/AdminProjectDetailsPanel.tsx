@@ -44,7 +44,7 @@ import {
 } from '@/features/admin/hooks/useAdminProjectMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
-import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle, Building2 } from 'lucide-react';
+import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle, Building2, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocomplete } from '@/features/projects/ui/MentionAutocomplete';
 import { useQuery } from '@tanstack/react-query';
@@ -89,6 +89,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const editCommentEditorRef = React.useRef<Editor | null>(null);
@@ -421,13 +422,33 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0">
               <div className="flex-1 min-w-0">
                 <SheetTitle className="text-lg sm:text-xl md:text-2xl truncate">{project.name}</SheetTitle>
-                <div className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted-foreground">
-                  {project.description ? (
-                    <HtmlContent content={project.description} className="text-xs sm:text-sm" />
-                  ) : (
-                    <span>No description available</span>
-                  )}
-                </div>
+                {project.description && (
+                  <div className="mt-1 sm:mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+                      className="h-auto p-0 text-xs sm:text-sm text-muted-foreground hover:text-foreground flex items-center gap-1"
+                    >
+                      {isDescriptionExpanded ? (
+                        <>
+                          <ChevronUp className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span>Hide Description</span>
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4" />
+                          <span>Show Description</span>
+                        </>
+                      )}
+                    </Button>
+                    {isDescriptionExpanded && (
+                      <div className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                        <HtmlContent content={project.description} className="text-xs sm:text-sm" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               <div className="flex items-center gap-2 sm:ml-4">
                 <Button

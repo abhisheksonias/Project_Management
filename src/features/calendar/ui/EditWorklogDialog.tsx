@@ -18,6 +18,7 @@ import { Worklog } from '@/features/worklogs/services/worklogService';
 import { Task } from '@/features/tasks/services/taskService';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 
 interface EditWorklogDialogProps {
   open: boolean;
