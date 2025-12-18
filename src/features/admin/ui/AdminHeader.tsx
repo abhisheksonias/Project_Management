@@ -1,5 +1,5 @@
 import React from 'react';
-import { Download, LogOut, Filter, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Download, LogOut, Filter, Calendar as CalendarIcon, X, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,6 +23,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useUserMentions } from '@/features/projects/hooks/useUserMentions';
+import { Mention } from '@/features/projects/services/mentionService';
+import { useUpdateCommentAcknowledgment } from '@/features/dashboard/hooks/useProjectMutations';
+import { useUpdateTaskCommentAcknowledgment } from '@/features/tasks/hooks/useTaskComments';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
 
 interface AdminHeaderProps {
   filters: AdminFilters;
@@ -63,9 +68,15 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   onDatePickerOpenChange,
 }) => {
   const { data: projects = [], isLoading: projectsLoading } = useAdminProjectsForFilter();
-  const { signOut } = useAuth();
+  const { signOut, profile } = useAuth();
   const navigate = useNavigate();
   const currentMonth = new Date();
+  const { data: mentions = [], isLoading: mentionsLoading } = useUserMentions(profile?.id || '');
+  const updateProjectAcknowledgmentMutation = useUpdateCommentAcknowledgment();
+  const updateTaskAcknowledgmentMutation = useUpdateTaskCommentAcknowledgment();
+  
+  // Filter unacknowledged mentions
+  const unacknowledgedMentions = mentions.filter(m => !m.acknowledged);
 
   const sortedProjects = React.useMemo(
     () => [...projects].sort((a, b) => a.name.localeCompare(b.name)),
@@ -126,6 +137,77 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
 
           {/* Actions Section */}
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            {/* Notifications */}
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="relative rounded-[14px] border-secondary hover:bg-secondary h-9 sm:h-10 w-9 sm:w-10 p-0"
+                >
+                  <Bell className="h-4 w-4" />
+                  {unacknowledgedMentions.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs font-semibold rounded-full h-5 w-5 flex items-center justify-center">
+                      {unacknowledgedMentions.length > 9 ? '9+' : unacknowledgedMentions.length}
+                    </span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-[90vw] sm:w-80 md:w-96 rounded-[14px] p-0">
+                <div className="p-4 border-b">
+                  <h3 className="font-semibold text-sm">Notifications</h3>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {unacknowledgedMentions.length === 0 
+                      ? 'No new mentions' 
+                      : `${unacknowledgedMentions.length} unread mention${unacknowledgedMentions.length > 1 ? 's' : ''}`}
+                  </p>
+                </div>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {mentionsLoading ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                  ) : unacknowledgedMentions.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <Bell className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-50" />
+                      <p className="text-sm text-muted-foreground">No new mentions</p>
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {unacknowledgedMentions.map((mention) => (
+                        <MentionItem
+                          key={mention.id}
+                          mention={mention}
+                          onAcknowledge={() => {
+                            if (!profile) return;
+                            if (mention.type === 'project') {
+                              updateProjectAcknowledgmentMutation.mutate({
+                                projectId: mention.projectId,
+                                commentId: mention.commentId,
+                                acknowledged: true,
+                                acknowledgedBy: profile.id,
+                              });
+                            } else if (mention.type === 'task') {
+                              updateTaskAcknowledgmentMutation.mutate({
+                                taskId: mention.taskId,
+                                commentId: mention.commentId,
+                                acknowledged: true,
+                                acknowledgedBy: profile.id,
+                              });
+                            }
+                          }}
+                          onView={() => {
+                            if (mention.type === 'project') {
+                              navigate('/admin/projects');
+                            } else if (mention.type === 'task') {
+                              navigate('/admin/tasks');
+                            }
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+
             {/* Filters Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -350,6 +432,52 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+};
+
+interface MentionItemProps {
+  mention: Mention;
+  onAcknowledge: () => void;
+  onView: () => void;
+}
+
+const MentionItem: React.FC<MentionItemProps> = ({ mention, onAcknowledge, onView }) => {
+  return (
+    <div
+      className="p-4 hover:bg-secondary/50 transition-colors cursor-pointer"
+      onClick={onView}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs font-semibold text-foreground">
+              {mention.user_name}
+            </span>
+            <span className="text-xs text-muted-foreground">mentioned you in</span>
+          </div>
+          <div className="text-xs font-medium text-primary mb-1">
+            {mention.type === 'project' ? mention.projectName : mention.taskName}
+          </div>
+          <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
+            <HtmlContent content={mention.message} className="text-xs" />
+          </div>
+          <div className="text-[10px] text-muted-foreground">
+            {format(new Date(mention.created_at), 'MMM dd, HH:mm')}
+          </div>
+        </div>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAcknowledge();
+          }}
+          className="h-7 w-7 p-0 rounded-full"
+        >
+          <X className="h-3 w-3" />
+        </Button>
       </div>
     </div>
   );
