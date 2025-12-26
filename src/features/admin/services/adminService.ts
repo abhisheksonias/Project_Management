@@ -8,6 +8,8 @@ export interface AdminStats {
   overdueProjects: number;
   inProgressTasks: number;
   hoursLoggedThisWeek: number;
+  billableHours: number;
+  nonBillableHours: number;
 }
 
 export type DateRangeOption = 'today' | 'this-week' | 'this-month' | 'last-month' | 'last-30-days' | 'this-quarter' | 'this-year' | 'custom';
@@ -225,7 +227,7 @@ class AdminService {
     // Get hours logged for the selected period
     let worklogsQuery = supabase
       .from('work_logs')
-      .select('hours, project_id, user_id, tasks(category)')
+      .select('hours, project_id, user_id, tasks(category, type)')
       .gte('created_at', queryStartDate.toISOString())
       .lte('created_at', queryEndDate.toISOString());
 
@@ -257,12 +259,30 @@ class AdminService {
       return sum + parseHours(log.hours);
     }, 0) || 0;
 
+    // Calculate billable and non-billable hours
+    let billableHours = 0;
+    let nonBillableHours = 0;
+
+    filteredWorklogs?.forEach((log) => {
+      const hours = parseHours(log.hours);
+      const task = log.tasks as any;
+      const taskType = task?.type?.toLowerCase();
+      
+      if (taskType === 'billable') {
+        billableHours += hours;
+      } else {
+        nonBillableHours += hours;
+      }
+    });
+
     return {
       activeProjects: activeProjectsCount || 0,
       completedProjects: completedProjectsCount || 0,
       overdueProjects: overdueProjectsCount || 0,
       inProgressTasks: inProgressTasksCount || 0,
       hoursLoggedThisWeek: Math.round(hoursLoggedThisWeek * 10) / 10,
+      billableHours: Math.round(billableHours * 10) / 10,
+      nonBillableHours: Math.round(nonBillableHours * 10) / 10,
     };
   }
 
@@ -602,6 +622,36 @@ class AdminService {
     } else {
       return 'on-track';
     }
+  }
+
+  /**
+   * Get all worklogs for a month (for admin calendar view)
+   */
+  async getAllWorklogsForMonth(month: Date): Promise<any[]> {
+    const monthStart = startOfMonth(month);
+    const monthEnd = new Date(monthStart.getFullYear(), monthStart.getMonth() + 1, 0, 23, 59, 59);
+
+    const { data, error } = await supabase
+      .from('work_logs')
+      .select(`
+        id,
+        hours,
+        hours_num,
+        note,
+        created_at,
+        task_id,
+        project_id,
+        user_id,
+        tasks(name, status, type),
+        projects(name),
+        users(name, email)
+      `)
+      .gte('created_at', monthStart.toISOString())
+      .lte('created_at', monthEnd.toISOString())
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
   }
 }
 

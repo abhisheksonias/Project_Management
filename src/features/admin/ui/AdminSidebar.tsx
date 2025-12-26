@@ -17,6 +17,7 @@ import {
   UserCog,
   DollarSign,
   Table,
+  Calendar,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -44,6 +45,7 @@ const navItems: NavItem[] = [
   { id: 'profit', label: 'Profit & Finance', icon: DollarSign, path: '/admin/profit' },
   { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
   { id: 'shared-tables', label: 'Shared Tables', icon: Table, path: '/admin/shared-tables' },
+  { id: 'work-calendar', label: 'Work Calendar', icon: Calendar, path: '/admin/work-calendar' },
 ];
 
 const SidebarContentInternal: React.FC<{

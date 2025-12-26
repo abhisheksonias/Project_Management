@@ -28,6 +28,7 @@ import UserManagement from "./pages/UserManagement";
 import UserCalendarView from "./pages/UserCalendarView";
 import AdminProfit from "./pages/AdminProfit";
 import AdminProfile from "./pages/AdminProfile";
+import AdminWorkCalendar from "./pages/AdminWorkCalendar";
 import SharedTables from "./pages/SharedTables";
 import PublicSharedTable from "./pages/PublicSharedTable";
 
@@ -139,6 +140,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <SharedTables />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/work-calendar" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminWorkCalendar />
               </ProtectedRoute>
             } 
           />
