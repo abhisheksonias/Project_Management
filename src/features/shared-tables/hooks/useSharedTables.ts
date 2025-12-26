@@ -21,8 +21,8 @@ export const useSharedTables = () => {
   const { profile } = useAuth();
   
   return useQuery<PMTable[]>({
-    queryKey: ['shared-tables', profile?.id],
-    queryFn: () => sharedTableService.getAllTables(profile?.id),
+    queryKey: ['shared-tables', profile?.id, profile?.role],
+    queryFn: () => sharedTableService.getAllTables(profile?.id, profile?.role),
     staleTime: 30000,
     enabled: !!profile?.id,
   });
