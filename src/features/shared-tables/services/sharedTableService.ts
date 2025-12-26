@@ -95,6 +95,27 @@ export interface UpdateCellData {
   value: string | null;
 }
 
+export interface PMTableUser {
+  id: string;
+  table_id: string;
+  user_id: string;
+  role: 'owner' | 'editor' | 'viewer';
+  created_at: string;
+}
+
+export interface TableUserWithDetails extends PMTableUser {
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+}
+
+export interface AssignUserData {
+  user_id: string;
+  role: 'owner' | 'editor' | 'viewer';
+}
+
 // ============================
 // SERVICE CLASS
 // ============================
@@ -102,15 +123,90 @@ export interface UpdateCellData {
 class SharedTableService {
   /**
    * Get all tables (for authenticated users)
+   * - Admin users have access to all tables
+   * - If table has no assigned users, it's visible to all users
+   * - Otherwise, filters tables where user is owner, editor, or viewer via pm_table_users
+   * - Also includes tables created by the user
    */
-  async getAllTables(userId?: string): Promise<PMTable[]> {
-    const { data, error } = await supabase
+  async getAllTables(userId?: string, userRole?: string): Promise<PMTable[]> {
+    // Admin has access to all tables
+    if (userRole === 'Admin') {
+      const { data, error } = await supabase
+        .from('pm_tables')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as PMTable[];
+    }
+
+    if (!userId) {
+      // If no userId, return all tables (for public access)
+      const { data, error } = await supabase
+        .from('pm_tables')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as PMTable[];
+    }
+
+    // Get all tables
+    const { data: allTables, error: allError } = await supabase
       .from('pm_tables')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
-    return (data || []) as PMTable[];
+    if (allError) throw allError;
+
+    // Get all table-user assignments to check which tables have assigned users
+    const { data: allTableUsers, error: tableUsersError } = await supabase
+      .from('pm_table_users')
+      .select('table_id, role');
+
+    if (tableUsersError) throw tableUsersError;
+
+    // Get table IDs where user has access via pm_table_users
+    const { data: userTableAccess, error: accessError } = await supabase
+      .from('pm_table_users')
+      .select('table_id')
+      .eq('user_id', userId);
+
+    if (accessError) throw accessError;
+
+    const accessibleTableIds = (userTableAccess || []).map((a) => a.table_id);
+    
+    // Group table users by table_id to check if table has only owner or has other assigned users
+    const tableUsersByTable = new Map<string, Array<{ role: string }>>();
+    (allTableUsers || []).forEach((tu: any) => {
+      if (!tableUsersByTable.has(tu.table_id)) {
+        tableUsersByTable.set(tu.table_id, []);
+      }
+      tableUsersByTable.get(tu.table_id)!.push({ role: tu.role });
+    });
+
+    // Filter tables:
+    // 1. User created it (created_by = userId)
+    // 2. User has access via pm_table_users
+    // 3. Table has no assigned users OR only has owner (visible to all)
+    const filtered = (allTables || []).filter((table: any) => {
+      // User created it
+      if (table.created_by === userId) return true;
+      
+      const tableUsers = tableUsersByTable.get(table.id) || [];
+      // Table has no assigned users - visible to all
+      if (tableUsers.length === 0) return true;
+      
+      // Table has only owner assigned - visible to all (not specifically assigned)
+      if (tableUsers.length === 1 && tableUsers[0].role === 'owner') return true;
+      
+      // User has access via pm_table_users
+      if (accessibleTableIds.includes(table.id)) return true;
+      
+      return false;
+    });
+
+    return filtered as PMTable[];
   }
 
   /**
@@ -202,6 +298,7 @@ class SharedTableService {
 
   /**
    * Create new table
+   * Automatically assigns creator as 'owner' in pm_table_users
    */
   async createTable(data: CreateTableData, userId: string): Promise<PMTable> {
     const { data: table, error } = await supabase
@@ -217,6 +314,21 @@ class SharedTableService {
       .single();
 
     if (error) throw error;
+
+    // Automatically assign creator as owner
+    const { error: userError } = await supabase
+      .from('pm_table_users')
+      .insert({
+        table_id: table.id,
+        user_id: userId,
+        role: 'owner',
+      });
+
+    if (userError) {
+      console.error('Error assigning owner to table:', userError);
+      // Don't throw - table is created, user assignment can be fixed later
+    }
+
     return table as PMTable;
   }
 
@@ -494,6 +606,122 @@ class SharedTableService {
 
       if (error) throw error;
     }
+  }
+
+  /**
+   * Get all users assigned to a table with user details
+   */
+  async getTableUsers(tableId: string): Promise<TableUserWithDetails[]> {
+    const { data, error } = await supabase
+      .from('pm_table_users')
+      .select(`
+        *,
+        user:users!pm_table_users_user_id_fkey (
+          id,
+          name,
+          email
+        )
+      `)
+      .eq('table_id', tableId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+
+    return (data || []).map((item: any) => ({
+      id: item.id,
+      table_id: item.table_id,
+      user_id: item.user_id,
+      role: item.role,
+      created_at: item.created_at,
+      user: item.user ? {
+        id: item.user.id,
+        name: item.user.name,
+        email: item.user.email,
+      } : undefined,
+    })) as TableUserWithDetails[];
+  }
+
+  /**
+   * Assign users to a table (upsert - updates if exists, creates if not)
+   */
+  async assignUsers(tableId: string, users: AssignUserData[]): Promise<void> {
+    if (users.length === 0) {
+      // If no users, remove all assignments (except owner)
+      const { error } = await supabase
+        .from('pm_table_users')
+        .delete()
+        .eq('table_id', tableId)
+        .neq('role', 'owner');
+
+      if (error) throw error;
+      return;
+    }
+
+    // Upsert all user assignments
+    const assignments = users.map((user) => ({
+      table_id: tableId,
+      user_id: user.user_id,
+      role: user.role,
+    }));
+
+    const { error } = await supabase
+      .from('pm_table_users')
+      .upsert(assignments, {
+        onConflict: 'table_id,user_id',
+      });
+
+    if (error) throw error;
+
+    // Remove users that are not in the new list (except owner)
+    // First get all current users for this table
+    const { data: currentUsers, error: fetchError } = await supabase
+      .from('pm_table_users')
+      .select('user_id, role')
+      .eq('table_id', tableId);
+
+    if (fetchError) throw fetchError;
+
+    const userIds = users.map((u) => u.user_id);
+    const usersToRemove = (currentUsers || [])
+      .filter((cu) => !userIds.includes(cu.user_id) && cu.role !== 'owner')
+      .map((cu) => cu.user_id);
+
+    if (usersToRemove.length > 0) {
+      const { error: deleteError } = await supabase
+        .from('pm_table_users')
+        .delete()
+        .eq('table_id', tableId)
+        .in('user_id', usersToRemove);
+
+      if (deleteError) throw deleteError;
+    }
+  }
+
+  /**
+   * Remove a user from a table (cannot remove owner)
+   */
+  async removeTableUser(tableId: string, userId: string): Promise<void> {
+    const { error } = await supabase
+      .from('pm_table_users')
+      .delete()
+      .eq('table_id', tableId)
+      .eq('user_id', userId)
+      .neq('role', 'owner');
+
+    if (error) throw error;
+  }
+
+  /**
+   * Update user role for a table
+   */
+  async updateTableUserRole(tableId: string, userId: string, role: 'owner' | 'editor' | 'viewer'): Promise<void> {
+    const { error } = await supabase
+      .from('pm_table_users')
+      .update({ role })
+      .eq('table_id', tableId)
+      .eq('user_id', userId);
+
+    if (error) throw error;
   }
 }
 

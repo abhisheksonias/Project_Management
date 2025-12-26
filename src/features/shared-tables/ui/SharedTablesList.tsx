@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import { useSharedTables, useDeleteTable } from '../hooks/useSharedTables';
 import { PMTable } from '../services/sharedTableService';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Plus, Trash2, ExternalLink, Copy, Eye, Edit, Copy as CopyIcon, Link } from 'lucide-react';
+import { Plus, Trash2, ExternalLink, Copy, Eye, Edit, Copy as CopyIcon, Link, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { EditTableDialog } from './EditTableDialog';
 import { DuplicateTableDialog } from './DuplicateTableDialog';
+import { AssignUsersDialog } from './AssignUsersDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +34,10 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
 }) => {
   const { data: tables, isLoading } = useSharedTables();
   const deleteTableMutation = useDeleteTable();
+  const { profile } = useAuth();
+  
+  // Hide edit/assign/duplicate/delete buttons for User role
+  const isUserRole = profile?.role === 'User';
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<{
     open: boolean;
     table: PMTable | null;
@@ -41,6 +47,10 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
     table: PMTable | null;
   }>({ open: false, table: null });
   const [duplicateDialogOpen, setDuplicateDialogOpen] = useState<{
+    open: boolean;
+    table: PMTable | null;
+  }>({ open: false, table: null });
+  const [assignUsersDialogOpen, setAssignUsersDialogOpen] = useState<{
     open: boolean;
     table: PMTable | null;
   }>({ open: false, table: null });
@@ -90,81 +100,108 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
 
   return (
     <>
-      <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {tables.map((table) => (
           <Card
             key={table.id}
-            className="p-4 rounded-[14px] border border-border hover:shadow-md transition-shadow cursor-pointer"
             onClick={() => onTableClick(table.id)}
+            className="cursor-pointer rounded-[14px] border border-border p-4 hover:shadow-md transition-shadow"
           >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-lg font-semibold">{table.name}</h3>
-                  {table.is_public && (
-                    <Badge variant="outline" className="text-xs">
-                      Public
-                    </Badge>
+            <div className="flex h-full flex-col justify-between">
+              {/* Top section */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-lg font-semibold leading-tight">
+                      {table.name}
+                    </h3>
+                    {table.is_public && (
+                      <Badge variant="outline" className="text-xs">
+                        Public
+                      </Badge>
+                    )}
+                  </div>
+
+                  {table.description && (
+                    <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
+                      {table.description}
+                    </p>
                   )}
                 </div>
-                {table.description && (
-                  <p className="text-sm text-muted-foreground mb-2">
-                    {table.description}
-                  </p>
-                )}
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>
-                    Created {format(new Date(table.created_at), 'MMM d, yyyy')}
-                  </span>
-                  {table.allow_user_edit && (
-                    <span className="text-green-600">Editable</span>
+
+                {/* Action buttons */}
+                <div
+                  className="flex shrink-0 items-center gap-1"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {!isUserRole && (
+                    <>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Edit table"
+                        onClick={() => setEditDialogOpen({ open: true, table })}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Duplicate table"
+                        onClick={() => setDuplicateDialogOpen({ open: true, table })}
+                      >
+                        <CopyIcon className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Assign users"
+                        onClick={() => setAssignUsersDialogOpen({ open: true, table })}
+                      >
+                        <Users className="h-4 w-4" />
+                      </Button>
+
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        title="Delete table"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(table)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+
+                  {table.is_public && (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      title="Copy public link"
+                      onClick={() => copyPublicLink(table)}
+                    >
+                      <Link className="h-4 w-4" />
+                    </Button>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setEditDialogOpen({ open: true, table })}
-                  className="h-8 w-8 p-0"
-                  title="Edit table"
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => setDuplicateDialogOpen({ open: true, table })}
-                  className="h-8 w-8 p-0"
-                  title="Duplicate table"
-                >
-                  <CopyIcon className="h-4 w-4" />
-                </Button>
-                {table.is_public && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyPublicLink(table)}
-                    className="h-8 w-8 p-0"
-                    title="Copy public link"
-                  >
-                    <Link className="h-4 w-4" />
-                  </Button>
+
+              {/* Bottom meta */}
+              <div className="mt-4 flex items-center gap-4 text-xs text-muted-foreground">
+                <span>
+                  Created {format(new Date(table.created_at), 'MMM d, yyyy')}
+                </span>
+                {table.allow_user_edit && (
+                  <span className="text-green-600">Editable</span>
                 )}
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => handleDelete(table)}
-                  className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                  title="Delete table"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           </Card>
         ))}
       </div>
+
 
       <AlertDialog
         open={deleteDialogOpen.open}
@@ -200,6 +237,12 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
         open={duplicateDialogOpen.open}
         onOpenChange={(open) => setDuplicateDialogOpen({ open, table: null })}
         table={duplicateDialogOpen.table}
+      />
+
+      <AssignUsersDialog
+        open={assignUsersDialogOpen.open}
+        onOpenChange={(open) => setAssignUsersDialogOpen({ open, table: null })}
+        table={assignUsersDialogOpen.table}
       />
     </>
   );
