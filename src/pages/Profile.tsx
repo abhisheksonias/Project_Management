@@ -194,7 +194,9 @@ const Profile: React.FC = () => {
     } else if (tab === 'tasks') {
       navigate('/user/tasks');
     } else if (tab === 'reports') {
-      navigate('/user/dashboard');
+      navigate('/user/reports');
+    } else if (tab === 'shared-tables') {
+      navigate('/user/shared-tables');
     } else if (tab === 'settings') {
       navigate('/user/profile');
     }

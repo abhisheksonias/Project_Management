@@ -16,6 +16,7 @@ import {
   Building2,
   UserCog,
   DollarSign,
+  Table,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,7 @@ const navItems: NavItem[] = [
   { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
   { id: 'profit', label: 'Profit & Finance', icon: DollarSign, path: '/admin/profit' },
   { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
+  { id: 'shared-tables', label: 'Shared Tables', icon: Table, path: '/admin/shared-tables' },
 ];
 
 const SidebarContentInternal: React.FC<{
