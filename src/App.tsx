@@ -28,6 +28,8 @@ import UserManagement from "./pages/UserManagement";
 import UserCalendarView from "./pages/UserCalendarView";
 import AdminProfit from "./pages/AdminProfit";
 import AdminProfile from "./pages/AdminProfile";
+import SharedTables from "./pages/SharedTables";
+import PublicSharedTable from "./pages/PublicSharedTable";
 
 const queryClient = new QueryClient();
 
@@ -132,6 +134,14 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/admin/shared-tables" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <SharedTables />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Protected User Routes */}
           <Route 
@@ -190,6 +200,14 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/user/shared-tables" 
+            element={
+              <ProtectedRoute requiredRole="User">
+                <SharedTables />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Protected Sales Routes */}
           <Route 
@@ -200,6 +218,9 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          
+          {/* Public Routes */}
+          <Route path="/shared-table/:token" element={<PublicSharedTable />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

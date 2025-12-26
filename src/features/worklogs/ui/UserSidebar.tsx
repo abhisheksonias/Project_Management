@@ -12,7 +12,8 @@ import {
   BarChart3,
   Settings,
   Menu,
-  X
+  X,
+  Table,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,7 @@ const SidebarContentInternal: React.FC<{
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'shared-tables', label: 'Shared Tables', icon: Table },
   ];
 
   return (

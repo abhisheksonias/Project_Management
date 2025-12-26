@@ -169,6 +169,8 @@ const Projects: React.FC = () => {
       navigate('/user/tasks');
     } else if (tab === 'reports') {
       navigate('/user/reports');
+    } else if (tab === 'shared-tables') {
+      navigate('/user/shared-tables');
     } else if (tab === 'settings') {
       navigate('/user/profile');
     }
