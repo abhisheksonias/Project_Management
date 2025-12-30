@@ -110,22 +110,22 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
             <div className="flex h-full flex-col justify-between">
               {/* Top section */}
               <div className="flex items-start justify-between gap-3">
-                <div className="flex-1">
+              <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-semibold leading-tight">
                       {table.name}
                     </h3>
-                    {table.is_public && (
-                      <Badge variant="outline" className="text-xs">
-                        Public
-                      </Badge>
-                    )}
-                  </div>
+                  {table.is_public && (
+                    <Badge variant="outline" className="text-xs">
+                      Public
+                    </Badge>
+                  )}
+                </div>
 
-                  {table.description && (
+                {table.description && (
                     <p className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                      {table.description}
-                    </p>
+                    {table.description}
+                  </p>
                   )}
                 </div>
 
@@ -136,32 +136,32 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
                 >
                   {!isUserRole && (
                     <>
-                      <Button
+                <Button
                         size="icon"
-                        variant="ghost"
+                  variant="ghost"
                         title="Edit table"
-                        onClick={() => setEditDialogOpen({ open: true, table })}
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
+                  onClick={() => setEditDialogOpen({ open: true, table })}
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
 
-                      <Button
+                <Button
                         size="icon"
-                        variant="ghost"
+                  variant="ghost"
                         title="Duplicate table"
-                        onClick={() => setDuplicateDialogOpen({ open: true, table })}
-                      >
-                        <CopyIcon className="h-4 w-4" />
-                      </Button>
+                  onClick={() => setDuplicateDialogOpen({ open: true, table })}
+                >
+                  <CopyIcon className="h-4 w-4" />
+                </Button>
 
-                      <Button
+                <Button
                         size="icon"
-                        variant="ghost"
+                  variant="ghost"
                         title="Assign users"
-                        onClick={() => setAssignUsersDialogOpen({ open: true, table })}
-                      >
-                        <Users className="h-4 w-4" />
-                      </Button>
+                  onClick={() => setAssignUsersDialogOpen({ open: true, table })}
+                >
+                  <Users className="h-4 w-4" />
+                </Button>
 
                       <Button
                         size="icon"
@@ -175,16 +175,16 @@ export const SharedTablesList: React.FC<SharedTablesListProps> = ({
                     </>
                   )}
 
-                  {table.is_public && (
-                    <Button
+                {table.is_public && (
+                  <Button
                       size="icon"
-                      variant="ghost"
+                    variant="ghost"
                       title="Copy public link"
-                      onClick={() => copyPublicLink(table)}
-                    >
-                      <Link className="h-4 w-4" />
-                    </Button>
-                  )}
+                    onClick={() => copyPublicLink(table)}
+                  >
+                    <Link className="h-4 w-4" />
+                  </Button>
+                )}
                 </div>
               </div>
 

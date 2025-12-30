@@ -452,13 +452,23 @@ const MentionItem: React.FC<MentionItemProps> = ({ mention, onAcknowledge, onVie
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
+          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+              mention.type === 'project' 
+                ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' 
+                : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+            }`}>
+              {mention.projectName}
+            </span>
+            {/* <span className="text-xs font-semibold  text-foreground">
+              {mention.projectName}
+            </span> */}
             <span className="text-xs font-semibold text-foreground">
               {mention.user_name}
             </span>
-            <span className="text-xs text-muted-foreground">mentioned you in</span>
+            {/* <span className="text-xs text-muted-foreground">mentioned you in</span> */}
           </div>
           <div className="text-xs font-medium text-primary mb-1">
-            {mention.type === 'project' ? mention.projectName : mention.taskName}
+            {mention.type === 'project' ? ' ' : mention.taskName}
           </div>
           <div className="text-xs text-muted-foreground line-clamp-2 mb-2">
             <HtmlContent content={mention.message} className="text-xs" />
