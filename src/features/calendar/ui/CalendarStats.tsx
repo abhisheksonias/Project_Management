@@ -23,11 +23,11 @@ export const CalendarStats: React.FC<CalendarStatsProps> = ({
           <span className="text-xs sm:text-sm">Non-billable</span>
         </div>
       </div>
-      <div className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-semibold flex-wrap">
+      {/* <div className="flex items-center gap-3 sm:gap-6 text-xs sm:text-sm font-semibold flex-wrap">
         <span>Billable: <span className="text-primary">{billableHours}h</span></span>
         <span>Non-billable: <span className="text-muted-foreground">{nonBillableHours}h</span></span>
         <span>Total: <span className="text-primary">{totalHours}h</span></span>
-      </div>
+      </div> */}
     </div>
   );
 };
