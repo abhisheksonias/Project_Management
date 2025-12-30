@@ -65,14 +65,14 @@ const AdminWorkCalendar: React.FC = () => {
     const lastDay = endOfMonth(currentMonth);
     const startCalendar = startOfWeek(firstDay, { weekStartsOn: 0 });
     const endCalendar = endOfWeek(lastDay, { weekStartsOn: 0 });
-    
+
     return eachDayOfInterval({ start: startCalendar, end: endCalendar });
   }, [currentMonth]);
 
   // Navigation handlers
   const navigateMonth = (direction: 'prev' | 'next') => {
-    const newMonth = direction === 'next' 
-      ? addMonths(currentMonth, 1) 
+    const newMonth = direction === 'next'
+      ? addMonths(currentMonth, 1)
       : subMonths(currentMonth, 1);
     setCurrentMonth(newMonth);
   };
@@ -120,7 +120,7 @@ const AdminWorkCalendar: React.FC = () => {
                           {stats.billableHours.toFixed(1)}h
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {stats.totalHours > 0 
+                          {stats.totalHours > 0
                             ? `${Math.round((stats.billableHours / stats.totalHours) * 100)}% of total`
                             : '0% of total'}
                         </p>
@@ -145,7 +145,7 @@ const AdminWorkCalendar: React.FC = () => {
                           {stats.nonBillableHours.toFixed(1)}h
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {stats.totalHours > 0 
+                          {stats.totalHours > 0
                             ? `${Math.round((stats.nonBillableHours / stats.totalHours) * 100)}% of total`
                             : '0% of total'}
                         </p>
@@ -196,16 +196,26 @@ const AdminWorkCalendar: React.FC = () => {
                         Today
                       </Button>
                     </div>
+                    <div className="flex items-center gap-3 sm:gap-6 flex-wrap">
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-primary" />
+                        <span className="text-xs sm:text-sm">Billable</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2">
+                        <div className="h-2.5 w-2.5 sm:h-3 sm:w-3 rounded bg-gray-400" />
+                        <span className="text-xs sm:text-sm">Non-billable</span>
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Calendar Stats */}
-              <CalendarStats
+              {/* <CalendarStats
                 billableHours={stats.billableHours}
                 nonBillableHours={stats.nonBillableHours}
                 totalHours={stats.totalHours}
-              />
+              /> */}
 
               {/* Calendar Grid */}
               <CalendarGrid
