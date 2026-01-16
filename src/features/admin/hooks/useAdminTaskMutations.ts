@@ -75,6 +75,7 @@ export const useUpdateTaskStatusAdmin = () => {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'tasks'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'projects'] });
       toast.success('Task status updated');
     },
     onError: (error: Error) => {

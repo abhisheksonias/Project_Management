@@ -42,6 +42,7 @@ import {
   useUpdateProject,
   useDeleteProject,
 } from '@/features/admin/hooks/useAdminProjectMutations';
+import { useUpdateTaskStatusAdmin } from '@/features/admin/hooks/useAdminTaskMutations';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Send, Calendar, FileText, CheckCircle2, Trash2, Edit2, Clock, User, AlertCircle, Building2, ChevronDown, ChevronUp } from 'lucide-react';
@@ -99,6 +100,7 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
   const updateCommentMutation = useUpdateProjectComment();
   const updateProjectMutation = useUpdateProject();
   const deleteProjectMutation = useDeleteProject();
+  const updateTaskStatusMutation = useUpdateTaskStatusAdmin();
   const { data: vendors = [] } = useVendors();
 
   // Form state
@@ -409,10 +411,21 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
         return 'bg-blue-100 text-blue-800';
       case 'blocked':
         return 'bg-red-100 text-red-800';
+      case 'review':
+        return 'bg-purple-100 text-purple-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const handleTaskStatusChange = (taskId: string, newStatus: string) => {
+    updateTaskStatusMutation.mutate({
+      taskId,
+      status: newStatus,
+    });
+  };
+
+  const TASK_STATUS_OPTIONS = ['To Do', 'In Progress', 'Review', 'Blocked', 'Completed'];
 
   return (
     <>
@@ -731,9 +744,27 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                                     <div className="flex-1 min-w-0">
                                       <div className="flex items-center gap-2 flex-wrap mb-2">
                                         <h4 className="font-medium text-sm">{task.name}</h4>
-                                        <Badge className={cn('text-xs px-1.5 py-0', getTaskStatusColor(task.status))}>
-                                          {task.status || 'N/A'}
-                                        </Badge>
+                                        <Select
+                                          value={task.status || 'To Do'}
+                                          onValueChange={(newStatus) => handleTaskStatusChange(task.id, newStatus)}
+                                          disabled={updateTaskStatusMutation.isPending}
+                                        >
+                                          <SelectTrigger className={cn(
+                                            'h-6 w-auto text-xs px-1.5 py-0 border-none shadow-none focus:ring-0 focus:ring-offset-0',
+                                            getTaskStatusColor(task.status || 'To Do')
+                                          )}>
+                                            <SelectValue>
+                                              <span className="font-medium">{task.status || 'To Do'}</span>
+                                            </SelectValue>
+                                          </SelectTrigger>
+                                          <SelectContent className="rounded-[14px]">
+                                            {TASK_STATUS_OPTIONS.map((status) => (
+                                              <SelectItem key={status} value={status}>
+                                                {status}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
                                         {task.priority && (
                                           <Badge variant="outline" className="text-xs px-1.5 py-0">
                                             {task.priority}

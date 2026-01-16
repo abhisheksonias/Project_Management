@@ -1,7 +1,25 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { Plus, Trash2, Calendar as CalendarIcon, ExternalLink, Settings2, X, Download } from 'lucide-react';
+import { Plus, Trash2, Calendar as CalendarIcon, ExternalLink, Settings2, X, Download, GripVertical } from 'lucide-react';
 import { utils, writeFile } from 'xlsx';
 import { cn } from '@/lib/utils';
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 // Components
 import { Button } from '@/components/ui/button';
@@ -26,7 +44,7 @@ import {
 
 // Services & Hooks
 import { TableWithData, PMTableColumn } from '../services/sharedTableService';
-import { useUpdateCell, useCreateRow, useDeleteRow, useDeleteColumn, useUpdateColumn } from '../hooks/useSharedTables';
+import { useUpdateCell, useCreateRow, useDeleteRow, useDeleteColumn, useUpdateColumn, useReorderColumns, useReorderRows } from '../hooks/useSharedTables';
 
 // Utils
 import { formatDateLocal, parseDateLocal } from '../utils/dateUtils';
@@ -56,6 +74,7 @@ interface EditableColumnHeaderProps {
   onUpdate: (columnId: string, columnName: string) => void;
   onDelete?: (columnId: string) => void;
   onUpdateConfig?: (columnId: string, config: Record<string, any>) => void;
+  isDragging?: boolean;
 }
 
 const EditableColumnHeader: React.FC<EditableColumnHeaderProps> = ({
@@ -64,6 +83,7 @@ const EditableColumnHeader: React.FC<EditableColumnHeaderProps> = ({
   onUpdate,
   onDelete,
   onUpdateConfig,
+  isDragging = false,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localName, setLocalName] = useState(column.column_name);
@@ -96,7 +116,7 @@ const EditableColumnHeader: React.FC<EditableColumnHeaderProps> = ({
   }
 
   return (
-    <div className="flex items-center gap-1 flex-1 min-w-0">
+    <div className={cn("flex items-center gap-1 flex-1 min-w-0", isDragging && "opacity-50")}>
       {isEditing ? (
         <Input
           value={localName}
@@ -535,6 +555,155 @@ const EditableCell: React.FC<EditableCellProps> = ({
   );
 };
 
+// Sortable Column Header Component
+interface SortableColumnHeaderProps {
+  column: PMTableColumn;
+  isReadOnly: boolean;
+  onUpdate: (columnId: string, columnName: string) => void;
+  onDelete?: (columnId: string) => void;
+  onUpdateConfig?: (columnId: string, config: Record<string, any>) => void;
+}
+
+const SortableColumnHeader: React.FC<SortableColumnHeaderProps> = ({
+  column,
+  isReadOnly,
+  onUpdate,
+  onDelete,
+  onUpdateConfig,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.id, disabled: isReadOnly });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <th
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "px-2 py-1.5 text-left font-semibold text-xs uppercase tracking-wide border-b border-border",
+        isDragging && "opacity-50"
+      )}
+    >
+      <div className="flex items-center justify-between group">
+        <div className="flex items-center gap-1 flex-1 min-w-0">
+          {!isReadOnly && (
+            <button
+              {...attributes}
+              {...listeners}
+              className="cursor-grab active:cursor-grabbing touch-none p-0.5 hover:bg-muted/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+              title="Drag to reorder column"
+            >
+              <GripVertical className="h-3 w-3 text-muted-foreground" />
+            </button>
+          )}
+          <EditableColumnHeader
+            column={column}
+            isReadOnly={isReadOnly}
+            onUpdate={onUpdate}
+            onDelete={onDelete}
+            onUpdateConfig={onUpdateConfig}
+            isDragging={isDragging}
+          />
+        </div>
+      </div>
+    </th>
+  );
+};
+
+// Sortable Row Component
+interface SortableRowProps {
+  row: TableWithData['rows'][0];
+  columns: PMTableColumn[];
+  isReadOnly: boolean;
+  onCellUpdate: (rowId: string, columnId: string, value: string | null) => void;
+  onDeleteRow: (rowId: string) => void;
+  deleteRowMutation: { isPending: boolean };
+}
+
+const SortableRow: React.FC<SortableRowProps> = ({
+  row,
+  columns,
+  isReadOnly,
+  onCellUpdate,
+  onDeleteRow,
+  deleteRowMutation,
+}) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id, disabled: isReadOnly });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "group border-b border-border hover:bg-secondary/30 transition-colors",
+        isDragging && "opacity-50 bg-secondary/50"
+      )}
+    >
+      {!isReadOnly && (
+        <td className="px-1 py-0.5 w-8">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing touch-none p-1 hover:bg-muted/50 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+            title="Drag to reorder row"
+          >
+            <GripVertical className="h-3 w-3 text-muted-foreground" />
+          </button>
+        </td>
+      )}
+      {columns.map((column) => {
+        const cell = row.cells.find((c) => c.column_id === column.id);
+        return (
+          <td key={column.id} className="align-top px-1 py-0.5">
+            <EditableCell
+              column={column}
+              value={cell?.value || null}
+              rowId={row.id}
+              isReadOnly={isReadOnly}
+              onUpdate={onCellUpdate}
+            />
+          </td>
+        );
+      })}
+      {!isReadOnly && (
+        <td className="px-1 py-0.5 text-center">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDeleteRow(row.id)}
+            disabled={deleteRowMutation.isPending}
+            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </td>
+      )}
+    </tr>
+  );
+};
+
 export const SharedTableView: React.FC<SharedTableViewProps> = ({
   table,
   isReadOnly = false,
@@ -545,6 +714,24 @@ export const SharedTableView: React.FC<SharedTableViewProps> = ({
   const createRowMutation = useCreateRow();
   const deleteRowMutation = useDeleteRow();
   const updateColumnMutation = useUpdateColumn();
+  const reorderColumnsMutation = useReorderColumns();
+  const reorderRowsMutation = useReorderRows();
+
+  // Sensors for drag and drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // Require 8px of movement before activating
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Local state for columns and rows order (for optimistic updates)
+  const [columnsOrder, setColumnsOrder] = useState<string[]>([]);
+  const [rowsOrder, setRowsOrder] = useState<string[]>([]);
 
   const handleCellUpdate = useCallback(
     (rowId: string, columnId: string, value: string | null) => {
@@ -603,14 +790,104 @@ export const SharedTableView: React.FC<SharedTableViewProps> = ({
     [table.rows]
   );
 
+  // Initialize order state when table data changes
+  useEffect(() => {
+    const currentColumnIds = sortedColumns.map((col) => col.id).sort().join(',');
+    const orderColumnIds = [...columnsOrder].sort().join(',');
+    
+    // Reset if columns changed (added/removed) or if order is empty
+    if (columnsOrder.length === 0 || currentColumnIds !== orderColumnIds) {
+      setColumnsOrder(sortedColumns.map((col) => col.id));
+    }
+  }, [sortedColumns, columnsOrder]);
+
+  useEffect(() => {
+    const currentRowIds = sortedRows.map((row) => row.id).sort().join(',');
+    const orderRowIds = [...rowsOrder].sort().join(',');
+    
+    // Reset if rows changed (added/removed) or if order is empty
+    if (rowsOrder.length === 0 || currentRowIds !== orderRowIds) {
+      setRowsOrder(sortedRows.map((row) => row.id));
+    }
+  }, [sortedRows, rowsOrder]);
+
+  // Get ordered columns and rows based on local state
+  const orderedColumns = useMemo(() => {
+    if (columnsOrder.length === 0) return sortedColumns;
+    return columnsOrder
+      .map((id) => sortedColumns.find((col) => col.id === id))
+      .filter((col): col is PMTableColumn => col !== undefined)
+      .concat(sortedColumns.filter((col) => !columnsOrder.includes(col.id)));
+  }, [columnsOrder, sortedColumns]);
+
+  const orderedRows = useMemo(() => {
+    if (rowsOrder.length === 0) return sortedRows;
+    return rowsOrder
+      .map((id) => sortedRows.find((row) => row.id === id))
+      .filter((row): row is TableWithData['rows'][0] => row !== undefined)
+      .concat(sortedRows.filter((row) => !rowsOrder.includes(row.id)));
+  }, [rowsOrder, sortedRows]);
+
+  // Handle column drag end
+  const handleColumnDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const oldIndex = columnsOrder.indexOf(active.id as string);
+      const newIndex = columnsOrder.indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(columnsOrder, oldIndex, newIndex);
+        setColumnsOrder(newOrder);
+
+        // Update in database
+        reorderColumnsMutation.mutate({
+          tableId: table.id,
+          columnIds: newOrder,
+        });
+      }
+    },
+    [columnsOrder, table.id, reorderColumnsMutation]
+  );
+
+  // Handle row drag end
+  const handleRowDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+
+      if (!over || active.id === over.id) {
+        return;
+      }
+
+      const oldIndex = rowsOrder.indexOf(active.id as string);
+      const newIndex = rowsOrder.indexOf(over.id as string);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(rowsOrder, oldIndex, newIndex);
+        setRowsOrder(newOrder);
+
+        // Update in database
+        reorderRowsMutation.mutate({
+          tableId: table.id,
+          rowIds: newOrder,
+        });
+      }
+    },
+    [rowsOrder, table.id, reorderRowsMutation]
+  );
+
   const handleExportToExcel = useCallback(() => {
     try {
       // Prepare headers
-      const headers = sortedColumns.map((col) => col.column_name);
+      const headers = orderedColumns.map((col) => col.column_name);
 
       // Prepare data rows
-      const dataRows = sortedRows.map((row) => {
-        return sortedColumns.map((column) => {
+      const dataRows = orderedRows.map((row) => {
+        return orderedColumns.map((column) => {
           const cell = row.cells.find((c) => c.column_id === column.id);
           return formatCellValueForExport(column, cell?.value || null);
         });
@@ -621,7 +898,7 @@ export const SharedTableView: React.FC<SharedTableViewProps> = ({
       const worksheet = utils.aoa_to_sheet(worksheetData);
 
       // Set column widths
-      const columnWidths = sortedColumns.map(() => ({ wch: 15 }));
+      const columnWidths = orderedColumns.map(() => ({ wch: 15 }));
       worksheet['!cols'] = columnWidths;
 
       // Create workbook
@@ -637,7 +914,7 @@ export const SharedTableView: React.FC<SharedTableViewProps> = ({
       console.error('Error exporting to Excel:', error);
       alert('Failed to export to Excel. Please try again.');
     }
-  }, [sortedColumns, sortedRows, table.name]);
+  }, [orderedColumns, orderedRows, table.name]);
 
   return (
     <Card className="rounded-[14px] border border-border bg-card shadow-sm overflow-hidden">
@@ -692,90 +969,92 @@ export const SharedTableView: React.FC<SharedTableViewProps> = ({
 
       {/* Table */}
       <div className="overflow-x-auto max-h-[calc(100vh-300px)]">
-        <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
-          <colgroup>
-            {sortedColumns.map((_, index) => {
-              // Calculate equal width for data columns, accounting for actions column
-              const actionsColWidth = isReadOnly ? 0 : 40;
-              const dataColsCount = sortedColumns.length;
-              const colWidth = `calc((100% - ${actionsColWidth}px) / ${dataColsCount})`;
-              return <col key={index} style={{ width: colWidth }} />;
-            })}
-            {!isReadOnly && <col style={{ width: '40px', minWidth: '40px' }} />}
-          </colgroup>
-          <thead className="bg-secondary sticky top-0 z-10">
-            <tr>
-              {sortedColumns.map((column) => (
-                <th
-                  key={column.id}
-                  className="px-2 py-1.5 text-left font-semibold text-xs uppercase tracking-wide border-b border-border"
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={(event) => {
+            // Determine if it's a column or row drag based on the active element
+            const activeId = event.active.id as string;
+            if (columnsOrder.includes(activeId)) {
+              handleColumnDragEnd(event);
+            } else if (rowsOrder.includes(activeId)) {
+              handleRowDragEnd(event);
+            }
+          }}
+        >
+          <table className="w-full border-collapse" style={{ tableLayout: 'fixed' }}>
+            <colgroup>
+              {!isReadOnly && <col style={{ width: '32px', minWidth: '32px' }} />}
+              {orderedColumns.map((_, index) => {
+                // Calculate equal width for data columns, accounting for actions column
+                const actionsColWidth = isReadOnly ? 0 : 40;
+                const dragHandleWidth = isReadOnly ? 0 : 32;
+                const dataColsCount = orderedColumns.length;
+                const colWidth = `calc((100% - ${actionsColWidth + dragHandleWidth}px) / ${dataColsCount})`;
+                return <col key={index} style={{ width: colWidth }} />;
+              })}
+              {!isReadOnly && <col style={{ width: '40px', minWidth: '40px' }} />}
+            </colgroup>
+            <thead className="bg-secondary sticky top-0 z-10">
+              <tr>
+                {!isReadOnly && (
+                  <th className="px-1 py-1.5 text-center font-semibold text-xs uppercase tracking-wide border-b border-border w-8">
+                    {/* Drag handle column header */}
+                  </th>
+                )}
+                <SortableContext
+                  items={orderedColumns.map((col) => col.id)}
+                  strategy={horizontalListSortingStrategy}
                 >
-                  <div className="flex items-center justify-between group">
-                    <EditableColumnHeader
+                  {orderedColumns.map((column) => (
+                    <SortableColumnHeader
+                      key={column.id}
                       column={column}
                       isReadOnly={isReadOnly}
                       onUpdate={handleColumnNameUpdate}
                       onDelete={!isReadOnly && onDeleteColumn ? onDeleteColumn : undefined}
                       onUpdateConfig={!isReadOnly ? handleColumnConfigUpdate : undefined}
                     />
-                  </div>
-                </th>
-              ))}
-              {!isReadOnly && (
-                <th className="px-1 py-1.5 text-center font-semibold text-xs uppercase tracking-wide border-b border-border w-10">
-                  Actions
-                </th>
-              )}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedRows.length === 0 ? (
-              <tr>
-                <td
-                  colSpan={sortedColumns.length + (isReadOnly ? 0 : 1)}
-                  className="px-2 py-4 text-center text-muted-foreground text-xs"
-                >
-                  No rows yet. {!isReadOnly && 'Click "Add Row" to get started.'}
-                </td>
+                  ))}
+                </SortableContext>
+                {!isReadOnly && (
+                  <th className="px-1 py-1.5 text-center font-semibold text-xs uppercase tracking-wide border-b border-border w-10">
+                    Actions
+                  </th>
+                )}
               </tr>
-            ) : (
-              sortedRows.map((row) => (
-                <tr
-                  key={row.id}
-                  className="border-b border-border hover:bg-secondary/30 transition-colors"
-                >
-                  {sortedColumns.map((column) => {
-                    const cell = row.cells.find((c) => c.column_id === column.id);
-                    return (
-                      <td key={column.id} className="align-top px-1 py-0.5">
-                        <EditableCell
-                          column={column}
-                          value={cell?.value || null}
-                          rowId={row.id}
-                          isReadOnly={isReadOnly}
-                          onUpdate={handleCellUpdate}
-                        />
-                      </td>
-                    );
-                  })}
-                  {!isReadOnly && (
-                    <td className="px-1 py-0.5 text-center">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => handleDeleteRow(row.id)}
-                        disabled={deleteRowMutation.isPending}
-                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </td>
-                  )}
+            </thead>
+            <tbody className="group">
+              {orderedRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={orderedColumns.length + (isReadOnly ? 0 : 2)}
+                    className="px-2 py-4 text-center text-muted-foreground text-xs"
+                  >
+                    No rows yet. {!isReadOnly && 'Click "Add Row" to get started.'}
+                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : (
+                <SortableContext
+                  items={orderedRows.map((row) => row.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {orderedRows.map((row) => (
+                    <SortableRow
+                      key={row.id}
+                      row={row}
+                      columns={orderedColumns}
+                      isReadOnly={isReadOnly}
+                      onCellUpdate={handleCellUpdate}
+                      onDeleteRow={handleDeleteRow}
+                      deleteRowMutation={deleteRowMutation}
+                    />
+                  ))}
+                </SortableContext>
+              )}
+            </tbody>
+          </table>
+        </DndContext>
       </div>
     </Card>
   );
