@@ -104,6 +104,10 @@ class AdminProjectService {
       .insert({
         ...data,
         created_at: new Date().toISOString(),
+        client_access_token: (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+          ? (crypto as any).randomUUID()
+          : // fallback: generate a simple UUID-like token
+            `${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`,
       })
       .select('*, vendors(id, name, email, phone, website)')
       .single();

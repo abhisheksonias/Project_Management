@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { usePublicSharedTable } from '@/features/shared-tables/hooks/useSharedTables';
 import { SharedTableView } from '@/features/shared-tables/ui/SharedTableView';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card } from '@/components/ui/card';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, MessageSquare } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const PublicSharedTable: React.FC = () => {
   const { token } = useParams<{ token: string }>();
   const { data: table, isLoading, error } = usePublicSharedTable(token || null);
+  const [showChangeRequestForm, setShowChangeRequestForm] = useState(false);
 
   if (isLoading) {
     return (
@@ -36,7 +38,8 @@ const PublicSharedTable: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-muted/30 p-4">
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto space-y-4">
+        {/* Shared Table */}
         <SharedTableView table={table} isReadOnly={true} />
       </div>
     </div>

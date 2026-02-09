@@ -31,6 +31,8 @@ import AdminProfile from "./pages/AdminProfile";
 import AdminWorkCalendar from "./pages/AdminWorkCalendar";
 import SharedTables from "./pages/SharedTables";
 import PublicSharedTable from "./pages/PublicSharedTable";
+import PublicChangeRequests from "./pages/PublicChangeRequests";
+import AdminChangeRequests from "./pages/AdminChangeRequests";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminProjects />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/change-requests" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminChangeRequests />
               </ProtectedRoute>
             } 
           />
@@ -151,6 +161,7 @@ const App = () => (
               </ProtectedRoute>
             } 
           />
+          {/* Change requests route removed */}
           
           {/* Protected User Routes */}
           <Route 
@@ -230,6 +241,7 @@ const App = () => (
           
           {/* Public Routes */}
           <Route path="/shared-table/:token" element={<PublicSharedTable />} />
+          <Route path="/project-change-requests" element={<PublicChangeRequests />} />
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

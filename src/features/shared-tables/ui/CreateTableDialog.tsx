@@ -12,8 +12,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useCreateTable } from '../hooks/useSharedTables';
 import { CreateTableData } from '../services/sharedTableService';
+import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjects';
 
 interface CreateTableDialogProps {
   open: boolean;
@@ -24,11 +32,13 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
   open,
   onOpenChange,
 }) => {
+  const { data: projects = [] } = useAdminProjectsForFilter();
   const [formData, setFormData] = useState<CreateTableData>({
     name: '',
     description: '',
     is_public: false,
     allow_user_edit: true,
+    project_id: null,
   });
 
   const createTableMutation = useCreateTable();
@@ -46,6 +56,7 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
         description: '',
         is_public: false,
         allow_user_edit: true,
+        project_id: null,
       });
       onOpenChange(false);
     } catch (error) {
@@ -85,6 +96,30 @@ export const CreateTableDialog: React.FC<CreateTableDialogProps> = ({
                 className="rounded-[14px]"
                 rows={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project">Link to Project (Optional)</Label>
+              <Select
+                value={formData.project_id || 'none'}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, project_id: value === 'none' ? null : value })
+                }
+              >
+                <SelectTrigger id="project" className="rounded-[14px]">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  <SelectItem value="none">No Project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Link this table to a specific project for better organization
+              </p>
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

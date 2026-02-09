@@ -21,6 +21,7 @@ export type Database = {
           created_at: string | null
           deadline: string | null
           description: string | null
+          client_access_token: string | null
           id: string
           name: string
           priority: string | null
@@ -33,6 +34,7 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          client_access_token?: string | null
           id?: string
           name: string
           priority?: string | null
@@ -45,6 +47,7 @@ export type Database = {
           created_at?: string | null
           deadline?: string | null
           description?: string | null
+          client_access_token?: string | null
           id?: string
           name?: string
           priority?: string | null
@@ -66,6 +69,56 @@ export type Database = {
             referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
+        ]
+      }
+      change_requests: {
+        Row: {
+          id: string
+          project_id: string
+          title: string
+          description: string
+          category: string
+          attachment_urls: Json | null
+          reference_links: Json | null
+          status: string
+          created_by: string | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          project_id: string
+          title: string
+          description: string
+          category: string
+          attachment_urls?: Json | null
+          reference_links?: Json | null
+          status?: string
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          project_id?: string
+          title?: string
+          description?: string
+          category?: string
+          attachment_urls?: Json | null
+          reference_links?: Json | null
+          status?: string
+          created_by?: string | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "change_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          }
         ]
       }
       vendors: {

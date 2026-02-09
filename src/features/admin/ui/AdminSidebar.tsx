@@ -18,6 +18,7 @@ import {
   DollarSign,
   Table,
   Calendar,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -37,6 +38,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/admin/dashboard' },
   { id: 'projects', label: 'Projects', icon: Briefcase, path: '/admin/projects' },
+  { id: 'change-requests', label: 'Change Requests', icon: MessageSquare, path: '/admin/change-requests' },
   { id: 'tasks', label: 'Tasks', icon: CheckSquare, path: '/admin/tasks' },
   { id: 'worklogs', label: 'Worklogs', icon: Clock, path: '/admin/worklogs' },
   { id: 'users', label: 'User Management', icon: UserCog, path: '/admin/users' },

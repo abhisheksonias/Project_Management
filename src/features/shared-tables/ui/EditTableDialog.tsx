@@ -12,8 +12,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useUpdateTable } from '../hooks/useSharedTables';
 import { UpdateTableData, PMTable } from '../services/sharedTableService';
+import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjects';
 
 interface EditTableDialogProps {
   open: boolean;
@@ -26,11 +34,13 @@ export const EditTableDialog: React.FC<EditTableDialogProps> = ({
   onOpenChange,
   table,
 }) => {
+  const { data: projects = [] } = useAdminProjectsForFilter();
   const [formData, setFormData] = useState<UpdateTableData>({
     name: '',
     description: '',
     is_public: false,
     allow_user_edit: true,
+    project_id: null,
   });
 
   const updateTableMutation = useUpdateTable();
@@ -42,6 +52,7 @@ export const EditTableDialog: React.FC<EditTableDialogProps> = ({
         description: table.description || '',
         is_public: table.is_public,
         allow_user_edit: table.allow_user_edit,
+        project_id: table.project_id || null,
       });
     }
   }, [table, open]);
@@ -97,6 +108,30 @@ export const EditTableDialog: React.FC<EditTableDialogProps> = ({
                 className="rounded-[14px]"
                 rows={3}
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="project">Link to Project (Optional)</Label>
+              <Select
+                value={formData.project_id || 'none'}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, project_id: value === 'none' ? null : value })
+                }
+              >
+                <SelectTrigger id="project" className="rounded-[14px]">
+                  <SelectValue placeholder="Select a project" />
+                </SelectTrigger>
+                <SelectContent className="rounded-[14px]">
+                  <SelectItem value="none">No Project</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Link this table to a specific project for better organization
+              </p>
             </div>
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">

@@ -69,7 +69,7 @@ import { MilestonesTabContent } from './MilestonesTabContent';
 import { useVendors } from '@/features/vendors/hooks/useVendors';
 import { HtmlContent } from '@/shared/ui/HtmlContent';
 import { stripHtml } from '@/shared/utils/htmlUtils';
-import { useEditor } from '@tiptap/react';
+import { useEditor, Editor } from '@tiptap/react';
 
 interface AdminProjectDetailsPanelProps {
   project: Project | null;
@@ -472,6 +472,24 @@ export const AdminProjectDetailsPanel: React.FC<AdminProjectDetailsPanelProps> =
                 >
                   <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
                   <span className="hidden sm:inline">Edit</span>
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const token = (project as any).client_access_token;
+                    if (!token) {
+                      toast.error('No client link available for this project');
+                      return;
+                    }
+                    const url = `${window.location.origin}/project-change-requests?project_id=${project.id}&token=${token}`;
+                    navigator.clipboard?.writeText(url);
+                    toast.success('Client link copied to clipboard');
+                  }}
+                  className="text-xs sm:text-sm h-8 sm:h-9"
+                >
+                  <User className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Copy Client Link</span>
                 </Button>
                 <Button
                   size="sm"

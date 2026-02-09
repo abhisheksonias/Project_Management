@@ -12,6 +12,7 @@ export interface PMTable {
   is_public: boolean;
   public_token: string | null;
   allow_user_edit: boolean;
+  project_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -58,6 +59,7 @@ export interface CreateTableData {
   description?: string;
   is_public?: boolean;
   allow_user_edit?: boolean;
+  project_id?: string | null;
 }
 
 export interface UpdateTableData {
@@ -65,6 +67,7 @@ export interface UpdateTableData {
   description?: string;
   is_public?: boolean;
   allow_user_edit?: boolean;
+  project_id?: string | null;
 }
 
 export interface CreateColumnData {
@@ -309,6 +312,7 @@ class SharedTableService {
         created_by: userId,
         is_public: data.is_public || false,
         allow_user_edit: data.allow_user_edit !== false, // Default true
+        project_id: data.project_id || null,
       })
       .select()
       .single();
