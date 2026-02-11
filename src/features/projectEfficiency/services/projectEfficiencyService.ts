@@ -253,13 +253,13 @@ class ProjectEfficiencyService {
       dailyHoursMap.set(dateKey, currentHours + parseHours(log.hours));
     });
 
-    // Convert to array, sorted by date
+    // Convert to array, sorted by date (using dateKey for proper chronological order)
     const result: ProjectDailyHoursData[] = Array.from(dailyHoursMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0])) // Sort by dateKey (yyyy-MM-dd) for proper chronological order
       .map(([dateKey, hours]) => ({
         date: format(new Date(dateKey), 'MMM dd'),
         hours,
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      }));
 
     return result;
   }
