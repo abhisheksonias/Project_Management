@@ -199,6 +199,8 @@ const Profile: React.FC = () => {
       navigate('/user/shared-tables');
     } else if (tab === 'settings') {
       navigate('/user/profile');
+    } else if (tab === 'change-requests') {
+      navigate('/user/change-requests');
     }
   };
 

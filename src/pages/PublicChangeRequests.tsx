@@ -62,15 +62,15 @@ const PublicChangeRequests: React.FC = () => {
   if (!valid) return <div className="p-6">Invalid or expired link.</div>;
 
   return (
-    <div className="max-w-4xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto p-6">
       <h1 className="text-2xl font-semibold mb-4">Change Requests for {projectName}</h1>
 
       <div className="mb-6 text-sm text-muted-foreground">
         Use this link to submit change requests to the project. Files (images/PDFs) and reference links are supported.
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-4 rounded shadow-sm">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white p-4 rounded shadow-sm md:col-span-2">
           <h2 className="text-lg font-medium mb-2">Submit a Request</h2>
           <ChangeRequestForm projectId={projectId!} onSubmitted={() => setRefreshKey((k) => k + 1)} />
         </div>

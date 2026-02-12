@@ -38,6 +38,8 @@ const UserDashboard: React.FC = () => {
       navigate('/user/tasks');
     } else if (tab === 'reports') {
       navigate('/user/reports');
+    } else if (tab === 'change-requests') {
+      navigate('/user/change-requests');
     } else if (tab === 'shared-tables') {
       navigate('/user/shared-tables');
     } else if (tab === 'settings') {

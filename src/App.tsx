@@ -33,6 +33,7 @@ import SharedTables from "./pages/SharedTables";
 import PublicSharedTable from "./pages/PublicSharedTable";
 import PublicChangeRequests from "./pages/PublicChangeRequests";
 import AdminChangeRequests from "./pages/AdminChangeRequests";
+import UserChangeRequests from "./pages/UserChangeRequests";
 
 const queryClient = new QueryClient();
 
@@ -193,6 +194,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="User">
                 <Projects />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/user/change-requests" 
+            element={
+              <ProtectedRoute requiredRole="User">
+                <UserChangeRequests />
               </ProtectedRoute>
             } 
           />

@@ -33,6 +33,7 @@ const SidebarContentInternal: React.FC<{
     { id: 'dashboard', label: 'Dashboard', icon: LayoutGrid },
     { id: 'projects', label: 'Projects', icon: FolderOpen },
     { id: 'tasks', label: 'Tasks', icon: CheckSquare },
+    { id: 'change-requests', label: 'Change Requests', icon: FolderOpen },
     { id: 'calendar', label: 'Calendar', icon: Calendar },
     { id: 'reports', label: 'Reports', icon: BarChart3 },
     { id: 'shared-tables', label: 'Shared Tables', icon: Table },
