@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import DOMPurify from 'dompurify';
 import { changeRequestService, ChangeRequest } from '@/features/changeRequests/services/changeRequestService';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 
 interface Props {
@@ -51,7 +53,21 @@ export const ChangeRequestsList: React.FC<Props> = ({ projectId }) => {
               <span className="text-sm font-semibold">{r.status}</span>
             </div>
           </div>
-          <div className="mt-2 text-sm text-foreground">{r.description}</div>
+          <div className="mt-2 text-sm">
+            <Accordion type="single" collapsible>
+              <AccordionItem value={r.id}>
+                <AccordionTrigger>
+                  <div className="text-sm text-muted-foreground">Description</div>
+                </AccordionTrigger>
+                <AccordionContent>
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.description || '') }}
+                  />
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
 
           {/* Reference links */}
           {r.reference_links && (

@@ -163,53 +163,7 @@ class TaskService {
 
       if (historyError) throw historyError;
       
-      // Attempt to sync linked change_request (if any) to follow task status.
-      // This is a best-effort app-level fallback in case DB trigger isn't present.
-      try {
-        const { data: crData, error: crErr } = await (supabase as any)
-          .from('change_requests')
-          .select('id, status')
-          .eq('converted_task_id', data.taskId)
-          .single();
-
-        if (!crErr && crData) {
-          const mapTaskToRequest = (taskStatus: string | null) => {
-            if (!taskStatus) return null;
-            const ts = taskStatus.toLowerCase();
-            if (ts === 'to do' || ts === 'todo') return 'accepted';
-            if (ts === 'in progress') return 'in_progress';
-            if (ts === 'review') return 'review';
-            if (ts === 'blocked') return 'in_progress';
-            if (ts === 'completed') return 'completed';
-            return null;
-          };
-
-          const mapped = mapTaskToRequest(data.status);
-          if (mapped && mapped !== crData.status) {
-            const { error: updCrErr } = await (supabase as any)
-              .from('change_requests')
-              .update({ status: mapped, updated_at: new Date().toISOString() })
-              .eq('id', crData.id);
-
-            if (updCrErr) {
-              console.error('Failed to update change_request status:', updCrErr);
-            } else {
-              // record status history for change_request (best-effort)
-              const { error: histErr } = await (supabase as any)
-                .from('status_history')
-                .insert({
-                  entity_type: 'change_request',
-                  entity_id: crData.id,
-                  status: mapped,
-                  updated_by: data.updatedBy,
-                });
-              if (histErr) console.error('Failed to insert change_request status_history:', histErr);
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error syncing change_request for task status change', err);
-      }
+      // No app-level syncing to change_requests here — change_requests and tasks are independent.
     }
   }
 

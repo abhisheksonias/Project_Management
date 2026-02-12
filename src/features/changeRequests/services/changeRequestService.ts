@@ -8,7 +8,8 @@ export interface ChangeRequest {
   category: 'design' | 'development';
   attachment_urls?: string[] | null;
   reference_links?: string[] | null;
-  status: 'open' | 'accepted' | 'in_progress' | 'review' | 'completed' | 'in_review' | 'approved' | 'rejected' | 'converted';
+  status: string;
+  request_type?: 'change_request' | 'feedback';
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
@@ -21,12 +22,14 @@ class ChangeRequestService {
       title: string;
       description: string;
       category: 'design' | 'development';
+      request_type?: 'change_request' | 'feedback';
       files?: File[]; // client File objects
+      preuploadedUrls?: string[]; // URLs already uploaded (e.g., pasted images)
       reference_links?: string[];
       created_by?: string | null;
     }
   ): Promise<ChangeRequest> {
-    const attachmentUrls: string[] = [];
+    const attachmentUrls: string[] = payload.preuploadedUrls ? [...payload.preuploadedUrls] : [];
 
     if (payload.files && payload.files.length > 0) {
       for (const file of payload.files) {
@@ -60,6 +63,8 @@ class ChangeRequestService {
         category: payload.category,
         attachment_urls: attachmentUrls.length ? attachmentUrls : null,
         reference_links: payload.reference_links ?? null,
+        status: 'Open', // normalized capitalization to match task status formatting
+        request_type: payload.request_type ?? 'change_request',
         created_by: payload.created_by ?? null,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
