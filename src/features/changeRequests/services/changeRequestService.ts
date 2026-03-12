@@ -13,6 +13,21 @@ export interface ChangeRequest {
   created_by?: string | null;
   created_at?: string;
   updated_at?: string;
+  comments?: ChangeRequestComment[] | any;
+}
+
+export interface ChangeRequestComment {
+  id: string;
+  message: string;
+  user_id: string;
+  is_edited: boolean;
+  user_name: string;
+  created_at: string;
+  updated_at: string;
+  acknowledged?: boolean;
+  acknowledged_by?: string;
+  acknowledged_at?: string;
+  mentions?: string[];
 }
 
 class ChangeRequestService {
@@ -110,6 +125,133 @@ class ChangeRequestService {
       .eq('id', id);
 
     if (error) throw error;
+  }
+
+  async delete(id: string): Promise<void> {
+    const { error } = await (supabase as any)
+      .from('change_requests')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+  }
+
+  async addComment(id: string, commentData: { 
+    message: string; 
+    userId: string; 
+    userName: string; 
+    mentions?: string[] 
+  }): Promise<void> {
+    const { data: request, error: fetchError } = await (supabase as any)
+      .from('change_requests')
+      .select('comments')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const existingComments: ChangeRequestComment[] = request.comments 
+      ? (Array.isArray(request.comments) ? request.comments : [])
+      : [];
+
+    const newComment: ChangeRequestComment = {
+      id: crypto.randomUUID(),
+      message: commentData.message,
+      user_id: commentData.userId,
+      is_edited: false,
+      user_name: commentData.userName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      acknowledged: false,
+      mentions: commentData.mentions || [],
+    };
+
+    const updatedComments = [...existingComments, newComment];
+
+    const { error: updateError } = await (supabase as any)
+      .from('change_requests')
+      .update({ comments: updatedComments })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+  }
+
+  async updateComment(
+    id: string,
+    commentId: string,
+    message: string,
+    userId: string,
+    mentions?: string[]
+  ): Promise<void> {
+    const { data: request, error: fetchError } = await (supabase as any)
+      .from('change_requests')
+      .select('comments')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const existingComments: ChangeRequestComment[] = request.comments 
+      ? (Array.isArray(request.comments) ? request.comments : [])
+      : [];
+
+    const updatedComments = existingComments.map((comment) => {
+      if (comment.id === commentId && comment.user_id === userId) {
+        return {
+          ...comment,
+          message,
+          mentions: mentions ?? comment.mentions,
+          is_edited: true,
+          updated_at: new Date().toISOString(),
+        };
+      }
+      return comment;
+    });
+
+    const { error: updateError } = await (supabase as any)
+      .from('change_requests')
+      .update({ comments: updatedComments })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+  }
+
+  async updateCommentAcknowledgment(
+    id: string,
+    commentId: string,
+    acknowledged: boolean,
+    acknowledgedBy: string
+  ): Promise<void> {
+    const { data: request, error: fetchError } = await (supabase as any)
+      .from('change_requests')
+      .select('comments')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+
+    const existingComments: ChangeRequestComment[] = request.comments 
+      ? (Array.isArray(request.comments) ? request.comments : [])
+      : [];
+
+    const updatedComments = existingComments.map((comment) => {
+      if (comment.id === commentId) {
+        return {
+          ...comment,
+          acknowledged,
+          acknowledged_by: acknowledged ? acknowledgedBy : undefined,
+          acknowledged_at: acknowledged ? new Date().toISOString() : undefined,
+        };
+      }
+      return comment;
+    });
+
+    const { error: updateError } = await (supabase as any)
+      .from('change_requests')
+      .update({ comments: updatedComments })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
   }
 }
 
