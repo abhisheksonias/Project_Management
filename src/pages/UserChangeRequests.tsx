@@ -18,6 +18,16 @@ import {
 import { Badge } from '@/components/ui/badge';
 import DOMPurify from 'dompurify';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { useAddChangeRequestComment, useUpdateChangeRequestComment } from '@/features/changeRequests/hooks/useChangeRequestComments';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
+import { HtmlContent } from '@/shared/ui/HtmlContent';
+import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
+import { userService } from '@/features/users/services/userService';
+import { useQuery } from '@tanstack/react-query';
+import { Send, Edit2, CheckCircle2 } from 'lucide-react';
+import { stripHtml } from '@/shared/utils/htmlUtils';
+import { parseMentions, extractMentionedUserIds } from '@/shared/utils/mentionParser';
+import { Editor } from '@tiptap/react';
 
 interface ChangeRequestRow {
   id: string;
@@ -33,6 +43,7 @@ interface ChangeRequestRow {
   created_at?: string | null;
   updated_at?: string | null;
   projects?: { name: string } | null;
+  comments?: any[] | null;
 }
 
 const UserChangeRequests: React.FC = () => {
@@ -46,6 +57,23 @@ const UserChangeRequests: React.FC = () => {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
 
+  // Comments state
+  const [activeCommentBox, setActiveCommentBox] = useState<string | null>(null);
+  const [commentText, setCommentText] = useState<{ [key: string]: string }>({});
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentText, setEditingCommentText] = useState('');
+  const commentEditorRefs = React.useRef<{ [key: string]: Editor | null }>({});
+  const editCommentEditorRef = React.useRef<Editor | null>(null);
+
+  const addCommentMutation = useAddChangeRequestComment();
+  const updateCommentMutation = useUpdateChangeRequestComment();
+
+  // Fetch all users for mention autocomplete
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['all-users'],
+    queryFn: () => userService.getAllUsers(),
+  });
+
   // Image lightbox
   const [imageOpen, setImageOpen] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -54,6 +82,10 @@ const UserChangeRequests: React.FC = () => {
   const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
   const [rejectTargetId, setRejectTargetId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+
+  // Delete dialog
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
 
   const load = async (opts?: { append?: boolean; resetOffset?: boolean }) => {
     try {
@@ -133,6 +165,27 @@ const UserChangeRequests: React.FC = () => {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    setDeleteTargetId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTargetId) return;
+    try {
+      const { error } = await (supabase as any)
+        .from('change_requests')
+        .delete()
+        .eq('id', deleteTargetId);
+      if (error) throw error;
+      setDeleteDialogOpen(false);
+      toast.success('Request deleted');
+      load({ append: false });
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete');
+    }
+  };
+
   const handleStatusChange = async (id: string, newStatus: string) => {
     if (!profile) {
       toast.error('Not authenticated');
@@ -163,6 +216,62 @@ const UserChangeRequests: React.FC = () => {
     else if (tab === 'shared-tables') navigate('/user/shared-tables');
     else if (tab === 'settings') navigate('/user/profile');
     else if (tab === 'change-requests') navigate('/user/change-requests');
+  };
+
+  const handleAddComment = (requestId: string) => {
+    const text = commentText[requestId];
+    if (!text?.trim() || !profile) return;
+
+    const plainText = stripHtml(text);
+    const userMap = new Map(
+      allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
+    );
+    const mentions = parseMentions(plainText, userMap);
+    const mentionedUserIds = extractMentionedUserIds(mentions);
+
+    addCommentMutation.mutate(
+      {
+        requestId,
+        message: text.trim(),
+        userId: profile.id,
+        userName: profile.name || 'User',
+        mentions: mentionedUserIds,
+      },
+      {
+        onSuccess: () => {
+          setCommentText((prev) => ({ ...prev, [requestId]: '' }));
+          commentEditorRefs.current[requestId]?.commands.clearContent();
+        },
+      }
+    );
+  };
+
+  const handleSaveEditComment = (requestId: string) => {
+    if (!profile || !editingCommentId) return;
+    const trimmed = editingCommentText.trim();
+    if (!trimmed) return;
+
+    const plainText = stripHtml(trimmed);
+    const userMap = new Map(
+      allUsers.map((user) => [user.id, { id: user.id, name: user.name }])
+    );
+    const mentions = parseMentions(plainText, userMap);
+    const mentionedUserIds = extractMentionedUserIds(mentions);
+
+    updateCommentMutation.mutate(
+      {
+        requestId,
+        commentId: editingCommentId,
+        message: trimmed,
+        mentions: mentionedUserIds,
+      },
+      {
+        onSuccess: () => {
+          setEditingCommentId(null);
+          setEditingCommentText('');
+        },
+      }
+    );
   };
 
   return (
@@ -246,20 +355,162 @@ const UserChangeRequests: React.FC = () => {
                       <SelectItem value="Rejected">Rejected</SelectItem>
                     </SelectContent>
                   </Select>
-                  <button onClick={() => handleReject(r.id)} className="px-3 py-1 border rounded text-sm text-destructive">Reject</button>
+                  <button onClick={() => handleReject(r.id)} className="px-3 py-1 border rounded text-sm text-destructive hover:bg-destructive/10">Reject</button>
+                  <button onClick={() => handleDelete(r.id)} className="px-3 py-1 border rounded text-sm text-destructive hover:bg-destructive/10">Delete</button>
                 </div>
-              </div>
+              </div>              <div className="mt-3 text-sm">
+                <Accordion type="multiple" className="w-full">
+                  <AccordionItem value="description">
+                    <AccordionTrigger className="py-2">
+                      <div className="text-sm text-muted-foreground">Description</div>
+                    </AccordionTrigger>
+                    <AccordionContent>
+                      <div
+                        className="prose prose-sm max-w-none"
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.description || '') }}
+                      />
+                    </AccordionContent>
+                  </AccordionItem>
 
-              <div className="mt-3 text-sm">
-                <Accordion type="single" collapsible>
-                  <AccordionItem value={r.id}>
-                    <AccordionTrigger>
-                      <div className="flex items-center justify-between w-full">
-                        <div className="text-sm text-muted-foreground">Description</div>
+                  <AccordionItem value="comments">
+                    <AccordionTrigger className="py-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Comments</span>
+                        <Badge variant="outline" className="h-5 px-1.5 min-w-[1.25rem] justify-center">
+                          {r.comments ? (Array.isArray(r.comments) ? r.comments.length : 0) : 0}
+                        </Badge>
                       </div>
                     </AccordionTrigger>
                     <AccordionContent>
-                      <div className="prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.description || '') }} />
+                      <div className="pt-2">
+                        <div className="flex items-center justify-end mb-3">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-7 text-xs"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveCommentBox(activeCommentBox === r.id ? null : r.id);
+                            }}
+                          >
+                            {activeCommentBox === r.id ? 'Cancel' : 'Add Comment'}
+                          </Button>
+                        </div>
+
+                        {activeCommentBox === r.id && (
+                          <div className="mb-4 space-y-2 relative">
+                            <RichTextEditor
+                              value={commentText[r.id] || ''}
+                              onChange={(val) => setCommentText(prev => ({ ...prev, [r.id]: val }))}
+                              placeholder="Type a comment... Use @ to mention"
+                              showToolbar={false}
+                              className="text-xs"
+                              onEditorReady={(editor) => {
+                                commentEditorRefs.current[r.id] = editor;
+                              }}
+                            />
+                            <MentionAutocompleteForEditor
+                              users={allUsers}
+                              editor={commentEditorRefs.current[r.id]}
+                            />
+                            <div className="flex justify-end">
+                              <Button
+                                size="sm"
+                                className="h-8 text-xs"
+                                disabled={!commentText[r.id]?.trim() || addCommentMutation.isPending}
+                                onClick={() => handleAddComment(r.id)}
+                              >
+                                <Send className="mr-2 h-3.5 w-3.5" />
+                                Post
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
+                          {(!r.comments || (Array.isArray(r.comments) && r.comments.length === 0)) ? (
+                            <p className="text-xs text-muted-foreground italic">No comments yet</p>
+                          ) : (
+                            [...(Array.isArray(r.comments) ? r.comments : [])]
+                              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                              .map((comment: any) => {
+                                const isOwn = profile?.id === comment.user_id;
+                                const isEditing = editingCommentId === comment.id;
+                                return (
+                                  <div key={comment.id} className="flex flex-col bg-slate-50/50 rounded-lg p-2.5">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-900">{comment.user_name}</span>
+                                        <span className="text-[10px] text-slate-500">
+                                          {format(new Date(comment.created_at), 'MMM d, h:mm a')}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-1.5">
+                                        {comment.acknowledged && (
+                                          <CheckCircle2 className="h-3 w-3 text-green-600" />
+                                        )}
+                                        {isOwn && !isEditing && (
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-5 w-5"
+                                            onClick={() => {
+                                              setEditingCommentId(comment.id);
+                                              setEditingCommentText(comment.message);
+                                            }}
+                                          >
+                                            <Edit2 className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                    {isEditing ? (
+                                      <div className="space-y-2 mt-1 relative">
+                                        <RichTextEditor
+                                          value={editingCommentText}
+                                          onChange={setEditingCommentText}
+                                          showToolbar={false}
+                                          className="text-xs"
+                                          onEditorReady={(editor) => {
+                                            editCommentEditorRef.current = editor;
+                                          }}
+                                        />
+                                        <MentionAutocompleteForEditor
+                                          users={allUsers}
+                                          editor={editCommentEditorRef.current}
+                                        />
+                                        <div className="flex justify-end gap-2 mt-1">
+                                          <Button 
+                                            variant="ghost" 
+                                            size="sm" 
+                                            className="h-7 text-[10px]"
+                                            onClick={() => setEditingCommentId(null)}
+                                          >
+                                            Cancel
+                                          </Button>
+                                          <Button 
+                                            size="sm" 
+                                            className="h-7 text-[10px]"
+                                            onClick={() => handleSaveEditComment(r.id)}
+                                          >
+                                            Save
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs text-slate-700 leading-relaxed">
+                                        <HtmlContent content={comment.message} className="text-xs" />
+                                        {comment.is_edited && (
+                                          <span className="text-[10px] text-slate-400 italic ml-1">(edited)</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })
+                          )}
+                        </div>
+                      </div>
                     </AccordionContent>
                   </AccordionItem>
                 </Accordion>
@@ -360,6 +611,22 @@ const UserChangeRequests: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
             <Button onClick={confirmReject}>Confirm Reject</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete dialog */}
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Change Request</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-sm">Are you sure you want to delete this change request? This action cannot be undone.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDelete}>Delete</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
