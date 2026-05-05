@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { UserSidebar } from '@/features/worklogs/ui/UserSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTasks } from '@/features/tasks/hooks/useTasks';
+import { useCreateTask } from '@/features/tasks/hooks/useCreateTask';
 import { useDashboardProjects } from '@/features/dashboard/hooks/useDashboardProjects';
 import { filterTasksByUserCategory } from '@/shared/utils/taskFilter';
 import { TaskStatsCards } from '@/features/tasks/ui/TaskStatsCards';
@@ -12,16 +13,19 @@ import { TaskViewToggle } from '@/features/tasks/ui/TaskViewToggle';
 import { TasksKanbanView } from '@/features/tasks/ui/TasksKanbanView';
 import { TasksTableView } from '@/features/tasks/ui/TasksTableView';
 import { TaskDetailsPanel } from '@/features/tasks/ui/TaskDetailsPanel';
+import { UserCreateTaskDialog } from '@/features/tasks/ui/UserCreateTaskDialog';
 import { useUpdateTaskStatus } from '@/features/tasks/hooks/useUpdateTaskStatus';
 import { Task } from '@/features/tasks/services/taskService';
+import { Button } from '@/components/ui/button';
+import { Plus } from 'lucide-react';
 
 const Tasks: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  
+
   // View mode state
   const [viewMode, setViewMode] = useState<'kanban' | 'table'>('kanban');
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [project, setProject] = useState<string>('All Projects');
@@ -31,15 +35,17 @@ const Tasks: React.FC = () => {
   const [estimate, setEstimate] = useState<string>('All Estimates');
   const [category, setCategory] = useState<string>('All Categories');
   const [deadline, setDeadline] = useState<Date | undefined>(undefined);
-  
+
   // Selected task for side panel
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
-  
+  const [isCreateTaskDialogOpen, setIsCreateTaskDialogOpen] = useState(false);
+
   // Fetch data
   const { data: allTasks = [], isLoading } = useTasks(profile?.id || '');
   const { data: projects = [] } = useDashboardProjects(profile?.id || '');
   const updateTaskStatusMutation = useUpdateTaskStatus();
+  const createTaskMutation = useCreateTask();
 
   // Apply category filtering based on user role/specialization
   const tasks = useMemo(() => {
@@ -146,7 +152,7 @@ const Tasks: React.FC = () => {
       today.setHours(0, 0, 0, 0);
       const selectedDate = new Date(deadline);
       selectedDate.setHours(0, 0, 0, 0);
-      
+
       if (selectedDate.getTime() === today.getTime()) {
         filters.push('Due Today');
       } else {
@@ -250,7 +256,16 @@ const Tasks: React.FC = () => {
                 Track and manage all your tasks in one place.
               </p>
             </div>
-            <TaskViewToggle view={viewMode} onViewChange={setViewMode} />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Button
+                onClick={() => setIsCreateTaskDialogOpen(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                New Task
+              </Button>
+              <TaskViewToggle view={viewMode} onViewChange={setViewMode} />
+            </div>
           </div>
 
           {/* Stats Cards */}
@@ -296,7 +311,7 @@ const Tasks: React.FC = () => {
               </div>
             ) : (
               <div className="rounded-[14px] border border-secondary bg-white">
-                <TasksTableView 
+                <TasksTableView
                   tasks={filteredTasks}
                   onTaskClick={handleTaskClick}
                   onStatusChange={handleTaskStatusChange}
@@ -314,6 +329,22 @@ const Tasks: React.FC = () => {
         onClose={() => {
           setIsPanelOpen(false);
           setSelectedTask(null);
+        }}
+      />
+
+      {/* Create Task Dialog */}
+      <UserCreateTaskDialog
+        open={isCreateTaskDialogOpen}
+        onOpenChange={setIsCreateTaskDialogOpen}
+        isLoading={createTaskMutation.isPending}
+        onSubmit={async (data) => {
+          if (profile?.id) {
+            await createTaskMutation.mutateAsync({
+              data,
+              userId: profile.id,
+            });
+            setIsCreateTaskDialogOpen(false);
+          }
         }}
       />
     </div>

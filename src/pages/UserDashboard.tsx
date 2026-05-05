@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { UserSidebar } from '@/features/worklogs/ui/UserSidebar';
 import { DashboardStats } from '@/features/worklogs/ui/DashboardStats';
 import { LoggedCalendar } from '@/features/worklogs/ui/LoggedCalendar';
+import { QuickTimerCard } from '@/features/worklogs/ui/QuickTimerCard';
 import { TopTasksTable } from '@/features/tasks/ui/TopTasksTable';
 import { DashboardHeader } from '@/features/dashboard/ui/DashboardHeader';
 import { useDashboardWorklogs } from '@/features/dashboard/hooks/useDashboardWorklogs';
@@ -63,7 +64,7 @@ const UserDashboard: React.FC = () => {
       <div className="flex-1 overflow-y-auto">
         {currentTab === 'dashboard' && (
           <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
-            <DashboardHeader 
+            <DashboardHeader
               userName={profile?.name}
               canEdit={canEdit}
             />
@@ -82,6 +83,9 @@ const UserDashboard: React.FC = () => {
               </div>
 
               <div className="lg:col-span-1 space-y-4 sm:space-y-5 md:space-y-6 order-1 lg:order-2">
+                <QuickTimerCard
+                  onStartTimerClick={() => navigate('/user/worklog-history?mode=timer')}
+                />
                 <LoggedCalendar
                   loggedDays={stats.loggedDays}
                   onMonthChange={setSelectedMonth}

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { UserSidebar } from '@/features/worklogs/ui/UserSidebar';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWorklogHistoryQuery } from '@/features/worklogs/hooks/useWorklogHistoryQuery';
@@ -24,7 +24,11 @@ import { toast } from 'sonner';
 const WorklogHistory: React.FC = () => {
   const { profile } = useAuth();
   const navigate = useNavigate();
-  
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Dialog mode state
+  const [dialogMode, setDialogMode] = useState<'manual' | 'timer'>('manual');
+
   // Date range state
   const currentMonth = new Date();
   const [dateRange, setDateRange] = useState<'Today' | 'This Week' | 'This Month' | 'Last Month' | 'Date Range'>('This Month');
@@ -33,7 +37,7 @@ const WorklogHistory: React.FC = () => {
   const [tempStartDate, setTempStartDate] = useState<Date | undefined>(startOfMonth(currentMonth));
   const [tempEndDate, setTempEndDate] = useState<Date | undefined>(endOfMonth(currentMonth));
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
-  
+
   // Filter states
   const [selectedProject, setSelectedProject] = useState<string>('All Projects');
   const [selectedTask, setSelectedTask] = useState<string>('All Tasks');
@@ -41,7 +45,7 @@ const WorklogHistory: React.FC = () => {
   const [minHours, setMinHours] = useState<string>('');
   const [maxHours, setMaxHours] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  
+
   // Selection states
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
@@ -66,6 +70,17 @@ const WorklogHistory: React.FC = () => {
   // Role-based access
   const isSales = profile?.role === 'Sales';
   const canEdit = !isSales;
+
+  // Handle timer mode from query parameter
+  useEffect(() => {
+    const mode = searchParams.get('mode');
+    if (mode === 'timer') {
+      setIsAddLogDialogOpen(true);
+      setDialogMode('timer');
+      // Clear the query parameter
+      setSearchParams({});
+    }
+  }, [searchParams, setSearchParams]);
 
   // Data fetching via hooks (services)
   const { data: worklogs = [], isLoading } = useWorklogHistoryQuery(
@@ -128,25 +143,25 @@ const WorklogHistory: React.FC = () => {
       if (selectedProject !== 'All Projects' && log.projects?.name !== selectedProject) {
         return false;
       }
-      
+
       // Task filter
       if (selectedTask !== 'All Tasks' && log.tasks?.name !== selectedTask) {
         return false;
       }
-      
+
       // Type filter
       if (selectedType !== 'All Types') {
         const logType = log.tasks?.type || '';
         if (selectedType === 'Billable' && logType.toLowerCase() !== 'billable') return false;
         if (selectedType === 'Non-billable' && logType.toLowerCase() !== 'non-billable') return false;
       }
-      
+
       // Hours range filter
       const [hours, minutes] = log.hours.split(':').map(Number);
       const totalHours = hours + minutes / 60;
       if (minHours && totalHours < parseFloat(minHours)) return false;
       if (maxHours && totalHours > parseFloat(maxHours)) return false;
-      
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
@@ -155,7 +170,7 @@ const WorklogHistory: React.FC = () => {
         const matchesTask = log.tasks?.name.toLowerCase().includes(query);
         if (!matchesNote && !matchesProject && !matchesTask) return false;
       }
-      
+
       return true;
     });
   }, [worklogs, selectedProject, selectedTask, selectedType, minHours, maxHours, searchQuery]);
@@ -251,7 +266,7 @@ const WorklogHistory: React.FC = () => {
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
-    
+
     // Create date in local timezone with current time
     const updatedDate = new Date(year, month, day, hours, minutes, seconds, 0);
     const isoString = updatedDate.toISOString();
@@ -310,7 +325,7 @@ const WorklogHistory: React.FC = () => {
     }
   };
 
-  const handleAddWorklog = (addAnother: boolean = false) => {
+  const handleAddWorklog = (addAnother: boolean = false, timerData?: { startTime: string; endTime: string }) => {
     if (!selectedTaskId || !worklogHours || !worklogDate) {
       toast.error('Please fill all required fields');
       return;
@@ -331,7 +346,7 @@ const WorklogHistory: React.FC = () => {
     const hours = now.getHours();
     const minutes = now.getMinutes();
     const seconds = now.getSeconds();
-    
+
     // Create date in local timezone with current time
     const localDateTime = new Date(year, month, day, hours, minutes, seconds, 0);
     const isoString = localDateTime.toISOString();
@@ -344,6 +359,8 @@ const WorklogHistory: React.FC = () => {
       user_id: profile?.id || '',
       created_at: isoString,
       added_by: profile?.id || '',
+      start_time: timerData?.startTime,
+      end_time: timerData?.endTime,
     }, {
       onSuccess: () => {
         if (!addAnother) {
@@ -404,7 +421,7 @@ const WorklogHistory: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-3 sm:p-4 md:p-6 space-y-4 sm:space-y-5 md:space-y-6">
-          <WorklogHistoryHeader 
+          <WorklogHistoryHeader
             onAddWorklog={() => setIsAddLogDialogOpen(true)}
             canEdit={canEdit}
           />
@@ -506,7 +523,12 @@ const WorklogHistory: React.FC = () => {
 
       <AddWorklogDialogHistory
         open={isAddLogDialogOpen}
-        onOpenChange={setIsAddLogDialogOpen}
+        onOpenChange={(open) => {
+          setIsAddLogDialogOpen(open);
+          if (!open) {
+            setDialogMode('manual');
+          }
+        }}
         projects={allProjects}
         tasks={tasks}
         selectedProjectId={selectedProjectId}
@@ -528,7 +550,9 @@ const WorklogHistory: React.FC = () => {
           setWorklogDate(new Date());
           setWorklogHours('');
           setWorklogNote('');
+          setDialogMode('manual');
         }}
+        initialMode={dialogMode}
       />
     </div>
   );

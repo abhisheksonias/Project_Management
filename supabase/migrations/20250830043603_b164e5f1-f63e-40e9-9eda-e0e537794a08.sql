@@ -15,6 +15,11 @@ USING (
   )
 );
 
+CREATE POLICY "Authenticated users can insert tasks" 
+ON public.tasks 
+FOR INSERT 
+WITH CHECK (auth.role() = 'authenticated');
+
 CREATE POLICY "Users can view their assigned tasks" 
 ON public.tasks 
 FOR SELECT 
