@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { AdminLayout } from '@/features/admin/ui/AdminLayout';
 import { AdminChangeRequestDetailsPanel } from '@/features/admin/ui/AdminChangeRequestDetailsPanel';
-import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjects';
+import { useChangeRequestProjects } from '@/features/changeRequests/hooks/useChangeRequestProjects';
 import { ChangeRequestRow } from '@/features/changeRequests/types';
 import { userService } from '@/features/users/services/userService';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,7 +16,7 @@ import { Badge } from '@/components/ui/badge';
 
 const AdminChangeRequests: React.FC = () => {
   const { profile } = useAuth();
-  const { data: projects = [] } = useAdminProjectsForFilter();
+  const { data: projects = [] } = useChangeRequestProjects();
   const { data: allUsers = [] } = useQuery({
     queryKey: ['all-users'],
     queryFn: () => userService.getAllUsers(),
@@ -79,6 +79,14 @@ const AdminChangeRequests: React.FC = () => {
   };
 
   useEffect(() => setOffset(0), []);
+
+  useEffect(() => {
+    if (projectFilter !== 'all' && !projects.some((p) => p.id === projectFilter)) {
+      setProjectFilter('all');
+      setOffset(0);
+    }
+  }, [projects, projectFilter]);
+
   useEffect(() => {
     load({ append: offset > 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -140,7 +148,7 @@ const AdminChangeRequests: React.FC = () => {
             <SelectTrigger className="h-9 w-full sm:w-52"><SelectValue placeholder="All Projects" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Projects</SelectItem>
-              {[...projects].sort((a, b) => a.name.localeCompare(b.name)).map((p) => (
+              {projects.map((p) => (
                 <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
               ))}
             </SelectContent>

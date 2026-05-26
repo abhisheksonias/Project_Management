@@ -30,7 +30,31 @@ export interface ChangeRequestComment {
   mentions?: string[];
 }
 
+export type ChangeRequestProjectOption = { id: string; name: string };
+
 class ChangeRequestService {
+  /** Projects that have at least one change request (for filter dropdowns). */
+  async getProjectsWithChangeRequests(): Promise<ChangeRequestProjectOption[]> {
+    const { data, error } = await (supabase as any)
+      .from('change_requests')
+      .select('project_id, projects(id, name)')
+      .not('project_id', 'is', null);
+
+    if (error) throw error;
+
+    const byId = new Map<string, ChangeRequestProjectOption>();
+    for (const row of data || []) {
+      const project = row.projects as { id: string; name: string } | null;
+      if (project?.id && project?.name) {
+        byId.set(project.id, { id: project.id, name: project.name });
+      } else if (row.project_id) {
+        byId.set(row.project_id, { id: row.project_id, name: row.project_id });
+      }
+    }
+
+    return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }
+
   async createChangeRequest(
     projectId: string,
     payload: {
