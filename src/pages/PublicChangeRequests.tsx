@@ -66,7 +66,7 @@ const PublicChangeRequests: React.FC = () => {
       <h1 className="text-2xl font-semibold mb-4">Change Requests for {projectName}</h1>
 
       <div className="mb-6 text-sm text-muted-foreground">
-        Use this link to submit change requests to the project. Files (images/PDFs) and reference links are supported.
+        Use this link to submit change requests to the project. Paste or drag & drop images into the description, attach files (images/PDFs), and add reference links.
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

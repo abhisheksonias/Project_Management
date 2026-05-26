@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { useEditor, EditorContent } from '@tiptap/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useEditor, EditorContent, type Editor } from '@tiptap/react';
+import { createRichTextImageHandlers } from '@/shared/utils/richTextImageHandlers';
+import { Upload } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
-import Image from '@tiptap/extension-image';
+import { RemovableImageExtension } from '@/shared/ui/RemovableImageExtension';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { changeRequestService } from '@/features/changeRequests/services/changeRequestService';
@@ -72,18 +75,98 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
   const [files, setFiles] = useState<File[]>([]);
   const [links, setLinks] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const editorRef = useRef<Editor | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files ? Array.from(e.target.files) : [];
-    setFiles(selected);
-  };
-  
+  const imageHandlers = useMemo(
+    () =>
+      createRichTextImageHandlers(
+        editorRef,
+        (file) => uploadImageToSupabase(file, projectId),
+        'cr-form-image'
+      ),
+    [projectId]
+  );
+
+  const insertImagesIntoDescription = useCallback(
+    async (fileList: FileList | File[]) => {
+      const ed = editorRef.current;
+      if (!ed) {
+        toast.error('Editor not ready — try again in a moment');
+        return;
+      }
+
+      const images = Array.from(fileList).filter((f) => f.type.startsWith('image/'));
+      if (images.length === 0) {
+        toast.error('Please drop image files only (PNG, JPG, GIF, etc.)');
+        return;
+      }
+
+      for (const file of images) {
+        try {
+          toast.loading(`Uploading ${file.name}...`, { id: 'cr-form-image' });
+          const url = await uploadImageToSupabase(file, projectId);
+          if (url) {
+            ed.chain().focus().setImage({ src: url }).run();
+            toast.success('Image added to description', { id: 'cr-form-image' });
+          } else {
+            toast.error(`Failed to upload ${file.name}`, { id: 'cr-form-image' });
+          }
+        } catch {
+          toast.error(`Failed to upload ${file.name}`, { id: 'cr-form-image' });
+        }
+      }
+    },
+    [projectId]
+  );
+
+  const processDroppedFiles = useCallback(
+    async (fileList: FileList | File[]) => {
+      const all = Array.from(fileList);
+      const images = all.filter((f) => f.type.startsWith('image/'));
+      const pdfs = all.filter(
+        (f) => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf')
+      );
+      const other = all.filter((f) => !images.includes(f) && !pdfs.includes(f));
+
+      if (other.length > 0) {
+        toast.error('Only images and PDF files are supported');
+      }
+
+      if (images.length > 0) {
+        await insertImagesIntoDescription(images);
+      }
+
+      if (pdfs.length > 0) {
+        const maxSize = 5 * 1024 * 1024;
+        const valid = pdfs.filter((f) => {
+          if (f.size > maxSize) {
+            toast.error(`${f.name} exceeds 5MB limit`);
+            return false;
+          }
+          return true;
+        });
+        if (valid.length > 0) {
+          setFiles((prev) => [...prev, ...valid]);
+          toast.success(
+            valid.length === 1 ? 'PDF attached' : `${valid.length} PDFs attached`
+          );
+        }
+      }
+    },
+    [insertImagesIntoDescription]
+  );
 
   const editor = useEditor({
     extensions: [
       StarterKit,
       Underline,
-      Image,
+      RemovableImageExtension.configure({
+        HTMLAttributes: {
+          class: 'max-w-full h-auto rounded-md block',
+        },
+      }),
       Link.configure({ openOnClick: true }),
       Placeholder.configure({ placeholder: 'Write the change request — support formatting, links, and inline styles.' }),
     ],
@@ -92,76 +175,15 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
       setDescription(editor.getHTML());
     },
     editorProps: {
-      // handle clipboard image paste (synchronous handler — launches async upload tasks)
-      handlePaste(view: any, event: ClipboardEvent) {
-        try {
-          const processFile = async (file: File) => {
-            try {
-              toast('Uploading image...', { id: 'paste-upload' });
-              const url = await uploadImageToSupabase(file, projectId);
-              if (url && editor) {
-                (editor as any).chain().focus().setImage({ src: url }).run();
-                toast.success('Image inserted', { id: 'paste-upload' });
-              } else {
-                toast.error('Failed to upload pasted image', { id: 'paste-upload' });
-                console.error('Failed to upload pasted image');
-              }
-            } catch (err) {
-              toast.error('Image upload failed', { id: 'paste-upload' });
-              console.error('Async paste upload error', err);
-            }
-          };
-
-          const items = event.clipboardData?.items;
-          let handled = false;
-
-          if (items && items.length > 0) {
-            for (let i = 0; i < items.length; i++) {
-              const item = items[i];
-              if (!item) continue;
-              if (item.type && item.type.indexOf('image') !== -1) {
-                const file = item.getAsFile();
-                if (!file) continue;
-                // prevent default paste behavior for images
-                event.preventDefault();
-                handled = true;
-                processFile(file);
-              }
-            }
-            if (handled) return true;
-          }
-
-          // Fallback: try async clipboard.read() (some platforms/permissions)
-          if (navigator.clipboard && (navigator.clipboard as any).read) {
-            (navigator.clipboard as any)
-              .read()
-              .then((clipboardItems: any[]) => {
-                for (const clipboardItem of clipboardItems) {
-                  for (const type of clipboardItem.types) {
-                    if (type.startsWith('image/')) {
-                      clipboardItem.getType(type).then((blob: Blob) => {
-                        const file = new File([blob], `pasted.${type.split('/')[1] || 'png'}`, { type });
-                        processFile(file);
-                      });
-                      handled = true;
-                    }
-                  }
-                }
-              })
-              .catch((err: any) => {
-                // ignore; just log for debugging
-                console.error('navigator.clipboard.read failed', err);
-              });
-          }
-
-          return false;
-        } catch (err) {
-          console.error('handlePaste error', err);
-          return false;
-        }
-      },
+      handlePaste: imageHandlers.handlePaste,
+      handleDrop: imageHandlers.handleDrop,
+      handleDragOver: imageHandlers.handleDragOver,
     },
   });
+
+  useEffect(() => {
+    editorRef.current = editor ?? null;
+  }, [editor]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,15 +322,88 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
             </button>
           </div>
 
-          <div className="border rounded p-2 bg-white min-h-[180px] w-full max-w-[900px]">
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,.pdf,application/pdf"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              if (e.target.files?.length) void processDroppedFiles(e.target.files);
+              e.target.value = '';
+            }}
+          />
+          <div
+            className={cn(
+              'relative border rounded bg-white min-h-[200px] w-full max-w-[900px] p-2 transition-colors',
+              isDragging
+                ? 'border-2 border-dashed border-primary bg-primary/5'
+                : 'border-dashed border-muted-foreground/35'
+            )}
+            onDragEnter={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(true);
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setIsDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setIsDragging(false);
+              if (e.dataTransfer.files?.length) void processDroppedFiles(e.dataTransfer.files);
+            }}
+          >
             {editor ? (
-              <EditorContent editor={editor} />
+              <EditorContent editor={editor} className="min-h-[160px] [&_.ProseMirror]:min-h-[160px] [&_.ProseMirror]:outline-none" />
             ) : (
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3 py-2 border rounded" rows={5} />
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="w-full min-h-[160px] px-1 py-1 border-0 rounded outline-none resize-y"
+                rows={6}
+              />
+            )}
+
+            {isDragging && (
+              <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center rounded bg-primary/10">
+                <Upload className="h-8 w-8 text-primary" />
+                <p className="mt-2 text-sm font-medium text-primary">Drop to upload</p>
+              </div>
+            )}
+
+            {editor && editor.isEmpty && !isDragging && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => fileInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    fileInputRef.current?.click();
+                  }
+                }}
+                className="absolute bottom-3 left-3 right-3 z-[1] flex cursor-pointer items-center justify-center gap-2 rounded-md bg-muted/40 py-2 text-xs text-muted-foreground hover:bg-muted/60"
+              >
+                <Upload className="h-4 w-4 shrink-0" />
+                <span className="text-center">
+                  Drag & drop images or PDFs here · Ctrl+V to paste · click to browse
+                </span>
+              </div>
             )}
           </div>
-          <div className="text-xs text-muted-foreground mt-1">
+
+          <div className="text-xs text-muted-foreground mt-2">
             {editor ? `${(editor.getText() || '').length} chars` : ''}
+            {editor?.getText().trim()
+              ? ' · Drop files on the description box anytime'
+              : ''}
           </div>
         </div>
       </div>
@@ -320,10 +415,25 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
         </select>
       </div>
       
-      <div>
-        <label className="block text-sm font-medium">Attachments (≤5MB each)</label>
-        <input type="file" multiple onChange={handleFiles} />
-      </div>
+      {files.length > 0 && (
+        <div>
+          <label className="block text-sm font-medium mb-1">Attached PDFs</label>
+          <ul className="space-y-1 text-xs text-muted-foreground rounded border p-2 bg-muted/10">
+            {files.map((f, i) => (
+              <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                <span className="truncate">{f.name}</span>
+                <button
+                  type="button"
+                  className="shrink-0 text-destructive hover:underline"
+                  onClick={() => setFiles((prev) => prev.filter((_, idx) => idx !== i))}
+                >
+                  Remove
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium">Reference links (one per line)</label>
         <textarea value={links} onChange={(e) => setLinks(e.target.value)} className="w-full px-3 py-2 border rounded" rows={3} />
