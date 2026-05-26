@@ -1,0 +1,140 @@
+import React from 'react';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Calendar as CalendarIcon } from 'lucide-react';
+import { Worklog } from '@/features/worklogs/services/worklogService';
+import { Task } from '@/features/tasks/services/taskService';
+import { cn } from '@/lib/utils';
+import { format } from 'date-fns';
+import { RichTextEditor } from '@/shared/ui/RichTextEditor';
+
+interface EditWorklogDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  worklog: Worklog | null;
+  tasks: Task[];
+  editedHours: string;
+  editedNote: string;
+  editedDate: Date | null;
+  onHoursChange: (hours: string) => void;
+  onNoteChange: (note: string) => void;
+  onDateChange: (date: Date | null) => void;
+  onSave: () => void;
+  isSaving: boolean;
+}
+
+export const EditWorklogDialog: React.FC<EditWorklogDialogProps> = ({
+  open,
+  onOpenChange,
+  worklog,
+  tasks,
+  editedHours,
+  editedNote,
+  editedDate,
+  onHoursChange,
+  onNoteChange,
+  onDateChange,
+  onSave,
+  isSaving,
+}) => {
+  const taskName = worklog?.tasks?.name || 
+    (worklog?.task_id && tasks.find((t) => t.id === worklog.task_id)?.name) || 
+    '';
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Edit Worklog</DialogTitle>
+          <DialogDescription>
+            Update the worklog details below.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div className="space-y-2">
+            <Label htmlFor="edit-date">Date</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={cn(
+                    'w-full justify-start text-left font-normal',
+                    !editedDate && 'text-muted-foreground'
+                  )}
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {editedDate ? format(editedDate, 'dd/MM/yyyy') : 'Select date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={editedDate || undefined}
+                  onSelect={(date) => onDateChange(date || null)}
+                  initialFocus
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-task">Task *</Label>
+            <Input
+              id="edit-task"
+              value={taskName}
+              readOnly
+              disabled
+              className="bg-gray-50 cursor-not-allowed"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-hours">Hours *</Label>
+            <Input
+              id="edit-hours"
+              type="text"
+              placeholder="08:00"
+              value={editedHours}
+              onChange={(e) => onHoursChange(e.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="edit-note">Description</Label>
+            <RichTextEditor
+              value={editedNote}
+              onChange={onNoteChange}
+              placeholder="Add a description..."
+              showToolbar={false}
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={onSave}
+            disabled={isSaving}
+            className="bg-primary text-white hover:bg-primary/90"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
