@@ -54,6 +54,8 @@ const UserChangeRequests: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [typeFilter, setTypeFilter] = useState<string>('All');
+  const [involvementFilter, setInvolvementFilter] = useState<'All' | 'Included Projects'>('All');
+  const [assignedProjectIds, setAssignedProjectIds] = useState<Set<string>>(new Set());
   const [pageSize] = useState(12);
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
@@ -87,6 +89,44 @@ const UserChangeRequests: React.FC = () => {
   // Delete dialog
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const isInvolvedProject = (projectId: string) => assignedProjectIds.has(projectId);
+
+  const loadAssignedProjects = async () => {
+    if (!profile?.id) {
+      setAssignedProjectIds(new Set());
+      return;
+    }
+
+    try {
+      const { data: assigneesData, error: assigneesError } = await (supabase as any)
+        .from('task_assignees')
+        .select('task_id')
+        .eq('user_id', profile.id);
+      if (assigneesError) throw assigneesError;
+
+      const taskIds = (assigneesData || []).map((a: { task_id: string }) => a.task_id);
+      if (taskIds.length === 0) {
+        setAssignedProjectIds(new Set());
+        return;
+      }
+
+      const { data: tasksData, error: tasksError } = await (supabase as any)
+        .from('tasks')
+        .select('project_id')
+        .in('id', taskIds);
+      if (tasksError) throw tasksError;
+
+      const projectIds = new Set(
+        (tasksData || [])
+          .map((t: { project_id?: string | null }) => t.project_id)
+          .filter((id: string | null | undefined): id is string => !!id)
+      );
+      setAssignedProjectIds(projectIds);
+    } catch (err) {
+      console.error('Failed to load assigned projects', err);
+      setAssignedProjectIds(new Set());
+    }
+  };
 
   const load = async (opts?: { append?: boolean; resetOffset?: boolean }) => {
     try {
@@ -114,16 +154,25 @@ const UserChangeRequests: React.FC = () => {
       const visibleRows = rows.filter((r) =>
         statusFilter === 'All' ? !['Completed', 'Rejected'].includes(r.status) : true,
       );
+      const prioritizedRows = visibleRows.sort((a, b) => {
+        const aPriority = assignedProjectIds.has(a.project_id) ? 0 : 1;
+        const bPriority = assignedProjectIds.has(b.project_id) ? 0 : 1;
+        return aPriority - bPriority;
+      });
+      const finalRows =
+        involvementFilter === 'Included Projects'
+          ? prioritizedRows.filter((r) => assignedProjectIds.has(r.project_id))
+          : prioritizedRows;
 
       if (opts?.append) {
         setItems((prev) => {
-          const combined = [...prev, ...visibleRows];
+          const combined = [...prev, ...finalRows];
           const m = new Map<string, ChangeRequestRow>();
           combined.forEach((it) => m.set(it.id, it));
           return Array.from(m.values());
         });
       } else {
-        setItems(visibleRows);
+        setItems(finalRows);
       }
 
       setHasMore(rows.length === pageSize);
@@ -140,9 +189,14 @@ const UserChangeRequests: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    loadAssignedProjects();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
+
+  useEffect(() => {
     load({ append: offset > 0 });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, typeFilter, offset]);
+  }, [statusFilter, typeFilter, involvementFilter, offset, assignedProjectIds]);
 
   const handleReject = async (id: string) => {
     setRejectTargetId(id);
@@ -310,6 +364,21 @@ const UserChangeRequests: React.FC = () => {
             <SelectItem value="Feedback">Feedback</SelectItem>
           </SelectContent>
         </Select>
+        <Select
+          value={involvementFilter}
+          onValueChange={(v: 'All' | 'Included Projects') => {
+            setInvolvementFilter(v);
+            setOffset(0);
+          }}
+        >
+          <SelectTrigger className="h-8 w-48">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="All">All</SelectItem>
+            <SelectItem value="Included Projects">Included Projects</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {loading ? (
@@ -319,11 +388,21 @@ const UserChangeRequests: React.FC = () => {
       ) : (
         <div className="space-y-4">
           {items.map((r) => (
-            <div key={r.id} className="border rounded-[14px] p-3 sm:p-4 bg-white shadow-sm">
+            <div
+              key={r.id}
+              className={`border rounded-[14px] p-3 sm:p-4 bg-white shadow-sm ${
+                isInvolvedProject(r.project_id) ? 'border-primary/40 bg-primary/5 ring-1 ring-primary/20' : ''
+              }`}
+            >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <div className="font-medium truncate">{r.title}</div>
+                    {isInvolvedProject(r.project_id) && (
+                      <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20">
+                        Involved Project
+                      </Badge>
+                    )}
                     {r.request_type ? (
                       r.request_type === 'feedback' ? (
                         <Badge>Feedback</Badge>
