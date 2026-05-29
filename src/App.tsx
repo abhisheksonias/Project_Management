@@ -34,6 +34,7 @@ import SharedTables from "./pages/SharedTables";
 import PublicSharedTable from "./pages/PublicSharedTable";
 import PublicChangeRequests from "./pages/PublicChangeRequests";
 import AdminChangeRequests from "./pages/AdminChangeRequests";
+import AdminExpenses from "./pages/AdminExpenses";
 import UserChangeRequests from "./pages/UserChangeRequests";
 
 const queryClient = new QueryClient();
@@ -136,6 +137,14 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="Admin">
                 <AdminProfit />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/admin/expenses" 
+            element={
+              <ProtectedRoute requiredRole="Admin">
+                <AdminExpenses />
               </ProtectedRoute>
             } 
           />

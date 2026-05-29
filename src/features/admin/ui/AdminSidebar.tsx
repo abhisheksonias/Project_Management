@@ -19,6 +19,7 @@ import {
   Table,
   Calendar,
   MessageSquare,
+  Wallet,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -45,6 +46,7 @@ const navItems: NavItem[] = [
   { id: 'team-efficiency', label: 'Team Efficiency', icon: Users, path: '/admin/team-efficiency' },
   { id: 'project-efficiency', label: 'Project Efficiency', icon: TrendingUp, path: '/admin/project-efficiency' },
   { id: 'profit', label: 'Profit & Finance', icon: DollarSign, path: '/admin/profit' },
+  { id: 'expenses', label: 'Expenses', icon: Wallet, path: '/admin/expenses' },
   { id: 'vendors', label: 'Vendors', icon: Building2, path: '/admin/vendors' },
   { id: 'shared-tables', label: 'Shared Tables', icon: Table, path: '/admin/shared-tables' },
   { id: 'work-calendar', label: 'Work Calendar', icon: Calendar, path: '/admin/work-calendar' },
@@ -99,16 +101,20 @@ const SidebarContentInternal: React.FC<{
                 key={item.id}
                 onClick={() => handleNavClick(item.path)}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-                  isCollapsed && "justify-center",
+                  "w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
+                  isCollapsed && "justify-center px-2",
                   active
                     ? "bg-[#FEEAEA] text-primary"
                     : "text-foreground hover:bg-accent hover:text-accent-foreground"
                 )}
-                title={isCollapsed ? item.label : undefined}
+                title={item.label}
               >
-                <Icon className={cn("h-5 w-5 flex-shrink-0", active ? "text-primary" : "text-muted-foreground")} />
-                {!isCollapsed && <span>{item.label}</span>}
+                <Icon className={cn("h-5 w-5 shrink-0", active ? "text-primary" : "text-muted-foreground")} />
+                {!isCollapsed && (
+                  <span className="min-w-0 flex-1 text-left leading-tight whitespace-nowrap">
+                    {item.label}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -193,7 +199,7 @@ export const AdminSidebar: React.FC = () => {
     <aside
       className={cn(
         'relative flex h-screen shrink-0 flex-col overflow-hidden bg-secondary transition-[width] duration-300 ease-in-out',
-        isCollapsed ? 'w-16' : 'w-[220px]'
+        isCollapsed ? 'w-16' : 'w-[240px]'
       )}
     >
       <Button
