@@ -68,7 +68,7 @@ export const MentionAutocompleteForEditor: React.FC<MentionAutocompleteForEditor
       const filtered = users.filter(
         (user) =>
           user.name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
-          user.email.toLowerCase().includes(mentionQuery.toLowerCase())
+          (user.email ?? '').toLowerCase().includes(mentionQuery.toLowerCase())
       );
       setFilteredUsers(filtered);
       setSelectedIndex(0);
@@ -152,7 +152,9 @@ export const MentionAutocompleteForEditor: React.FC<MentionAutocompleteForEditor
               >
                 <div className="flex flex-col">
                   <span className="font-medium">{user.name}</span>
-                  <span className="text-xs text-muted-foreground">{user.email}</span>
+                  {user.email ? (
+                    <span className="text-xs text-muted-foreground">{user.email}</span>
+                  ) : null}
                 </div>
               </CommandItem>
             ))}

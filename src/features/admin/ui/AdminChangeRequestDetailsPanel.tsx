@@ -8,7 +8,13 @@ import { ChangeRequestRow } from '@/features/changeRequests/types';
 import { parseMentions, extractMentionedUserIds } from '@/shared/utils/mentionParser';
 import { stripHtml } from '@/shared/utils/htmlUtils';
 import { HtmlContent } from '@/shared/ui/HtmlContent';
+import {
+  normalizeStringList,
+  referenceLinkLabel,
+} from '@/features/changeRequests/utils/normalizeChangeRequestData';
+import { sanitizeChangeRequestHtml } from '@/features/changeRequests/utils/sanitizeChangeRequestHtml';
 import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
+import { User } from '@/features/users/services/userService';
 import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,7 +27,7 @@ interface AdminChangeRequestDetailsPanelProps {
   open: boolean;
   onClose: () => void;
   currentUser: { id: string; name?: string | null } | null;
-  allUsers: Array<{ id: string; name: string }>;
+  allUsers: User[];
   onStatusChange: (id: string, status: string) => Promise<void> | void;
   onReject: (id: string) => void;
   onDelete: (id: string) => void;
@@ -67,6 +73,20 @@ export const AdminChangeRequestDetailsPanel: React.FC<AdminChangeRequestDetailsP
     if (!trimmed || trimmed === '<p></p>') return false;
     if (stripHtml(html).trim()) return true;
     return /<img[\s>]/i.test(trimmed);
+  };
+
+  const referenceLinks = useMemo(
+    () => normalizeStringList(request?.reference_links),
+    [request?.reference_links]
+  );
+
+  const attachmentUrls = useMemo(
+    () => normalizeStringList(request?.attachment_urls),
+    [request?.attachment_urls]
+  );
+
+  const handleSheetOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen) onClose();
   };
 
   if (!request) return null;
@@ -122,7 +142,7 @@ export const AdminChangeRequestDetailsPanel: React.FC<AdminChangeRequestDetailsP
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onClose}>
+      <Sheet open={open} onOpenChange={handleSheetOpenChange}>
         <SheetContent className="flex h-full w-full flex-col overflow-hidden p-3 sm:max-w-2xl sm:p-5">
           <SheetHeader className="space-y-1 pb-3 text-left">
             <SheetTitle className="pr-8 text-xl">{request.title}</SheetTitle>
@@ -169,32 +189,38 @@ export const AdminChangeRequestDetailsPanel: React.FC<AdminChangeRequestDetailsP
 
             <div className="mb-4 rounded-[14px] border bg-card p-3">
               <h3 className="mb-2 text-sm font-semibold">Description</h3>
-              <div
-                className="prose prose-sm max-w-none"
-                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(request.description || '') }}
-              />
+              <HtmlContent content={sanitizeChangeRequestHtml(request.description || '')} />
             </div>
 
-            {request.reference_links && request.reference_links.length > 0 && (
+            {referenceLinks.length > 0 && (
               <div className="mb-4 rounded-[14px] border bg-card p-3">
                 <h3 className="mb-2 text-sm font-semibold">Reference Links</h3>
                 <ul className="ml-5 list-disc">
-                  {request.reference_links.map((lnk: string, idx: number) => (
-                    <li key={idx}>
-                      <a href={lnk} target="_blank" rel="noreferrer" className="break-words text-primary underline">
-                        {lnk}
-                      </a>
-                    </li>
-                  ))}
+                  {referenceLinks.map((lnk, idx) => {
+                    const href = lnk.startsWith('http') ? lnk : `https://${lnk}`;
+                    return (
+                      <li key={idx}>
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="break-words text-primary underline"
+                          title={lnk}
+                        >
+                          {referenceLinkLabel(lnk)}
+                        </a>
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             )}
 
-            {request.attachment_urls && request.attachment_urls.length > 0 && (
+            {attachmentUrls.length > 0 && (
               <div className="mb-4 rounded-[14px] border bg-card p-3">
                 <h3 className="mb-2 text-sm font-semibold">Attachments</h3>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                  {request.attachment_urls.map((u: string, i: number) => {
+                  {attachmentUrls.map((u: string, i: number) => {
                     const lower = u.split('?')[0].toLowerCase();
                     const isImage = /\.(png|jpe?g|gif|webp|bmp|svg)$/.test(lower);
                     const isPdf = /\.pdf$/.test(lower);
@@ -237,6 +263,7 @@ export const AdminChangeRequestDetailsPanel: React.FC<AdminChangeRequestDetailsP
                   onChange={setCommentText}
                   placeholder="Type a comment... Use @ to mention"
                   showToolbar={false}
+                  minEditorHeight={56}
                   className="text-sm"
                   onEditorReady={(editor) => {
                     commentEditorRef.current = editor;
@@ -292,6 +319,7 @@ export const AdminChangeRequestDetailsPanel: React.FC<AdminChangeRequestDetailsP
                               value={editingCommentText}
                               onChange={setEditingCommentText}
                               showToolbar={false}
+                              minEditorHeight={56}
                               className="text-xs"
                               onEditorReady={(editor) => {
                                 editCommentEditorRef.current = editor;

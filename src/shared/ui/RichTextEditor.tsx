@@ -31,6 +31,8 @@ interface RichTextEditorProps {
   /** Enable paste & drag-drop images (requires onUploadImage). */
   enableImages?: boolean;
   onUploadImage?: (file: File) => Promise<string | null>;
+  /** Minimum height of the editable area in pixels. */
+  minEditorHeight?: number;
 }
 
 const isValidUrl = (string: string): boolean => {
@@ -60,6 +62,7 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   onEditorReady,
   enableImages = false,
   onUploadImage,
+  minEditorHeight = 80,
 }) => {
   const [isLinkDialogOpen, setIsLinkDialogOpen] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
@@ -110,9 +113,10 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
     editorProps: {
       attributes: {
         class: cn(
-          'prose prose-sm max-w-none focus:outline-none min-h-[100px] px-3 py-2 text-sm',
+          'prose prose-sm max-w-none focus:outline-none px-3 py-2 text-sm',
           imagesEnabled && '[&_img]:max-w-full [&_img]:h-auto [&_img]:rounded-md [&_img]:my-2'
         ),
+        style: `min-height: ${minEditorHeight}px`,
       },
       ...(imageHandlers
         ? {

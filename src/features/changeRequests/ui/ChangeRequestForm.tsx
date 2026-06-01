@@ -9,6 +9,7 @@ import { RemovableImageExtension } from '@/shared/ui/RemovableImageExtension';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import { changeRequestService } from '@/features/changeRequests/services/changeRequestService';
+import { sanitizeChangeRequestHtml } from '@/features/changeRequests/utils/sanitizeChangeRequestHtml';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -240,6 +241,8 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
         await Promise.all(uploads);
       }
 
+      html = sanitizeChangeRequestHtml(html);
+
       await changeRequestService.createChangeRequest(projectId, {
         title: title.trim(),
         description: html,
@@ -327,7 +330,9 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
             type="file"
             accept="image/*,.pdf,application/pdf"
             multiple
-            className="hidden"
+            tabIndex={-1}
+            aria-hidden
+            style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files?.length) void processDroppedFiles(e.target.files);
               e.target.value = '';
@@ -336,9 +341,7 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
           <div
             className={cn(
               'relative border rounded bg-white min-h-[200px] w-full max-w-[900px] p-2 transition-colors',
-              isDragging
-                ? 'border-2 border-dashed border-primary bg-primary/5'
-                : 'border-dashed border-muted-foreground/35'
+              isDragging && 'border-2 border-dashed border-primary bg-primary/5'
             )}
             onDragEnter={(e) => {
               e.preventDefault();
@@ -378,32 +381,20 @@ export const ChangeRequestForm: React.FC<Props> = ({ projectId, onSubmitted }) =
               </div>
             )}
 
-            {editor && editor.isEmpty && !isDragging && (
-              <div
-                role="button"
-                tabIndex={0}
-                onClick={() => fileInputRef.current?.click()}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    fileInputRef.current?.click();
-                  }
-                }}
-                className="absolute bottom-3 left-3 right-3 z-[1] flex cursor-pointer items-center justify-center gap-2 rounded-md bg-muted/40 py-2 text-xs text-muted-foreground hover:bg-muted/60"
-              >
-                <Upload className="h-4 w-4 shrink-0" />
-                <span className="text-center">
-                  Drag & drop images or PDFs here · Ctrl+V to paste · click to browse
-                </span>
-              </div>
-            )}
           </div>
 
-          <div className="text-xs text-muted-foreground mt-2">
-            {editor ? `${(editor.getText() || '').length} chars` : ''}
-            {editor?.getText().trim()
-              ? ' · Drop files on the description box anytime'
-              : ''}
+          <div className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+            {editor ? <span>{(editor.getText() || '').length} chars</span> : null}
+            <span aria-hidden>·</span>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1 text-primary hover:underline"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Upload className="h-3.5 w-3.5" />
+              Attach images or PDFs
+            </button>
+            <span>· drag & drop or paste into the box above</span>
           </div>
         </div>
       </div>

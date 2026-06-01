@@ -186,7 +186,7 @@ const AdminChangeRequests: React.FC = () => {
           setSelectedRequest(null);
         }}
         currentUser={profile ? { id: profile.id, name: profile.name } : null}
-        allUsers={allUsers.map((u) => ({ id: u.id, name: u.name }))}
+        allUsers={allUsers}
         onStatusChange={handleStatusChange}
         onReject={(id) => {
           setRejectTargetId(id);

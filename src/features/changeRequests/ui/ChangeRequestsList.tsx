@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import DOMPurify from 'dompurify';
 import { changeRequestService, ChangeRequest } from '@/features/changeRequests/services/changeRequestService';
+import { sanitizeChangeRequestHtml } from '@/features/changeRequests/utils/sanitizeChangeRequestHtml';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { toast } from 'sonner';
 import {
@@ -189,7 +189,9 @@ export const ChangeRequestsList: React.FC<Props> = ({ projectId, refreshKey, rea
                 <AccordionContent>
                   <div
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.description || '') }}
+                    dangerouslySetInnerHTML={{
+                      __html: sanitizeChangeRequestHtml(r.description || ''),
+                    }}
                   />
                 </AccordionContent>
               </AccordionItem>
