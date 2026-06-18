@@ -1,17 +1,5 @@
 import { supabase } from '@/integrations/supabase/client';
 
-export const EXPENSE_CATEGORIES = [
-  'Software',
-  'Travel',
-  'Marketing',
-  'Office',
-  'Hosting',
-  'Contractor',
-  'Other',
-] as const;
-
-export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
-
 export interface Expense {
   id: string;
   title: string;
@@ -48,6 +36,16 @@ export interface ExpenseFilters {
   dateFrom?: string;
   dateTo?: string;
 }
+
+export interface ExpenseFieldOptions {
+  titles: string[];
+  categories: string[];
+}
+
+const distinctSorted = (values: string[]) =>
+  [...new Set(values.map((v) => v.trim()).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' })
+  );
 
 class ExpenseService {
   async list(filters?: ExpenseFilters): Promise<Expense[]> {
@@ -137,6 +135,21 @@ class ExpenseService {
   async remove(id: string): Promise<void> {
     const { error } = await (supabase as any).from('expenses').delete().eq('id', id);
     if (error) throw error;
+  }
+
+  /** Distinct titles and categories already used in expenses. */
+  async getFieldOptions(): Promise<ExpenseFieldOptions> {
+    const { data, error } = await (supabase as any)
+      .from('expenses')
+      .select('title, category');
+
+    if (error) throw error;
+
+    const rows = (data || []) as Array<{ title?: string | null; category?: string | null }>;
+    return {
+      titles: distinctSorted(rows.map((r) => r.title ?? '')),
+      categories: distinctSorted(rows.map((r) => r.category ?? '')),
+    };
   }
 }
 

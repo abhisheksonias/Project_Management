@@ -6,10 +6,11 @@ import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjec
 import {
   useCreateExpense,
   useDeleteExpense,
+  useExpenseFieldOptions,
   useExpenses,
   useUpdateExpense,
 } from '@/features/expenses/hooks/useExpenses';
-import { Expense, EXPENSE_CATEGORIES } from '@/features/expenses/services/expenseService';
+import { Expense } from '@/features/expenses/services/expenseService';
 import { ExpenseFormDialog, ExpenseFormValues } from '@/features/expenses/ui/ExpenseFormDialog';
 import {
   ExpenseDateFilters,
@@ -100,6 +101,7 @@ const AdminExpenses: React.FC = () => {
   );
 
   const { data: expenses = [], isLoading } = useExpenses(filters);
+  const { data: fieldOptions = { titles: [], categories: [] } } = useExpenseFieldOptions();
   const createMutation = useCreateExpense();
   const updateMutation = useUpdateExpense();
   const deleteMutation = useDeleteExpense();
@@ -123,11 +125,11 @@ const AdminExpenses: React.FC = () => {
   };
 
   const toInput = (values: ExpenseFormValues) => ({
-    title: values.title,
+    title: values.title.trim(),
     amount: parseFloat(values.amount),
     currency: values.currency,
     expense_date: values.expense_date,
-    category: values.category,
+    category: values.category.trim(),
     project_id: values.project_id === 'none' ? null : values.project_id,
     notes: values.notes || null,
     created_by: profile?.id ?? null,
@@ -240,7 +242,7 @@ const AdminExpenses: React.FC = () => {
                   </SelectTrigger>
                   <SelectContent className="rounded-[14px]">
                     <SelectItem value="all">All categories</SelectItem>
-                    {EXPENSE_CATEGORIES.map((c) => (
+                    {fieldOptions.categories.map((c) => (
                       <SelectItem key={c} value={c}>
                         {c}
                       </SelectItem>
@@ -340,6 +342,8 @@ const AdminExpenses: React.FC = () => {
         }}
         expense={editing}
         projects={projects}
+        titleOptions={fieldOptions.titles}
+        categoryOptions={fieldOptions.categories}
         onSubmit={handleFormSubmit}
         isSaving={createMutation.isPending || updateMutation.isPending}
       />

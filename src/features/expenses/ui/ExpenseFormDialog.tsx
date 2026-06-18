@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -17,8 +17,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { EXPENSE_CATEGORIES, Expense } from '../services/expenseService';
+import { Expense } from '../services/expenseService';
+import { ExpenseDynamicField } from './ExpenseDynamicField';
 import { format } from 'date-fns';
+import { toast } from 'sonner';
 
 export interface ExpenseFormValues {
   title: string;
@@ -35,7 +37,7 @@ const defaultValues: ExpenseFormValues = {
   amount: '',
   currency: 'INR',
   expense_date: format(new Date(), 'yyyy-MM-dd'),
-  category: 'Other',
+  category: '',
   project_id: 'none',
   notes: '',
 };
@@ -45,6 +47,8 @@ interface ExpenseFormDialogProps {
   onOpenChange: (open: boolean) => void;
   expense?: Expense | null;
   projects: { id: string; name: string }[];
+  titleOptions: string[];
+  categoryOptions: string[];
   onSubmit: (values: ExpenseFormValues) => Promise<void>;
   isSaving: boolean;
 }
@@ -54,13 +58,24 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
   onOpenChange,
   expense,
   projects,
+  titleOptions,
+  categoryOptions,
   onSubmit,
   isSaving,
 }) => {
   const [form, setForm] = useState<ExpenseFormValues>(defaultValues);
+  const formSessionRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      formSessionRef.current = null;
+      return;
+    }
+
+    const sessionKey = expense?.id ?? '__new__';
+    if (formSessionRef.current === sessionKey) return;
+    formSessionRef.current = sessionKey;
+
     if (expense) {
       setForm({
         title: expense.title,
@@ -74,13 +89,27 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
     } else {
       setForm({ ...defaultValues, expense_date: format(new Date(), 'yyyy-MM-dd') });
     }
-  }, [open, expense]);
+  }, [open, expense?.id, expense]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.title.trim()) return;
-    if (!form.amount || Number.isNaN(Number(form.amount))) return;
-    await onSubmit(form);
+    if (!form.title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
+    if (!form.category.trim()) {
+      toast.error('Category is required');
+      return;
+    }
+    if (!form.amount || Number.isNaN(Number(form.amount))) {
+      toast.error('Enter a valid amount');
+      return;
+    }
+    await onSubmit({
+      ...form,
+      title: form.title.trim(),
+      category: form.category.trim(),
+    });
   };
 
   return (
@@ -90,16 +119,15 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
           <DialogTitle>{expense ? 'Edit expense' : 'Add expense'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="exp-title">Title</Label>
-            <Input
-              id="exp-title"
-              value={form.title}
-              onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))}
-              placeholder="e.g. Figma subscription"
-              required
-            />
-          </div>
+          <ExpenseDynamicField
+            id="exp-title"
+            label="Title"
+            value={form.title}
+            options={titleOptions}
+            onChange={(v) => setForm((p) => ({ ...p, title: v }))}
+            placeholder="e.g. Figma subscription"
+            required
+          />
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-2">
               <Label htmlFor="exp-amount">Amount</Label>
@@ -129,36 +157,25 @@ export const ExpenseFormDialog: React.FC<ExpenseFormDialogProps> = ({
               </Select>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-2">
-              <Label htmlFor="exp-date">Expense date</Label>
-              <Input
-                id="exp-date"
-                type="date"
-                value={form.expense_date}
-                onChange={(e) => setForm((p) => ({ ...p, expense_date: e.target.value }))}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm((p) => ({ ...p, category: v }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXPENSE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="exp-date">Expense date</Label>
+            <Input
+              id="exp-date"
+              type="date"
+              value={form.expense_date}
+              onChange={(e) => setForm((p) => ({ ...p, expense_date: e.target.value }))}
+              required
+            />
           </div>
+          <ExpenseDynamicField
+            id="exp-category"
+            label="Category"
+            value={form.category}
+            options={categoryOptions}
+            onChange={(v) => setForm((p) => ({ ...p, category: v }))}
+            placeholder="e.g. Software"
+            required
+          />
           <div className="space-y-2">
             <Label>Project (optional)</Label>
             <Select

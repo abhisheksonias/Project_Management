@@ -14,12 +14,24 @@ export const useExpenses = (filters?: ExpenseFilters) => {
   });
 };
 
+export const useExpenseFieldOptions = () => {
+  return useQuery({
+    queryKey: ['admin', 'expenses', 'field-options'],
+    queryFn: () => expenseService.getFieldOptions(),
+    staleTime: 60000,
+  });
+};
+
+const invalidateExpenseQueries = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: ['admin', 'expenses'] });
+};
+
 export const useCreateExpense = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ExpenseInput) => expenseService.create(input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'expenses'] });
+      invalidateExpenseQueries(queryClient);
       toast.success('Expense added');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to add expense'),
@@ -32,7 +44,7 @@ export const useUpdateExpense = () => {
     mutationFn: ({ id, input }: { id: string; input: ExpenseInput }) =>
       expenseService.update(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'expenses'] });
+      invalidateExpenseQueries(queryClient);
       toast.success('Expense updated');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to update expense'),
@@ -44,7 +56,7 @@ export const useDeleteExpense = () => {
   return useMutation({
     mutationFn: (id: string) => expenseService.remove(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin', 'expenses'] });
+      invalidateExpenseQueries(queryClient);
       toast.success('Expense deleted');
     },
     onError: (err: Error) => toast.error(err.message || 'Failed to delete expense'),
