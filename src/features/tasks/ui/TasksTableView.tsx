@@ -13,6 +13,11 @@ import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { stripHtml } from '@/shared/utils/htmlUtils';
+import {
+  getTaskDeadlineUrgency,
+  getDeadlineUrgencyClasses,
+  getDeadlineUrgencyLabel,
+} from '@/shared/utils/taskDeadlineUtils';
 
 type TaskCategory = 'design' | 'development';
 
@@ -85,10 +90,18 @@ export const TasksTableView: React.FC<TasksTableViewProps> = ({
   if (isMobile) {
     return (
       <div className="space-y-3">
-        {tasks.map((task) => (
+        {tasks.map((task) => {
+          const deadlineUrgency = getTaskDeadlineUrgency(task);
+          const urgencyClasses = getDeadlineUrgencyClasses(deadlineUrgency);
+          const urgencyLabel = getDeadlineUrgencyLabel(deadlineUrgency);
+
+          return (
           <Card
             key={task.id}
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className={cn(
+              'cursor-pointer hover:shadow-md transition-shadow border',
+              urgencyClasses.card
+            )}
             onClick={() => onTaskClick?.(task)}
           >
             <div className="p-3 space-y-2">
@@ -128,13 +141,21 @@ export const TasksTableView: React.FC<TasksTableViewProps> = ({
                 )}
                 {task.category && <span className="capitalize">Category: {task.category}</span>}
                 {task.estimate_hours && <span>Est: {task.estimate_hours}h</span>}
+                {urgencyLabel && (
+                  <Badge className={cn('text-[10px]', urgencyClasses.badge)}>
+                    {urgencyLabel}
+                  </Badge>
+                )}
                 {task.deadline && (
-                  <span>Due: {format(new Date(task.deadline), 'dd MMM yyyy')}</span>
+                  <span className={urgencyClasses.text}>
+                    Due: {format(new Date(task.deadline), 'dd MMM yyyy')}
+                  </span>
                 )}
               </div>
             </div>
           </Card>
-        ))}
+          );
+        })}
       </div>
     );
   }
@@ -164,10 +185,18 @@ export const TasksTableView: React.FC<TasksTableViewProps> = ({
             </tr>
           </thead>
           <tbody>
-            {tasks.map((task) => (
+            {tasks.map((task) => {
+              const deadlineUrgency = getTaskDeadlineUrgency(task);
+              const urgencyClasses = getDeadlineUrgencyClasses(deadlineUrgency);
+              const urgencyLabel = getDeadlineUrgencyLabel(deadlineUrgency);
+
+              return (
               <tr
                 key={task.id}
-                className="border-b hover:bg-secondary/50 cursor-pointer transition-colors"
+                className={cn(
+                  'border-b hover:bg-secondary/50 cursor-pointer transition-colors',
+                  urgencyClasses.card
+                )}
                 onClick={() => onTaskClick?.(task)}
               >
                 <td className="p-3 sm:p-4">
@@ -256,15 +285,23 @@ export const TasksTableView: React.FC<TasksTableViewProps> = ({
                 </td>
                 <td className="p-3 sm:p-4">
                   {task.deadline ? (
-                    <span className="text-xs sm:text-sm">
-                      {format(new Date(task.deadline), 'dd MMM yyyy')}
-                    </span>
+                    <div className="flex flex-col gap-1">
+                      {urgencyLabel && (
+                        <Badge className={cn('w-fit text-[10px]', urgencyClasses.badge)}>
+                          {urgencyLabel}
+                        </Badge>
+                      )}
+                      <span className={cn('text-xs sm:text-sm', urgencyClasses.text)}>
+                        {format(new Date(task.deadline), 'dd MMM yyyy')}
+                      </span>
+                    </div>
                   ) : (
                     <span className="text-xs sm:text-sm text-muted-foreground">-</span>
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

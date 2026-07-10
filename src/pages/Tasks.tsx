@@ -7,7 +7,8 @@ import { UserPageLayout } from '@/shared/ui/UserPageLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTasks } from '@/features/tasks/hooks/useTasks';
 import { useDashboardProjects } from '@/features/dashboard/hooks/useDashboardProjects';
-import { filterTasksByUserCategory } from '@/shared/utils/taskFilter';
+import { filterTasksByUserCategory, filterUsersBySameDepartment } from '@/shared/utils/taskFilter';
+import { sortTasksByDeadline } from '@/shared/utils/taskDeadlineUtils';
 import { TaskStatsCards } from '@/features/tasks/ui/TaskStatsCards';
 import { TaskFilters } from '@/features/tasks/ui/TaskFilters';
 import { TaskViewToggle } from '@/features/tasks/ui/TaskViewToggle';
@@ -28,6 +29,7 @@ import { useAllMilestones } from '@/features/milestones/hooks/useMilestones';
 import { useTaskTracker } from '@/features/task-tracker/hooks/useTaskTracker';
 import { TaskTrackerBar } from '@/features/task-tracker/ui/TaskTrackerBar';
 import { adminService } from '@/features/admin/services/adminService';
+import { userService } from '@/features/users/services/userService';
 
 const CATEGORY_OPTIONS = [
   { value: 'design', label: 'Design' },
@@ -68,11 +70,53 @@ const Tasks: React.FC = () => {
     staleTime: 300000,
   });
   const { data: allMilestones = [] } = useAllMilestones();
+  const { data: allUsers = [] } = useQuery({
+    queryKey: ['users', 'all'],
+    queryFn: () => userService.getAllUsers(),
+    staleTime: 300000,
+  });
   const updateTaskStatusMutation = useUpdateTaskStatus();
   const createTaskMutation = useCreateTask();
   const { activeTracker, elapsedLabel, startTracking, stopTracking } = useTaskTracker(
     profile?.id
   );
+
+  const usersForSelect = useMemo(
+    () =>
+      filterUsersBySameDepartment(allUsers, profile).map((user) => ({
+        id: user.id,
+        name: user.name,
+        department: user.department,
+      })),
+    [allUsers, profile]
+  );
+
+  const projectOptions = useMemo(
+    () =>
+      createProjectOptions.length > 0
+        ? createProjectOptions
+        : projects.map((p) => ({ id: p.id, name: p.name })),
+    [createProjectOptions, projects]
+  );
+
+  const milestonesForSelect = useMemo(
+    () =>
+      allMilestones.map((m) => ({
+        id: m.id,
+        name: m.name,
+        project_id: m.project_id,
+        sort_order: m.sort_order,
+      })),
+    [allMilestones]
+  );
+
+  const handleStartTimer = (task: Task) => {
+    startTracking({
+      taskId: task.id,
+      taskName: task.name || 'Untitled task',
+      projectId: task.project_id,
+    });
+  };
 
   // Apply category filtering based on user role/specialization
   const tasks = useMemo(() => {
@@ -93,10 +137,10 @@ const Tasks: React.FC = () => {
 
   // Filter tasks
   const filteredTasks = useMemo(() => {
-    return tasks.filter((task) => {
-      // Exclude completed and on hold tasks
+    const filtered = tasks.filter((task) => {
+      // Exclude on hold tasks unless explicitly filtered
       const taskStatus = (task.status || '').toLowerCase();
-      if (taskStatus === 'completed' || taskStatus === 'on hold') {
+      if (taskStatus === 'on hold' && status === 'All Statuses') {
         return false;
       }
 
@@ -160,6 +204,8 @@ const Tasks: React.FC = () => {
 
       return true;
     });
+
+    return sortTasksByDeadline(filtered);
   }, [tasks, searchQuery, project, status, priority, type, estimate, category, deadline]);
 
   // Get active filters for display
@@ -234,7 +280,10 @@ const Tasks: React.FC = () => {
   };
 
   const resetNewTaskForm = () => {
-    setNewTaskData(createDefaultNewTaskFormState());
+    setNewTaskData({
+      ...createDefaultNewTaskFormState(),
+      assigned_user_ids: profile?.id ? [profile.id] : [],
+    });
   };
 
   const handleOpenCreateDialog = () => {
@@ -250,8 +299,21 @@ const Tasks: React.FC = () => {
   const handleCreateTask = () => {
     const trimmedName = newTaskData.name.trim();
     const trimmedType = newTaskData.type.trim();
+    const assignedUserIds =
+      newTaskData.assigned_user_ids.length > 0
+        ? newTaskData.assigned_user_ids
+        : profile?.id
+          ? [profile.id]
+          : [];
 
-    if (!profile?.id || !trimmedName || !trimmedType || !newTaskData.project_id) {
+    if (
+      !profile?.id ||
+      !trimmedName ||
+      !trimmedType ||
+      !newTaskData.project_id ||
+      !newTaskData.deadline ||
+      assignedUserIds.length === 0
+    ) {
       return;
     }
 
@@ -262,7 +324,7 @@ const Tasks: React.FC = () => {
         status: newTaskData.status || 'To Do',
         type: trimmedType,
         priority: newTaskData.priority || null,
-        deadline: newTaskData.deadline ? newTaskData.deadline.toISOString() : null,
+        deadline: newTaskData.deadline.toISOString(),
         project_id: newTaskData.project_id,
         category:
           newTaskData.category && newTaskData.category !== 'none'
@@ -271,7 +333,7 @@ const Tasks: React.FC = () => {
         estimate_hours: newTaskData.estimate_hours
           ? Number(newTaskData.estimate_hours)
           : null,
-        assigned_user_ids: [profile.id],
+        assigned_user_ids: assignedUserIds,
         milestone_id:
           newTaskData.milestone_id && newTaskData.milestone_id !== 'none'
             ? newTaskData.milestone_id
@@ -301,8 +363,6 @@ const Tasks: React.FC = () => {
       navigate('/user/projects');
     } else if (tab === 'tasks') {
       navigate('/user/tasks');
-    } else if (tab === 'task-tracker') {
-      navigate('/user/task-tracker');
     } else if (tab === 'reports') {
       navigate('/user/reports');
     } else if (tab === 'shared-tables') {
@@ -404,6 +464,10 @@ const Tasks: React.FC = () => {
                   tasks={filteredTasks}
                   onTaskClick={handleTaskClick}
                   onStatusChange={handleTaskStatusChange}
+                  activeTaskId={activeTracker?.taskId}
+                  elapsedLabel={elapsedLabel}
+                  onStartTimer={handleStartTimer}
+                  onStopTimer={stopTracking}
                 />
               </div>
             ) : (
@@ -426,37 +490,22 @@ const Tasks: React.FC = () => {
           setIsPanelOpen(false);
           setSelectedTask(null);
         }}
+        projects={projectOptions}
+        users={usersForSelect}
+        milestones={milestonesForSelect}
+        activeTaskId={activeTracker?.taskId}
+        elapsedLabel={elapsedLabel}
+        onStartTimer={handleStartTimer}
+        onStopTimer={stopTracking}
       />
 
       <CreateTaskDialog
         open={isCreateDialogOpen}
-        data={{
-          ...newTaskData,
-          assigned_user_ids: profile?.id ? [profile.id] : [],
-        }}
-        projects={
-          createProjectOptions.length > 0
-            ? createProjectOptions
-            : projects.map((p) => ({ id: p.id, name: p.name }))
-        }
-        users={
-          profile?.id
-            ? [
-                {
-                  id: profile.id,
-                  name: profile.name,
-                  department: profile.department,
-                },
-              ]
-            : []
-        }
+        data={newTaskData}
+        projects={projectOptions}
+        users={usersForSelect}
         categoryOptions={CATEGORY_OPTIONS}
-        milestones={allMilestones.map((m) => ({
-          id: m.id,
-          name: m.name,
-          project_id: m.project_id,
-          sort_order: m.sort_order,
-        }))}
+        milestones={milestonesForSelect}
         isSubmitting={createTaskMutation.isPending}
         onOpenChange={(open) => {
           if (open) {
@@ -469,13 +518,11 @@ const Tasks: React.FC = () => {
           setNewTaskData((prev) => ({
             ...prev,
             ...change,
-            assigned_user_ids: profile?.id ? [profile.id] : prev.assigned_user_ids,
           }))
         }
         onSubmit={handleCreateTask}
-        description="Create your own task. It will be assigned to you automatically."
-        submitLabel="Create My Task"
-        disableAssigneeSelection
+        description="You are assigned by default. Add teammates from your department."
+        submitLabel="Create Task"
       />
     </UserPageLayout>
   );

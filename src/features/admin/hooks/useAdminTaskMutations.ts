@@ -41,6 +41,7 @@ export const useUpdateTask = () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'tasks'] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'task', updatedTask.id] });
       queryClient.invalidateQueries({ queryKey: ['admin', 'projects'] });
+      queryClient.invalidateQueries({ queryKey: ['tasks'] });
       toast.success('Task updated successfully');
     },
     onError: (error: Error) => {

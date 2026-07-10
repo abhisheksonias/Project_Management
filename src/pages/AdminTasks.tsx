@@ -26,6 +26,7 @@ import { useQuery } from '@tanstack/react-query';
 import { userService } from '@/features/users/services/userService';
 import { useAdminProjectsForFilter } from '@/features/admin/hooks/useAdminProjects';
 import { useAllMilestones } from '@/features/milestones/hooks/useMilestones';
+import { sortTasksByDeadline } from '@/shared/utils/taskDeadlineUtils';
 
 const CATEGORY_OPTIONS = [
   { value: 'design', label: 'Design' },
@@ -43,6 +44,7 @@ const AdminTasks: React.FC = () => {
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [categoryFilter, setCategoryFilter] = useState('All Categories');
   const [deadlineFilter, setDeadlineFilter] = useState<Date | undefined>(undefined);
+  const [userFilter, setUserFilter] = useState('All Users');
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isPanelOpen, setIsPanelOpen] = useState(false);
@@ -103,6 +105,14 @@ const AdminTasks: React.FC = () => {
     [allMilestones]
   );
 
+  const usersForFilter = useMemo(
+    () =>
+      users
+        .filter((user) => user.role !== 'Admin')
+        .map((user) => ({ id: user.id, name: user.name })),
+    [users]
+  );
+
   const filteredTasks = useMemo(() => {
     const filtered = tasks.filter((task) => {
       if (searchQuery) {
@@ -141,6 +151,13 @@ const AdminTasks: React.FC = () => {
         return false;
       }
 
+      if (userFilter !== 'All Users') {
+        const assigneeIds = task.assignees?.map((a) => a.user_id) ?? [];
+        if (!assigneeIds.includes(userFilter)) {
+          return false;
+        }
+      }
+
       if (deadlineFilter) {
         if (!task.deadline) {
           return false;
@@ -174,14 +191,7 @@ const AdminTasks: React.FC = () => {
       return true;
     });
 
-    return [...filtered].sort((a, b) => {
-      const getTimestamp = (task: Task) => {
-        const source = task.updated_at ?? task.created_at;
-        return source ? new Date(source).getTime() : 0;
-      };
-
-      return getTimestamp(b) - getTimestamp(a);
-    });
+    return sortTasksByDeadline(filtered);
   }, [
     tasks,
     searchQuery,
@@ -190,6 +200,7 @@ const AdminTasks: React.FC = () => {
     priorityFilter,
     typeFilter,
     categoryFilter,
+    userFilter,
     deadlineFilter,
   ]);
 
@@ -205,6 +216,7 @@ const AdminTasks: React.FC = () => {
     setPriorityFilter('All Priorities');
     setTypeFilter('All Types');
     setCategoryFilter('All Categories');
+    setUserFilter('All Users');
     setDeadlineFilter(undefined);
   };
 
@@ -212,7 +224,7 @@ const AdminTasks: React.FC = () => {
     const trimmedName = newTaskData.name.trim();
     const trimmedType = newTaskData.type.trim();
 
-    if (!trimmedName || !trimmedType || !newTaskData.project_id || newTaskData.project_id === 'none') {
+    if (!trimmedName || !trimmedType || !newTaskData.project_id || newTaskData.project_id === 'none' || !newTaskData.deadline) {
       return;
     }
 
@@ -223,7 +235,7 @@ const AdminTasks: React.FC = () => {
         status: newTaskData.status || 'To Do',
         type: trimmedType,
         priority: newTaskData.priority || null,
-        deadline: newTaskData.deadline ? newTaskData.deadline.toISOString() : null,
+        deadline: newTaskData.deadline.toISOString(),
         project_id: newTaskData.project_id || null,
         category:
           newTaskData.category && newTaskData.category !== 'none'
@@ -282,6 +294,10 @@ const AdminTasks: React.FC = () => {
     if (priorityFilter !== 'All Priorities') filters.push(`${priorityFilter} Priority`);
     if (typeFilter !== 'All Types') filters.push(typeFilter);
     if (categoryFilter !== 'All Categories') filters.push(categoryFilter);
+    if (userFilter !== 'All Users') {
+      const userName = usersForFilter.find((u) => u.id === userFilter)?.name || userFilter;
+      filters.push(userName);
+    }
     if (deadlineFilter) {
       filters.push(`Due by ${deadlineFilter.toLocaleDateString()}`);
     }
@@ -292,8 +308,10 @@ const AdminTasks: React.FC = () => {
     priorityFilter,
     typeFilter,
     categoryFilter,
+    userFilter,
     deadlineFilter,
     adminProjects,
+    usersForFilter,
   ]);
 
   if (isLoading) {
@@ -352,6 +370,8 @@ const AdminTasks: React.FC = () => {
                 estimate="All Estimates"
                 category={categoryFilter}
                 deadline={deadlineFilter}
+                user={userFilter}
+                users={usersForFilter}
                 activeFilters={activeFilters}
                 onSearchChange={setSearchQuery}
                 onProjectChange={setProjectFilter}
@@ -361,6 +381,7 @@ const AdminTasks: React.FC = () => {
                 onEstimateChange={() => {}}
                 onCategoryChange={setCategoryFilter}
                 onDeadlineChange={setDeadlineFilter}
+                onUserChange={setUserFilter}
                 onRemoveFilter={() => {}}
                 onReset={handleResetFilters}
                 projects={projectsForSelect}

@@ -165,14 +165,26 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
       return false;
     });
   }, [users, selectedDepartment, data.assigned_user_ids]);
+
+  const toggleAssignee = (userId: string, checked: boolean) => {
+    const currentIds = data.assigned_user_ids || [];
+    const newIds = checked
+      ? currentIds.includes(userId)
+        ? currentIds
+        : [...currentIds, userId]
+      : currentIds.filter((id) => id !== userId);
+    onChange({ assigned_user_ids: newIds });
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[720px] max-h-[90vh] rounded-[14px] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] sm:max-w-[720px] max-h-[90vh] rounded-[14px] flex flex-col overflow-hidden p-4 sm:p-6">
+        <DialogHeader className="shrink-0">
           <DialogTitle className="text-base sm:text-lg">{title}</DialogTitle>
           <DialogDescription className="text-xs sm:text-sm">{description}</DialogDescription>
         </DialogHeader>
 
+        <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <div className="space-y-3 sm:space-y-4">
           <div>
             <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
@@ -338,9 +350,10 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                     : 'Assignee will be auto-assigned'}
                 </div>
               ) : (
-                <Popover>
+                <Popover modal>
                   <PopoverTrigger asChild>
                     <Button
+                      type="button"
                       variant="outline"
                       className={cn(
                         'w-full justify-between rounded-[14px] font-normal text-sm h-9 sm:h-10',
@@ -360,70 +373,71 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                       <ChevronDown className="h-3 w-3 sm:h-4 sm:w-4 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[90vw] sm:w-[320px] p-0 rounded-[14px]" align="start">
-                    <div className="p-2">
-                      {selectedDepartment && data.assigned_user_ids.length > 0 && (
-                        <div className="mb-2 p-2 bg-secondary rounded-md text-[11px] sm:text-xs text-muted-foreground">
-                          Only showing users from {selectedDepartment.includes('design') ? 'Design' : 'Development'} department
+                  <PopoverContent
+                    className="z-[100] w-[90vw] sm:w-[320px] p-0 rounded-[14px]"
+                    align="start"
+                    side="bottom"
+                    collisionPadding={16}
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                    onWheel={(e) => e.stopPropagation()}
+                  >
+                    {selectedDepartment && data.assigned_user_ids.length > 0 && (
+                      <div className="border-b px-3 py-2 text-[11px] sm:text-xs text-muted-foreground">
+                        Only showing users from{' '}
+                        {selectedDepartment.includes('design') ? 'Design' : 'Development'} department
+                      </div>
+                    )}
+                    <div
+                      className="max-h-[min(280px,40vh)] overflow-y-auto overscroll-contain touch-pan-y"
+                      onWheel={(e) => e.stopPropagation()}
+                      onTouchMove={(e) => e.stopPropagation()}
+                    >
+                      {availableUsers.length === 0 ? (
+                        <div className="p-3 text-xs sm:text-sm text-muted-foreground text-center">
+                          No users available
                         </div>
-                      )}
-                      <div className="max-h-[300px] overflow-y-auto space-y-2">
-                        {availableUsers.length === 0 ? (
-                          <div className="p-2 text-xs sm:text-sm text-muted-foreground text-center">
-                            No users available
-                          </div>
-                        ) : (
-                          availableUsers.map((user) => {
+                      ) : (
+                        <div className="p-1">
+                          {availableUsers.map((user) => {
                             const isSelected =
                               data.assigned_user_ids?.includes(user.id) || false;
                             return (
-                              <div
+                              <label
                                 key={user.id}
-                                className="flex items-center space-x-2 p-2 rounded-md hover:bg-secondary cursor-pointer"
-                                onClick={() => {
-                                  const currentIds = data.assigned_user_ids || [];
-                                  const newIds = isSelected
-                                    ? currentIds.filter((id) => id !== user.id)
-                                    : [...currentIds, user.id];
-                                  onChange({ assigned_user_ids: newIds });
-                                }}
+                                htmlFor={`assignee-${user.id}`}
+                                className="flex cursor-pointer items-center gap-2 rounded-md p-2 hover:bg-secondary"
                               >
                                 <Checkbox
+                                  id={`assignee-${user.id}`}
                                   checked={isSelected}
-                                  onCheckedChange={(checked) => {
-                                    const currentIds = data.assigned_user_ids || [];
-                                    const newIds = checked
-                                      ? [...currentIds, user.id]
-                                      : currentIds.filter((id) => id !== user.id);
-                                    onChange({ assigned_user_ids: newIds });
-                                  }}
+                                  onCheckedChange={(checked) =>
+                                    toggleAssignee(user.id, checked === true)
+                                  }
                                 />
-                                <label
-                                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 flex-1 cursor-pointer"
-                                  onClick={(e) => e.preventDefault()}
-                                >
+                                <span className="flex-1 text-sm font-medium leading-none">
                                   {user.name}
-                                </label>
-                              </div>
+                                </span>
+                              </label>
                             );
-                          })
-                        )}
-                      </div>
-                      {data.assigned_user_ids && data.assigned_user_ids.length > 0 && (
-                        <div className="mt-2 pt-2 border-t">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => {
-                              onChange({ assigned_user_ids: [], category: '' });
-                            }}
-                          >
-                            Clear selection
-                          </Button>
+                          })}
                         </div>
                       )}
                     </div>
+                    {data.assigned_user_ids && data.assigned_user_ids.length > 0 && (
+                      <div className="border-t p-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-xs"
+                          onClick={() => {
+                            onChange({ assigned_user_ids: [], category: '' });
+                          }}
+                        >
+                          Clear selection
+                        </Button>
+                      </div>
+                    )}
                   </PopoverContent>
                 </Popover>
               )}
@@ -487,7 +501,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
 
             <div>
               <label className="text-xs sm:text-sm font-medium text-muted-foreground mb-1 block">
-                Deadline
+                Deadline *
               </label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -504,7 +518,7 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
                     </span>
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 rounded-[14px]" align="start">
+                <PopoverContent className="z-[100] w-auto p-0 rounded-[14px]" align="start">
                   <Calendar
                     mode="single"
                     selected={data.deadline || undefined}
@@ -516,8 +530,9 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
             </div>
           </div>
         </div>
+        </div>
 
-        <DialogFooter className="flex flex-col sm:flex-row justify-end gap-2 pt-2 sm:pt-0">
+        <DialogFooter className="shrink-0 flex flex-col sm:flex-row justify-end gap-2 pt-2 sm:pt-0">
           <Button
             variant="outline"
             onClick={() => onOpenChange(false)}
@@ -528,7 +543,15 @@ export const CreateTaskDialog: React.FC<CreateTaskDialogProps> = ({
           </Button>
           <Button
             onClick={onSubmit}
-            disabled={isSubmitting || !data.name.trim() || !data.type.trim() || !data.project_id || data.project_id === 'none'}
+            disabled={
+              isSubmitting ||
+              !data.name.trim() ||
+              !data.type.trim() ||
+              !data.project_id ||
+              data.project_id === 'none' ||
+              !data.deadline ||
+              (!disableAssigneeSelection && (!data.assigned_user_ids || data.assigned_user_ids.length === 0))
+            }
             className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-[14px] w-full sm:w-auto text-sm h-9 sm:h-10"
           >
             {isSubmitting ? 'Saving...' : submitLabel}

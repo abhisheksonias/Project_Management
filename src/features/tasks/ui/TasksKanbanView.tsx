@@ -4,11 +4,22 @@ import { Badge } from '@/components/ui/badge';
 import { Task } from '../services/taskService';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { TaskTimerControls } from '@/features/task-tracker/ui/TaskTimerControls';
+import {
+  getTaskDeadlineUrgency,
+  getDeadlineUrgencyClasses,
+  getDeadlineUrgencyLabel,
+  sortTasksByDeadline,
+} from '@/shared/utils/taskDeadlineUtils';
 
 interface TasksKanbanViewProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
   onStatusChange?: (taskId: string, newStatus: string) => void;
+  activeTaskId?: string;
+  elapsedLabel?: string;
+  onStartTimer?: (task: Task) => void;
+  onStopTimer?: () => void;
 }
 
 const STATUS_COLUMNS = [
@@ -36,6 +47,10 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
   tasks,
   onTaskClick,
   onStatusChange,
+  activeTaskId,
+  elapsedLabel,
+  onStartTimer,
+  onStopTimer,
 }) => {
   const [draggedTask, setDraggedTask] = useState<Task | null>(null);
   const [draggedOverColumn, setDraggedOverColumn] = useState<string | null>(null);
@@ -63,6 +78,10 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
     tasks.forEach((task) => {
       const status = normalizeStatus(task.status);
       grouped[status].push(task);
+    });
+
+    STATUS_COLUMNS.forEach((col) => {
+      grouped[col.id] = sortTasksByDeadline(grouped[col.id]);
     });
 
     return grouped;
@@ -139,7 +158,12 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                         Drop tasks here
                       </div>
                     ) : (
-                      columnTasks.map((task) => (
+                      columnTasks.map((task) => {
+                        const deadlineUrgency = getTaskDeadlineUrgency(task);
+                        const urgencyClasses = getDeadlineUrgencyClasses(deadlineUrgency);
+                        const urgencyLabel = getDeadlineUrgencyLabel(deadlineUrgency);
+
+                        return (
                         <Card
                           key={task.id}
                           draggable
@@ -147,7 +171,8 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                           onDragEnd={handleDragEnd}
                           className={cn(
                             'cursor-move border transition-all hover:shadow-md',
-                            draggedTask?.id === task.id && 'opacity-50'
+                            draggedTask?.id === task.id && 'opacity-50',
+                            urgencyClasses.card
                           )}
                           onClick={() => {
                             if (!draggedTask) {
@@ -160,14 +185,27 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                               <h4 className="line-clamp-2 flex-1 text-xs font-medium sm:text-sm">
                                 {task.name}
                               </h4>
-                              {task.milestones && (
-                                <span className="shrink-0 rounded-md bg-primary px-1 py-0 text-[10px] text-white sm:px-1.5 sm:text-xs">
-                                  #{' '}
-                                  {task.milestones.sort_order !== null
-                                    ? task.milestones.sort_order
-                                    : task.milestones.name}
-                                </span>
-                              )}
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                {onStartTimer && onStopTimer && (
+                                  <TaskTimerControls
+                                    isActive={activeTaskId === task.id}
+                                    elapsedLabel={
+                                      activeTaskId === task.id ? elapsedLabel : undefined
+                                    }
+                                    onStart={() => onStartTimer(task)}
+                                    onStop={onStopTimer}
+                                    compact
+                                  />
+                                )}
+                                {task.milestones && (
+                                  <span className="shrink-0 rounded-md bg-primary px-1 py-0 text-[10px] text-white sm:px-1.5 sm:text-xs">
+                                    #{' '}
+                                    {task.milestones.sort_order !== null
+                                      ? task.milestones.sort_order
+                                      : task.milestones.name}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                             {task.projects?.name && (
                               <p className="mb-1 line-clamp-1 text-[10px] text-muted-foreground sm:mb-1.5 sm:text-xs">
@@ -176,6 +214,16 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                             )}
 
                             <div className="flex flex-wrap items-center gap-1 sm:gap-1.5">
+                              {urgencyLabel && (
+                                <Badge
+                                  className={cn(
+                                    'px-1 py-0 text-[10px] sm:px-1.5 sm:text-xs',
+                                    urgencyClasses.badge
+                                  )}
+                                >
+                                  {urgencyLabel}
+                                </Badge>
+                              )}
                               {task.priority && (
                                 <Badge
                                   className={cn(
@@ -187,14 +235,20 @@ export const TasksKanbanView: React.FC<TasksKanbanViewProps> = ({
                                 </Badge>
                               )}
                               {task.deadline && (
-                                <span className="text-[10px] text-muted-foreground sm:text-xs">
+                                <span
+                                  className={cn(
+                                    'text-[10px] sm:text-xs',
+                                    urgencyClasses.text
+                                  )}
+                                >
                                   {format(new Date(task.deadline), 'dd MMM')}
                                 </span>
                               )}
                             </div>
                           </CardContent>
                         </Card>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </CardContent>

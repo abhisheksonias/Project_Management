@@ -95,8 +95,6 @@ const Reports: React.FC = () => {
       navigate('/user/projects');
     } else if (tab === 'tasks') {
       navigate('/user/tasks');
-    } else if (tab === 'task-tracker') {
-      navigate('/user/task-tracker');
     } else if (tab === 'reports') {
       navigate('/user/reports');
     } else if (tab === 'shared-tables') {

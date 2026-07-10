@@ -18,7 +18,6 @@ import Projects from "./pages/Projects";
 import Tasks from "./pages/Tasks";
 import Profile from "./pages/Profile";
 import Reports from "./pages/Reports";
-import TaskTracker from "./pages/TaskTracker";
 import { ResetPassword } from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 import AdminWorklogs from "./pages/AdminWorklogs";
@@ -220,14 +219,6 @@ const App = () => (
             element={
               <ProtectedRoute requiredRole="User">
                 <Tasks />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/user/task-tracker" 
-            element={
-              <ProtectedRoute requiredRole="User">
-                <TaskTracker />
               </ProtectedRoute>
             } 
           />

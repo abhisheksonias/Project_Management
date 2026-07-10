@@ -123,6 +123,10 @@ class AdminTaskService {
   }
 
   async createTask(data: CreateTaskData, createdBy: string): Promise<Task> {
+    if (!data.deadline) {
+      throw new Error('Deadline is required');
+    }
+
     const payload = {
       name: data.name,
       description: data.description ?? null,
@@ -190,6 +194,10 @@ class AdminTaskService {
   }
 
   async updateTask(taskId: string, data: UpdateTaskData, updatedBy: string): Promise<Task> {
+    if (data.deadline !== undefined && !data.deadline) {
+      throw new Error('Deadline is required');
+    }
+
     const { data: currentTask, error: fetchError } = await supabase
       .from('tasks')
       .select('status')

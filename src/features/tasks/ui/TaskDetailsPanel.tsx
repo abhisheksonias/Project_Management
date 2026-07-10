@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sheet,
   SheetContent,
@@ -14,7 +14,7 @@ import { Task, TaskComment } from '../services/taskService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAddTaskComment, useUpdateTaskCommentAcknowledgment, useUpdateTaskComment } from '../hooks/useTaskComments';
 import { format } from 'date-fns';
-import { Calendar, Clock, Folder, Send, CheckCircle2, Edit2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Calendar, Clock, Folder, Send, CheckCircle2, Edit2, ChevronDown, ChevronUp, Pencil, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { MentionAutocompleteForEditor } from '@/features/projects/ui/MentionAutocompleteForEditor';
 import { useQuery } from '@tanstack/react-query';
@@ -25,28 +25,78 @@ import { RichTextEditor } from '@/shared/ui/RichTextEditor';
 import { stripHtml } from '@/shared/utils/htmlUtils';
 import { uploadTaskCommentImage } from '@/shared/utils/editorImageUpload';
 import { useEditor, Editor } from '@tiptap/react';
+import {
+  CreateTaskDialog,
+  NewTaskFormState,
+  createDefaultNewTaskFormState,
+} from '@/features/admin/ui/CreateTaskDialog';
+import { useUpdateTask } from '@/features/admin/hooks/useAdminTaskMutations';
+import { TaskTimerControls } from '@/features/task-tracker/ui/TaskTimerControls';
+
+const CATEGORY_OPTIONS = [
+  { value: 'design', label: 'Design' },
+  { value: 'development', label: 'Development' },
+];
 
 interface TaskDetailsPanelProps {
   task: Task | null;
   open: boolean;
   onClose: () => void;
+  projects: Array<{ id: string; name: string }>;
+  users: Array<{ id: string; name: string; department?: string | null }>;
+  milestones: Array<{ id: string; name: string; project_id: string; sort_order?: number | null }>;
+  activeTaskId?: string;
+  elapsedLabel?: string;
+  onStartTimer?: (task: Task) => void;
+  onStopTimer?: () => void;
 }
+
+const buildFormStateFromTask = (currentTask: Task): NewTaskFormState => {
+  const assignedUserIds: string[] =
+    currentTask.assignees && currentTask.assignees.length > 0
+      ? currentTask.assignees.map((a) => a.user_id)
+      : [];
+
+  return {
+    name: currentTask.name || '',
+    description: currentTask.description || '',
+    status: currentTask.status || 'To Do',
+    type: currentTask.type || '',
+    priority: currentTask.priority || '',
+    project_id: currentTask.project_id || 'none',
+    category: currentTask.category || '',
+    estimate_hours: currentTask.estimate_hours ? String(currentTask.estimate_hours) : '',
+    deadline: currentTask.deadline ? new Date(currentTask.deadline) : null,
+    assigned_user_ids: assignedUserIds,
+    milestone_id: currentTask.milestone_id || 'none',
+  };
+};
 
 export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
   task,
   open,
   onClose,
+  projects,
+  users,
+  milestones,
+  activeTaskId,
+  elapsedLabel,
+  onStartTimer,
+  onStopTimer,
 }) => {
   const { profile } = useAuth();
   const [commentText, setCommentText] = useState('');
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentText, setEditingCommentText] = useState('');
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState<NewTaskFormState>(() => createDefaultNewTaskFormState());
   const commentEditorRef = React.useRef<Editor | null>(null);
   const editCommentEditorRef = React.useRef<Editor | null>(null);
   const addCommentMutation = useAddTaskComment();
   const updateAcknowledgmentMutation = useUpdateTaskCommentAcknowledgment();
   const updateCommentMutation = useUpdateTaskComment();
+  const updateTaskMutation = useUpdateTask();
 
   // Fetch all users for mention autocomplete
   const { data: allUsers = [] } = useQuery({
@@ -73,6 +123,24 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
         new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime()
     );
   }, [comments]);
+
+  useEffect(() => {
+    if (task) {
+      setEditForm(buildFormStateFromTask(task));
+    }
+  }, [task]);
+
+  const assignedUserDisplayName = useMemo(() => {
+    if (!task?.assignees || task.assignees.length === 0) return null;
+
+    const names = task.assignees
+      .map((assignee) => {
+        if (assignee.users?.name) return assignee.users.name;
+        return users.find((user) => user.id === assignee.user_id)?.name || assignee.user_id;
+      })
+      .filter(Boolean);
+    return names.length > 0 ? names.join(', ') : null;
+  }, [task?.assignees, users]);
 
   if (!task) return null;
 
@@ -199,11 +267,68 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
     );
   };
 
+  const handleCloseEditDialog = () => {
+    if (task) {
+      setEditForm(buildFormStateFromTask(task));
+    }
+    setIsEditDialogOpen(false);
+  };
+
+  const handleSaveTask = () => {
+    if (!profile || !task) return;
+
+    const payload = {
+      name: editForm.name.trim(),
+      description: editForm.description.trim() || null,
+      status: editForm.status || 'To Do',
+      type: editForm.type.trim() || null,
+      priority: editForm.priority || null,
+      project_id: editForm.project_id && editForm.project_id !== 'none' ? editForm.project_id : null,
+      category: editForm.category || null,
+      estimate_hours: editForm.estimate_hours ? Number(editForm.estimate_hours) : null,
+      deadline: editForm.deadline ? editForm.deadline.toISOString() : null,
+      assigned_user_ids: editForm.assigned_user_ids || [],
+      milestone_id:
+        editForm.milestone_id && editForm.milestone_id !== 'none' ? editForm.milestone_id : null,
+    };
+
+    if (
+      !payload.name ||
+      !payload.type ||
+      !payload.project_id ||
+      !payload.deadline ||
+      !payload.assigned_user_ids?.length
+    ) {
+      return;
+    }
+
+    updateTaskMutation.mutate(
+      { taskId: task.id, data: payload },
+      {
+        onSuccess: () => {
+          setIsEditDialogOpen(false);
+        },
+      }
+    );
+  };
+
   return (
+    <>
     <Sheet open={open} onOpenChange={onClose}>
       <SheetContent className="w-full sm:max-w-2xl overflow-y-auto pb-14">
         <SheetHeader>
-          <SheetTitle className="text-lg sm:text-xl md:text-2xl">{task.name}</SheetTitle>
+          <div className="flex items-start justify-between gap-2">
+            <SheetTitle className="text-lg sm:text-xl md:text-2xl flex-1">{task.name}</SheetTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="rounded-[14px] shrink-0 text-xs sm:text-sm h-8"
+              onClick={() => setIsEditDialogOpen(true)}
+            >
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Edit
+            </Button>
+          </div>
           {task.description && (
             <div className="mt-2">
               <Button
@@ -273,6 +398,17 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
             )}
           </div>
 
+          {onStartTimer && onStopTimer && (
+            <div>
+              <TaskTimerControls
+                isActive={activeTaskId === task.id}
+                elapsedLabel={activeTaskId === task.id ? elapsedLabel : undefined}
+                onStart={() => onStartTimer(task)}
+                onStop={onStopTimer}
+              />
+            </div>
+          )}
+
           <Separator />
 
           {/* Additional Details */}
@@ -283,6 +419,16 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
                 <div>
                   <p className="text-xs sm:text-sm text-muted-foreground">Project</p>
                   <p className="text-xs sm:text-sm font-medium">{task.projects.name}</p>
+                </div>
+              </div>
+            )}
+
+            {assignedUserDisplayName && (
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-xs sm:text-sm text-muted-foreground">Assigned to</p>
+                  <p className="text-xs sm:text-sm font-medium">{assignedUserDisplayName}</p>
                 </div>
               </div>
             )}
@@ -441,6 +587,34 @@ export const TaskDetailsPanel: React.FC<TaskDetailsPanelProps> = ({
         </div>
       </SheetContent>
     </Sheet>
+
+    <CreateTaskDialog
+      open={isEditDialogOpen}
+      data={editForm}
+      projects={projects}
+      users={users}
+      categoryOptions={CATEGORY_OPTIONS}
+      milestones={milestones}
+      isSubmitting={updateTaskMutation.isPending}
+      onOpenChange={(dialogOpen) => {
+        if (!dialogOpen) {
+          handleCloseEditDialog();
+        } else {
+          setIsEditDialogOpen(true);
+        }
+      }}
+      onChange={(change) =>
+        setEditForm((prev) => ({
+          ...prev,
+          ...change,
+        }))
+      }
+      onSubmit={handleSaveTask}
+      title="Edit Task"
+      description="Update task details. Fields marked with * are required."
+      submitLabel="Save Changes"
+    />
+    </>
   );
 };
 

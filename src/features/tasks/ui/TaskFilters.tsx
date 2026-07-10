@@ -26,6 +26,8 @@ interface TaskFiltersProps {
   category: string;
   deadline: Date | undefined;
   activeFilters: string[];
+  user?: string;
+  users?: Array<{ id: string; name: string }>;
   onSearchChange: (query: string) => void;
   onProjectChange: (project: string) => void;
   onStatusChange: (status: string) => void;
@@ -34,6 +36,7 @@ interface TaskFiltersProps {
   onEstimateChange: (estimate: string) => void;
   onCategoryChange: (category: string) => void;
   onDeadlineChange: (date: Date | undefined) => void;
+  onUserChange?: (userId: string) => void;
   onRemoveFilter: (filter: string) => void;
   onReset: () => void;
   projects?: Array<{ id: string; name: string }>;
@@ -49,6 +52,8 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   category,
   deadline,
   activeFilters,
+  user = 'All Users',
+  users = [],
   onSearchChange,
   onProjectChange,
   onStatusChange,
@@ -57,6 +62,7 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   onEstimateChange,
   onCategoryChange,
   onDeadlineChange,
+  onUserChange,
   onRemoveFilter,
   onReset,
   projects = [],
@@ -64,12 +70,15 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
   const isMobile = useIsMobile();
   const [isExpanded, setIsExpanded] = useState(false);
 
+  const showUserFilter = Boolean(onUserChange && users.length > 0);
+
   const hasActiveFilters = project !== 'All Projects' || 
     status !== 'All Statuses' || 
     priority !== 'All Priorities' || 
     type !== 'All Types' || 
     category !== 'All Categories' || 
-    deadline !== undefined;
+    deadline !== undefined ||
+    user !== 'All Users';
 
   return (
     <div className="space-y-3 sm:space-y-4">
@@ -173,6 +182,22 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
                 </SelectContent>
               </Select>
 
+              {showUserFilter && (
+                <Select value={user} onValueChange={onUserChange}>
+                  <SelectTrigger className="w-full text-sm">
+                    <SelectValue placeholder="User" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="All Users">All Users</SelectItem>
+                    {users.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
               <Popover>
                 <PopoverTrigger asChild>
                   <Button variant="outline" className="border-secondary w-full text-sm">
@@ -265,6 +290,22 @@ export const TaskFilters: React.FC<TaskFiltersProps> = ({
               <SelectItem value="development">Development</SelectItem>
             </SelectContent>
           </Select>
+
+          {showUserFilter && (
+            <Select value={user} onValueChange={onUserChange}>
+              <SelectTrigger className="w-[150px] text-sm">
+                <SelectValue placeholder="User" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Users">All Users</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
 
           <Popover>
             <PopoverTrigger asChild>

@@ -397,6 +397,10 @@ export const AdminTaskDetailsPanel: React.FC<AdminTaskDetailsPanelProps> = ({
       return;
     }
 
+    if (!payload.deadline || !editForm.deadline) {
+      return;
+    }
+
     updateTaskMutation.mutate(
       {
         taskId: activeTask.id,

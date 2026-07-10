@@ -44,3 +44,38 @@ export const filterTasksByUserCategory = (tasks: Task[], profile: UserProfile | 
   return tasks;
 };
 
+export interface SelectableUser {
+  id: string;
+  name: string;
+  department?: string | null;
+  role?: string;
+}
+
+/**
+ * Filter users to same department as the current user (for task assignment).
+ */
+export const filterUsersBySameDepartment = (
+  users: SelectableUser[],
+  profile: UserProfile | null
+): SelectableUser[] => {
+  if (!profile) return [];
+
+  const department = (profile.department || profile.specialization || '').toLowerCase();
+
+  return users
+    .filter((user) => user.role !== 'Admin')
+    .filter((user) => {
+      const userDept = (user.department || '').toLowerCase();
+      if (department.includes('design')) {
+        return userDept.includes('design');
+      }
+      if (
+        department.includes('dev') ||
+        department.includes('development')
+      ) {
+        return userDept.includes('development') || userDept.includes('dev');
+      }
+      return userDept === department || !department;
+    });
+};
+
