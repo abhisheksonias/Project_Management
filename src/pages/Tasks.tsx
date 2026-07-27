@@ -340,12 +340,7 @@ const Tasks: React.FC = () => {
             : null,
       },
       {
-        onSuccess: (createdTask) => {
-          startTracking({
-            taskId: createdTask.id,
-            taskName: createdTask.name || trimmedName,
-            projectId: createdTask.project_id,
-          });
+        onSuccess: () => {
           handleCloseCreateDialog();
         },
       }
